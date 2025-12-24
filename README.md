@@ -111,4 +111,3 @@ curl -X POST "http://localhost:8000/items" \
 The application runs on **port 8000** by default. To change the port, edit the `PORT` variable in your `.env` file. The application will automatically load these settings when it starts.
 
 **Note:** Never commit your `.env` file to version control. The `.env.example` file is provided as a template.
-
