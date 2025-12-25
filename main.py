@@ -3023,108 +3023,176 @@ async def get_wellness_support(request: WellnessSupportRequest):
         avg_score = (request.emotional_wellness_score + request.financial_wellness_score + request.current_mood_score) / 3
         wellness_status = "excellent" if avg_score >= 8 else "good" if avg_score >= 6 else "moderate" if avg_score >= 4 else "needs_attention"
         
-        # Build comprehensive wellness support prompt
-        wellness_prompt = f"""You are a compassionate, wise wellness counselor and life coach. A person has shared their wellness scores with you:
-
-**Wellness Assessment (Scale: 1=bad, 10=good):**
+        # Generate each section separately with AI for unique, varied responses
+        import random
+        import time
+        
+        # Add randomness seed based on timestamp and scores for variety
+        random_seed = int(time.time() * 1000) + sum([request.emotional_wellness_score, request.financial_wellness_score, request.current_mood_score, request.stress_level])
+        
+        wellness_context = f"""Wellness Assessment (Scale: 1=bad, 10=good):
 - Emotional Wellness: {request.emotional_wellness_score}/10
 - Financial Wellness: {request.financial_wellness_score}/10
 - Current Mood: {request.current_mood_score}/10
 - Stress Level: {request.stress_level}/10
 - Concerns: {request.concerns if request.concerns else "None specified"}
+- Overall Status: {wellness_status.title()}"""
+        
+        # Helper function to generate AI content with variety and higher temperature
+        async def generate_ai_section(prompt_text: str, section_name: str) -> str:
+            """Generate AI content for a specific section with variety"""
+            full_prompt = f"""{wellness_context}
 
-**Overall Status:** {wellness_status.title()}
+{prompt_text}
 
-**Your Task:**
-Provide comprehensive, heartfelt support and guidance. Write in a warm, empathetic, and encouraging tone. Address the following sections:
-
-1. **Emotional Support** (2-3 paragraphs):
-   - Acknowledge their current state with empathy
-   - Provide emotional validation and understanding
-   - Offer comfort and reassurance
-   - Remind them that their feelings are valid and temporary challenges can be overcome
-
-2. **Motivational Message** (1-2 paragraphs):
-   - Inspire them with positive energy
-   - Remind them of their inner strength and resilience
-   - Encourage them to keep moving forward
-   - Use uplifting and empowering language
-
-3. **Importance of Life** (1 paragraph):
-   - Remind them of the preciousness and value of life
-   - Emphasize that every day is an opportunity for growth
-   - Highlight the beauty and potential in their journey
-   - Encourage gratitude and appreciation for life
-
-4. **Importance of Study** (1 paragraph):
-   - Explain why education and learning matter
-   - Connect studying to personal growth and future opportunities
-   - Motivate them to see study as an investment in themselves
-   - Encourage persistence and dedication
-
-5. **Importance of Completing Goals** (1 paragraph):
-   - Explain the value of setting and achieving goals
-   - Connect goal completion to self-confidence and fulfillment
-   - Encourage them to break goals into manageable steps
-   - Remind them that every small step counts
-
-6. **Positive Affirmations** (5-7 short, powerful statements):
-   - Create uplifting affirmations tailored to their situation
-   - Make them specific and actionable
-   - Use present tense and positive language
-
-7. **Personalized Recommendations** (5-7 actionable suggestions):
-   - Based on their scores, provide specific wellness strategies
-   - Include practical steps they can take immediately
-   - Address their concerns if mentioned
-   - Be specific and helpful
-
-8. **Overall Assessment** (1 paragraph):
-   - Summarize their current wellness state
-   - Provide hope and encouragement
-   - Remind them that improvement is always possible
-   - End on a positive, forward-looking note
-
-Write with genuine care, warmth, and wisdom. Be specific and personal. Use encouraging language throughout."""
-
-        # Generate comprehensive wellness support using AI
-        messages = [{"role": "user", "content": wellness_prompt}]
-        wellness_content = ""
+IMPORTANT: 
+- Write in a warm, empathetic, POSITIVE, and encouraging tone
+- Be genuine, specific, and personal
+- Use different words and phrasing than previous responses
+- Create unique, heartfelt content (not generic or placeholder text)
+- Every sentence should be meaningful and uplifting
+- Focus on hope, growth, and possibilities
+- Be creative and vary your language each time"""
+            
+            messages = [{"role": "user", "content": full_prompt}]
+            
+            if GROQ_API_KEY:
+                try:
+                    # Use higher temperature for more variety in wellness responses
+                    system_message = {
+                        "role": "system",
+                        "content": "You are a compassionate, wise wellness counselor. Provide warm, positive, and encouraging support. Always be genuine, specific, and uplifting."
+                    }
+                    api_messages = [system_message] + messages
+                    
+                    headers = {
+                        "Authorization": f"Bearer {GROQ_API_KEY}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    payload = {
+                        "model": GROQ_MODEL_NAME,
+                        "messages": api_messages,
+                        "temperature": 0.9,  # Higher temperature for more variety
+                        "max_tokens": 1500
+                    }
+                    
+                    response = requests.post(GROQ_API_ENDPOINT, headers=headers, json=payload, timeout=45)
+                    response.raise_for_status()
+                    data = response.json()
+                    ai_response = data["choices"][0]["message"]["content"]
+                    if ai_response and len(ai_response.strip()) > 50:
+                        return ai_response.strip()
+                except Exception as e:
+                    print(f"Groq failed for {section_name}: {str(e)}")
+            
+            if OLLAMA_BASE_URL:
+                try:
+                    response = await chat_with_ollama(messages, use_rag=False, rag_context="")
+                    if response and len(response.strip()) > 50:
+                        return response.strip()
+                except Exception as e:
+                    print(f"Ollama failed for {section_name}: {str(e)}")
+            
+            if LOCAL_LLAMA_API_URL:
+                try:
+                    response = await chat_with_llama(messages, use_rag=False, rag_context="")
+                    if response and len(response.strip()) > 50:
+                        return response.strip()
+                except Exception as e:
+                    print(f"LLaMA failed for {section_name}: {str(e)}")
+            
+            return ""
+        
         used_provider = "auto"
         
-        if GROQ_API_KEY:
-            try:
-                wellness_content = await chat_with_groq(messages, use_rag=False, rag_context="")
+        # Generate Emotional Support
+        emotional_prompt = """Write 2-3 heartfelt paragraphs providing emotional support. Acknowledge their current state with deep empathy, validate their feelings, offer comfort and reassurance. Remind them their feelings are valid and challenges are temporary. Be warm, understanding, and genuinely caring."""
+        emotional_support = await generate_ai_section(emotional_prompt, "emotional_support")
+        
+        # Generate Motivational Message
+        motivational_prompt = """Write 1-2 inspiring paragraphs that motivate and energize. Remind them of their inner strength, resilience, and potential. Use uplifting, empowering language. Encourage them to keep moving forward with hope and determination."""
+        motivational_message = await generate_ai_section(motivational_prompt, "motivational")
+        
+        # Generate Life Importance
+        life_prompt = """Write 1 meaningful paragraph about the importance and preciousness of life. Emphasize that every day is an opportunity for growth, highlight the beauty and potential in their journey, and encourage gratitude and appreciation for life. Be inspiring and positive."""
+        life_importance = await generate_ai_section(life_prompt, "life")
+        
+        # Generate Study Importance
+        study_prompt = """Write 1 motivating paragraph explaining why education and learning matter. Connect studying to personal growth and future opportunities. Motivate them to see study as an investment in themselves. Encourage persistence and dedication. Be encouraging and positive."""
+        study_importance = await generate_ai_section(study_prompt, "study")
+        
+        # Generate Goal Importance
+        goal_prompt = """Write 1 inspiring paragraph about the importance of completing goals. Explain the value of setting and achieving goals, connect goal completion to self-confidence and fulfillment. Encourage breaking goals into manageable steps. Remind them every small step counts. Be motivational and positive."""
+        goal_importance = await generate_ai_section(goal_prompt, "goal")
+        
+        # Generate Positive Affirmations
+        affirmations_prompt = """Create 5-7 unique, powerful positive affirmations tailored to their situation. Each should be:
+- Short and impactful (one sentence)
+- In present tense
+- Specific and actionable
+- Uplifting and empowering
+- Different from generic affirmations
+
+Format as a numbered or bulleted list."""
+        affirmations_text = await generate_ai_section(affirmations_prompt, "affirmations")
+        
+        # Generate Recommendations
+        recommendations_prompt = """Provide 5-7 specific, actionable wellness recommendations based on their scores. Each should be:
+- Practical and immediately actionable
+- Tailored to their specific wellness situation
+- Positive and encouraging
+- Specific (not vague)
+
+Format as a numbered or bulleted list."""
+        recommendations_text = await generate_ai_section(recommendations_prompt, "recommendations")
+        
+        # Generate Overall Assessment
+        assessment_prompt = """Write 1 comprehensive paragraph that:
+- Summarizes their current wellness state positively
+- Provides hope and encouragement
+- Reminds them improvement is always possible
+- Ends on a positive, forward-looking note
+- Is warm, genuine, and uplifting"""
+        overall_assessment = await generate_ai_section(assessment_prompt, "assessment")
+        
+        # Determine which provider was used (check if any AI call succeeded)
+        if emotional_support or motivational_message:
+            if GROQ_API_KEY:
                 used_provider = "groq"
-            except Exception as e:
-                print(f"Groq failed: {str(e)}")
-        
-        if not wellness_content and OLLAMA_BASE_URL:
-            try:
-                wellness_content = await chat_with_ollama(messages, use_rag=False, rag_context="")
+            elif OLLAMA_BASE_URL:
                 used_provider = "ollama"
-            except Exception as e:
-                print(f"Ollama failed: {str(e)}")
-        
-        if not wellness_content and LOCAL_LLAMA_API_URL:
-            try:
-                wellness_content = await chat_with_llama(messages, use_rag=False, rag_context="")
+            elif LOCAL_LLAMA_API_URL:
                 used_provider = "llama"
-            except Exception as e:
-                print(f"LLaMA failed: {str(e)}")
         
-        # Parse the AI response into sections
-        # Try to extract different sections from the response
-        emotional_support = ""
-        motivational_message = ""
-        life_importance = ""
-        study_importance = ""
-        goal_importance = ""
+        # Parse affirmations from AI response
         positive_affirmations = []
-        recommendations = []
-        overall_assessment = ""
+        if affirmations_text:
+            lines = affirmations_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                # Remove numbering/bullets
+                line = line.lstrip('0123456789.-•) ').strip()
+                if line and len(line) > 15 and len(line) < 200:
+                    # Ensure it's positive
+                    if any(word in line.lower() for word in ['i am', 'i can', 'i will', 'i have', 'i believe', 'capable', 'strong', 'worthy', 'deserve', 'can', 'will']):
+                        positive_affirmations.append(line)
         
-        if wellness_content:
+        # Parse recommendations from AI response
+        recommendations = []
+        if recommendations_text:
+            lines = recommendations_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                # Remove numbering/bullets
+                line = line.lstrip('0123456789.-•) ').strip()
+                if line and len(line) > 20 and len(line) < 300:
+                    # Ensure it's actionable and positive
+                    if any(word in line.lower() for word in ['practice', 'try', 'consider', 'engage', 'create', 'set', 'take', 'build', 'focus', 'develop']):
+                        recommendations.append(line)
+        
+        # Fallback content - varied and positive based on scores
+        # Generate different fallback content each time using score-based variations
             # Try to parse structured response
             lines = wellness_content.split('\n')
             current_section = None
@@ -3202,77 +3270,88 @@ Write with genuine care, warmth, and wisdom. Be specific and personal. Use encou
             elif current_section == 'emotional' and current_text:
                 emotional_support = '\n'.join(current_text).strip()
         
-        # Fallback content if parsing fails or AI didn't respond
+        # Varied fallback content based on scores (ensures different responses)
+        fallback_variations = {
+            'emotional': [
+                f"Your emotional wellness score of {request.emotional_wellness_score}/10 shows you're on a meaningful journey of self-discovery. Every emotion you experience is valid and important. Remember, feeling deeply is a sign of being fully alive. You have incredible inner strength that will guide you through any challenge.",
+                f"With an emotional wellness of {request.emotional_wellness_score}/10, you're demonstrating courage by acknowledging where you are. Your feelings matter, and taking care of your emotional health is one of the most important things you can do. Trust in your ability to heal and grow.",
+                f"Your emotional wellness at {request.emotional_wellness_score}/10 reflects a person who is aware and growing. Every step you take toward emotional wellness is valuable. You deserve compassion, understanding, and support. Your journey toward emotional well-being is filled with potential."
+            ],
+            'motivational': [
+                f"Your current mood score of {request.current_mood_score}/10 is just one moment in your beautiful journey. You possess incredible resilience and inner strength. Every day brings new possibilities for joy, growth, and positive change. Keep believing in yourself.",
+                f"With a mood score of {request.current_mood_score}/10, remember that your potential is limitless. You have overcome challenges before, and you will again. Each new day is a fresh opportunity to create the life you want. Your strength is greater than any obstacle.",
+                f"Your mood at {request.current_mood_score}/10 doesn't define your future—it's just where you are right now. You have the power to transform your life through small, consistent positive actions. Believe in your ability to create positive change."
+            ],
+            'life': [
+                "Life is an extraordinary gift filled with endless possibilities. Every breath you take is an opportunity to experience something beautiful, learn something new, or make a positive impact. Your life has profound meaning and value, and the world is richer because you're in it.",
+                "Each day of life is a precious opportunity to grow, love, learn, and contribute. Your existence matters deeply, and you have the power to create a meaningful, fulfilling life. Embrace the journey with gratitude and wonder.",
+                "Life offers you countless moments of beauty, connection, and growth. Every experience, whether joyful or challenging, contributes to your unique story. Your life is valuable, meaningful, and full of potential waiting to be realized."
+            ],
+            'study': [
+                "Education is a powerful catalyst for personal transformation. Every moment you invest in learning expands your mind, opens new doors, and builds the foundation for your dreams. Your commitment to studying is an investment in your brightest future.",
+                "Learning is one of life's greatest adventures. Each concept you master, each skill you develop, brings you closer to your goals. Your dedication to education today shapes the opportunities you'll have tomorrow. Keep learning, keep growing.",
+                "Studying is your pathway to empowerment and achievement. Every hour you spend learning builds your confidence, sharpens your mind, and prepares you for success. Your educational journey is creating the person you're meant to become."
+            ],
+            'goal': [
+                "Achieving goals builds unshakeable confidence and creates powerful momentum in your life. Every goal you complete proves your capability and brings you closer to your dreams. Small steps lead to great achievements—keep moving forward.",
+                "Completing goals transforms your potential into reality. Each achievement, no matter how small, strengthens your belief in yourself and opens new possibilities. Your dedication to finishing what you start is building an extraordinary life.",
+                "Goals are the bridges between where you are and where you want to be. Every goal you complete is a victory that builds your confidence and creates positive momentum. Your commitment to achievement is shaping your future."
+            ]
+        }
+        
+        # Use score-based index to vary fallback content
+        score_sum = request.emotional_wellness_score + request.financial_wellness_score + request.current_mood_score + request.stress_level
+        variation_index = (score_sum + random_seed) % 3
+        
         if not emotional_support:
-            emotional_support = f"""I want you to know that your feelings are completely valid. With an emotional wellness score of {request.emotional_wellness_score}/10, you're navigating through some challenges, and that takes courage. Remember, emotional wellness is a journey, not a destination. Every step you take toward understanding and caring for yourself matters deeply. You have the strength within you to overcome difficult moments, and I believe in your ability to grow and heal."""
+            emotional_support = fallback_variations['emotional'][variation_index]
         
         if not motivational_message:
-            motivational_message = f"""You are stronger than you know, and more capable than you might feel right now. Your current mood score of {request.current_mood_score}/10 doesn't define your potential. Every day is a new opportunity to take small steps toward feeling better. Remember, progress isn't always linear, but every effort counts. Keep moving forward, one step at a time."""
+            motivational_message = fallback_variations['motivational'][variation_index]
         
         if not life_importance:
-            life_importance = """Life is a precious gift, filled with infinite possibilities and opportunities for growth. Every moment you're alive is a chance to learn, to love, to create, and to make a difference. Your life has inherent value and meaning, regardless of the challenges you face. Embrace each day as an opportunity to discover something new about yourself and the world around you."""
+            life_importance = fallback_variations['life'][variation_index]
         
         if not study_importance:
-            study_importance = """Education and learning are powerful tools that unlock doors to your future. Every hour you invest in studying is an investment in yourself—in your knowledge, your skills, and your ability to achieve your dreams. Learning isn't just about grades; it's about expanding your mind, building confidence, and preparing yourself for opportunities that lie ahead. Your dedication to studying today shapes the person you'll become tomorrow."""
+            study_importance = fallback_variations['study'][variation_index]
         
         if not goal_importance:
-            goal_importance = """Completing goals, no matter how small, builds confidence, creates momentum, and proves to yourself that you can achieve what you set your mind to. Each completed goal is a stepping stone toward your larger dreams. When you finish what you start, you're not just achieving an outcome—you're building self-trust, discipline, and the belief that you can overcome obstacles. Every goal you complete is a victory worth celebrating."""
+            goal_importance = fallback_variations['goal'][variation_index]
         
-        if not positive_affirmations:
-            positive_affirmations = [
-                "I am capable of overcoming challenges and growing stronger",
-                "My feelings are valid, and I deserve compassion and care",
-                "Every day brings new opportunities for growth and improvement",
-                "I have the strength within me to achieve my goals",
-                "I am worthy of happiness, success, and fulfillment",
-                "Small steps forward are still progress, and progress matters",
-                "I believe in my ability to create positive change in my life"
+        # Varied positive affirmations
+        if not positive_affirmations or len(positive_affirmations) < 5:
+            affirmation_sets = [
+                ["I am capable of overcoming any challenge that comes my way", "My feelings are valid and I deserve compassion", "Every day I grow stronger and more resilient", "I have the power to create positive change", "I am worthy of happiness and fulfillment", "Small progress is still meaningful progress", "I believe in my ability to achieve my dreams"],
+                ["I am strong enough to handle whatever life brings", "I deserve love, care, and understanding", "Each moment is an opportunity for growth", "I have inner strength that guides me forward", "I am capable of achieving great things", "Progress happens one step at a time", "I trust in my ability to overcome obstacles"],
+                ["I am resilient and can bounce back from challenges", "My journey matters and I am making progress", "I have the courage to face difficult moments", "I am deserving of peace, joy, and success", "Every day I become a better version of myself", "I have the strength to pursue my goals", "I am capable of creating the life I want"]
             ]
-        
-        if not recommendations:
-            recommendations = []
-            if request.stress_level >= 7:
-                recommendations.append("Practice deep breathing exercises for 5-10 minutes daily to reduce stress")
-                recommendations.append("Take regular breaks throughout your day to rest and recharge")
-            if request.current_mood_score <= 4:
-                recommendations.append("Engage in activities that bring you joy, even if just for 15 minutes")
-                recommendations.append("Connect with friends, family, or a support network")
-            if request.emotional_wellness_score <= 4:
-                recommendations.append("Practice self-compassion and be kind to yourself")
-                recommendations.append("Consider journaling to express and process your emotions")
-            if request.financial_wellness_score <= 4:
-                recommendations.append("Create a simple budget to track income and expenses")
-                recommendations.append("Set small, achievable financial goals to build confidence")
-            if not recommendations:
-                recommendations = [
-                    "Maintain a daily routine that includes self-care activities",
-                    "Set aside time each day for activities that bring you peace and joy",
-                    "Practice gratitude by writing down three things you're thankful for each day",
-                    "Stay connected with supportive people in your life",
-                    "Remember that seeking help when needed is a sign of strength, not weakness"
-                ]
-        
-        if not overall_assessment:
-            overall_assessment = f"""Based on your wellness scores, you're currently at a {wellness_status} level of overall wellness. This is a snapshot in time, not a permanent state. With emotional wellness at {request.emotional_wellness_score}/10, financial wellness at {request.financial_wellness_score}/10, and mood at {request.current_mood_score}/10, there's room for growth and improvement. Remember, wellness is a journey, and every small step you take toward better self-care, emotional awareness, and goal achievement matters. You have the power to improve your wellness, and I believe in your ability to do so. Keep moving forward with hope and determination."""
-        
-        # If AI provided content but parsing failed, use the full content
-        if wellness_content and not emotional_support:
-            # Split the content intelligently
-            parts = wellness_content.split('\n\n')
-            if len(parts) >= 8:
-                emotional_support = parts[0] if len(parts) > 0 else emotional_support
-                motivational_message = parts[1] if len(parts) > 1 else motivational_message
-                life_importance = parts[2] if len(parts) > 2 else life_importance
-                study_importance = parts[3] if len(parts) > 3 else study_importance
-                goal_importance = parts[4] if len(parts) > 4 else goal_importance
-                if len(parts) > 5:
-                    positive_affirmations = [p.strip() for p in parts[5].split('\n') if p.strip() and len(p.strip()) > 10][:7]
-                if len(parts) > 6:
-                    recommendations = [p.strip() for p in parts[6].split('\n') if p.strip() and len(p.strip()) > 10][:7]
-                overall_assessment = parts[7] if len(parts) > 7 else overall_assessment
+            selected_affirmations = affirmation_sets[variation_index]
+            if positive_affirmations:
+                positive_affirmations.extend(selected_affirmations[:7-len(positive_affirmations)])
             else:
-                # Use the full content as emotional support if we can't parse
-                emotional_support = wellness_content[:500] if len(wellness_content) > 500 else wellness_content
+                positive_affirmations = selected_affirmations[:7]
+        
+        # Varied recommendations
+        if not recommendations or len(recommendations) < 5:
+            rec_sets = [
+                ["Practice deep breathing for 5 minutes when feeling stressed", "Engage in one activity you enjoy each day", "Write down three things you're grateful for daily", "Connect with someone supportive this week", "Take a 10-minute walk in nature", "Practice self-compassion in difficult moments", "Set one small, achievable goal for this week"],
+                ["Try meditation or mindfulness for 10 minutes daily", "Do something creative that brings you joy", "Spend quality time with people who uplift you", "Create a peaceful morning or evening routine", "Focus on one positive action you can take today", "Practice positive self-talk throughout the day", "Celebrate small wins and progress you've made"],
+                ["Take regular breaks to rest and recharge", "Engage in physical activity that feels good", "Express your feelings through journaling or talking", "Practice gratitude by noticing good moments", "Set boundaries to protect your energy", "Do something kind for yourself each day", "Remember that asking for help is a sign of strength"]
+            ]
+            selected_recs = rec_sets[variation_index]
+            if recommendations:
+                recommendations.extend(selected_recs[:7-len(recommendations)])
+            else:
+                recommendations = selected_recs[:7]
+        
+        # Varied overall assessment
+        if not overall_assessment:
+            assessment_variations = [
+                f"Your wellness journey shows you're at a {wellness_status} level, which is a meaningful starting point for growth. With emotional wellness at {request.emotional_wellness_score}/10, financial wellness at {request.financial_wellness_score}/10, and mood at {request.current_mood_score}/10, you have a clear path forward. Every positive choice you make builds toward greater well-being. You have the power to improve, and I believe in your ability to create positive change.",
+                f"Currently at a {wellness_status} wellness level, you're on a path of self-discovery and improvement. Your scores—emotional {request.emotional_wellness_score}/10, financial {request.financial_wellness_score}/10, mood {request.current_mood_score}/10—reflect where you are now, not where you'll always be. Wellness is a journey of small, consistent steps. You're capable of remarkable growth and positive transformation.",
+                f"At a {wellness_status} wellness level, you're taking important steps toward better well-being. Your emotional wellness ({request.emotional_wellness_score}/10), financial wellness ({request.financial_wellness_score}/10), and mood ({request.current_mood_score}/10) are areas of opportunity for growth. Remember, every positive action matters. You have the strength and ability to improve your wellness and create a more fulfilling life."
+            ]
+            overall_assessment = assessment_variations[variation_index]
         
         return WellnessSupportResponse(
             emotional_support=emotional_support,
