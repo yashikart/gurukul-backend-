@@ -1,0 +1,43 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { FaThLarge, FaBookOpen, FaFileAlt, FaComments, FaClipboardList, FaVideo } from 'react-icons/fa';
+
+const features = [
+    { icon: FaThLarge, label: "Dashboard", path: "/dashboard" },
+    { icon: FaBookOpen, label: "Subjects", path: "/subjects" },
+    { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" },
+    { icon: FaComments, label: "Chatbot", path: "/chatbot" },
+    { icon: FaClipboardList, label: "Test", path: "/test" },
+    { icon: FaVideo, label: "Lectures", path: "/lectures" },
+];
+
+const FeatureGrid = () => {
+    return (
+        <div className="max-w-6xl mx-auto px-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {features.map((feature, index) => (
+                    <Link
+                        key={index}
+                        to={feature.path}
+                        className="group relative overflow-hidden rounded-2xl p-8 transition-all duration-500 hover:-translate-y-2 block text-center w-full"
+                    >
+                        {/* Glass Background - warmer tint */}
+                        <div className="absolute inset-0 bg-orange-900/50 backdrop-blur-xl border border-white/10 transition-all duration-500 group-hover:bg-orange-900/60 group-hover:border-accent/30 shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]"></div>
+
+                        {/* Hover Glow */}
+                        <div className="absolute -inset-1 bg-gradient-to-r from-accent/0 via-accent/10 to-accent/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl"></div>
+
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-4 text-white">
+                            <div className="p-4 rounded-full bg-white/10 border border-white/10 group-hover:scale-110 transition-transform duration-500 group-hover:border-accent/50 group-hover:bg-accent/20">
+                                <feature.icon className="text-3xl text-gray-100 group-hover:text-accent transition-colors duration-300" />
+                            </div>
+                            <span className="text-xl font-medium tracking-wide text-gray-50 group-hover:text-white transition-colors">{feature.label}</span>
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+export default FeatureGrid;

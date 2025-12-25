@@ -208,29 +208,34 @@ class DOCSummarizer:
         print(f"[DOC Summarizer] Processing {len(sections)} sections with {summary_type} summary type...")
         
         # Determine summary parameters based on type
-        # Each section should give approximately 500 characters
+        # Determine summary parameters based on type
+        # Each section should give approximately different characters
         if summary_type == "concise":
-            section_max_length = 120  # Target ~500 chars (tokens to chars ratio ~4:1)
-            section_min_length = 80
-            overall_max_length = 200
-            overall_min_length = 80
+            section_max_length = 80  # Target ~300 chars
+            section_min_length = 40
+            overall_max_length = 150
+            overall_min_length = 50
+            target_chars = 300
         elif summary_type == "detailed":
-            section_max_length = 150  # Target ~500 chars
+            section_max_length = 250  # Target ~1000 chars
             section_min_length = 100
-            overall_max_length = 300
-            overall_min_length = 120
-        else:  # comprehensive
-            section_max_length = 180  # Target ~500 chars
-            section_min_length = 120
             overall_max_length = 400
             overall_min_length = 150
+            target_chars = 800
+        else:  # comprehensive
+            # Much larger limits for comprehensive
+            section_max_length = 400  # Target ~1500 chars
+            section_min_length = 200
+            overall_max_length = 800
+            overall_min_length = 300
+            target_chars = 1500
         
         # Step 1: Summarize each section individually
         section_summaries = []
         for i, section_text in enumerate(sections, 1):
             if section_text and len(section_text.strip()) > 50:
                 print(f"[DOC Summarizer] Summarizing section {i}/{len(sections)}...")
-                section_summary = self.summarize_section(section_text, i, section_max_length, section_min_length, improve_grammar=improve_grammar, target_chars=500)
+                section_summary = self.summarize_section(section_text, i, section_max_length, section_min_length, improve_grammar=improve_grammar, target_chars=target_chars)
                 section_summaries.append({
                     "section_number": i,
                     "summary": section_summary,

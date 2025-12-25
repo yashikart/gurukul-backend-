@@ -214,29 +214,34 @@ class PDFSummarizer:
         print(f"[PDF Summarizer] Processing {len(pages)} pages with {summary_type} summary type...")
         
         # Determine summary parameters based on type
-        # Each page should give approximately 500 characters
+        # Determine summary parameters based on type
+        # Each page should give approximately different characters
         if summary_type == "concise":
-            page_max_length = 120  # Target ~500 chars (tokens to chars ratio ~4:1)
-            page_min_length = 80
-            overall_max_length = 200
-            overall_min_length = 80
+            page_max_length = 80  # Target ~300 chars
+            page_min_length = 40
+            overall_max_length = 150
+            overall_min_length = 50
+            target_chars = 300
         elif summary_type == "detailed":
-            page_max_length = 150  # Target ~500 chars
+            page_max_length = 250  # Target ~1000 chars
             page_min_length = 100
-            overall_max_length = 300
-            overall_min_length = 120
-        else:  # comprehensive
-            page_max_length = 180  # Target ~500 chars
-            page_min_length = 120
             overall_max_length = 400
             overall_min_length = 150
+            target_chars = 800
+        else:  # comprehensive
+            # Much larger limits for comprehensive
+            page_max_length = 400  # Target ~1500 chars
+            page_min_length = 200
+            overall_max_length = 800
+            overall_min_length = 300
+            target_chars = 1500
         
         # Step 1: Summarize each page individually
         page_summaries = []
         for i, page_text in enumerate(pages, 1):
             if page_text and len(page_text.strip()) > 50:
                 print(f"[PDF Summarizer] Summarizing page {i}/{len(pages)}...")
-                page_summary = self.summarize_page(page_text, i, page_max_length, page_min_length, improve_grammar=improve_grammar, target_chars=500)
+                page_summary = self.summarize_page(page_text, i, page_max_length, page_min_length, improve_grammar=improve_grammar, target_chars=target_chars)
                 page_summaries.append({
                     "page_number": i,
                     "summary": page_summary,

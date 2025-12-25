@@ -1556,39 +1556,63 @@ def get_conversation_history(conversation_id: str, max_messages: int = 10) -> Li
 
 def retrieve_rag_context(query: str, top_k: int = 3) -> str:
     """Retrieve relevant context from RAG knowledge store using simple keyword matching"""
-    if not rag_knowledge_store:
-        return ""
-    
-    query_lower = query.lower()
-    query_words = set(query_lower.split())
-    
-    # Simple keyword-based retrieval (can be upgraded to vector similarity)
-    scored_items = []
-    for item_id, item in rag_knowledge_store.items():
-        text_lower = item["text"].lower()
-        text_words = set(text_lower.split())
+    try:
+        if not rag_knowledge_store:
+            return ""
         
-        # Calculate simple overlap score
-        overlap = len(query_words.intersection(text_words))
-        if overlap > 0:
-            scored_items.append((overlap, item["text"]))
-    
-    # Sort by score and return top_k
-    scored_items.sort(reverse=True, key=lambda x: x[0])
-    context_parts = [text for _, text in scored_items[:top_k]]
-    
-    if context_parts:
-        return "\n\n".join([f"Context: {text}" for text in context_parts])
-    return ""
+        if not isinstance(query, str):
+            print(f"[RAG] Warning: Query is not a string: {type(query)}")
+            return ""
+
+        query_lower = query.lower()
+        query_words = set(query_lower.split())
+        
+        # Simple keyword-based retrieval (can be upgraded to vector similarity)
+        scored_items = []
+        for item_id, item in rag_knowledge_store.items():
+            if not isinstance(item, dict) or "text" not in item:
+                continue
+                
+            text = item.get("text", "")
+            if not isinstance(text, str):
+                continue
+
+            text_lower = text.lower()
+            text_words = set(text_lower.split())
+            
+            # Calculate simple overlap score
+            overlap = len(query_words.intersection(text_words))
+            if overlap > 0:
+                scored_items.append((overlap, text))
+        
+        # Sort by score and return top_k
+        scored_items.sort(reverse=True, key=lambda x: x[0])
+        context_parts = [text for _, text in scored_items[:top_k]]
+        
+        if context_parts:
+            print(f"[RAG] Retrieved {len(context_parts)} context parts for query: '{query[:50]}...'")
+            return "\n\n".join([f"Context: {text}" for text in context_parts])
+        return ""
+    except Exception as e:
+        print(f"[RAG] Error in retrieve_rag_context: {str(e)}")
+        return ""
 
 def add_to_rag_store(text: str, metadata: Optional[Dict] = None):
     """Add text to RAG knowledge store"""
-    text_hash = hashlib.md5(text.encode()).hexdigest()
-    rag_knowledge_store[text_hash] = {
-        "text": text,
-        "metadata": metadata or {},
-        "added_at": datetime.now().isoformat()
-    }
+    try:
+        if not text or not isinstance(text, str):
+            print(f"[RAG] Warning: Cannot add non-string or empty text to store: {type(text)}")
+            return
+            
+        text_hash = hashlib.md5(text.encode()).hexdigest()
+        rag_knowledge_store[text_hash] = {
+            "text": text,
+            "metadata": metadata or {},
+            "added_at": datetime.now().isoformat()
+        }
+        print(f"[RAG] Added content to store (Hash: {text_hash[:8]})")
+    except Exception as e:
+        print(f"[RAG] Error in add_to_rag_store: {str(e)}")
 
 async def chat_with_groq(messages: List[Dict], use_rag: bool = False, rag_context: str = "") -> str:
     """Chat with Groq API"""
@@ -1698,50 +1722,58 @@ async def chat_with_llama(messages: List[Dict], use_rag: bool = False, rag_conte
 
 async def chat_with_fallback(messages: List[Dict], use_rag: bool = False, rag_context: str = "") -> Tuple[str, str]:
     """Chat with fallback logic: Groq -> Ollama -> LLaMA"""
+    errors = []
+    
     # Try Groq first
     if GROQ_API_KEY:
         try:
+            print("[Chat] Attempting Groq...")
             response = await chat_with_groq(messages, use_rag, rag_context)
             return response, "groq"
         except Exception as e:
-            print(f"Groq failed: {str(e)}, trying fallback...")
+            err_msg = f"Groq failed: {str(e)}"
+            print(f"[Chat] {err_msg}")
+            errors.append(err_msg)
+    else:
+        errors.append("Groq API key not configured")
     
     # Try Ollama
     try:
+        print("[Chat] Attempting Ollama...")
         response = await chat_with_ollama(messages, use_rag, rag_context)
         return response, "ollama"
     except Exception as e:
-        print(f"Ollama failed: {str(e)}, trying fallback...")
+        err_msg = f"Ollama failed: {str(e)}"
+        print(f"[Chat] {err_msg}")
+        errors.append(err_msg)
     
     # Try LLaMA
     try:
+        print("[Chat] Attempting LLaMA...")
         response = await chat_with_llama(messages, use_rag, rag_context)
         return response, "llama"
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"All chat providers failed. Last error: {str(e)}")
+        err_msg = f"LLaMA failed: {str(e)}"
+        print(f"[Chat] {err_msg}")
+        errors.append(err_msg)
+    
+    error_detail = " | ".join(errors)
+    raise HTTPException(status_code=500, detail=f"All chat providers failed. Details: {error_detail}")
 
 # Chatbot Endpoint
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
     Chatbot endpoint with conversation memory and RAG support.
-    
-    Features:
-    - Maintains conversation history across messages
-    - Supports multiple AI providers (Groq, Ollama, LLaMA) with auto-fallback
-    - RAG (Retrieval Augmented Generation) for context-aware responses
-    - Remembers previous conversations using conversation_id
-    
-    Usage:
-    - First message: Don't provide conversation_id (creates new conversation)
-    - Subsequent messages: Use the conversation_id from previous response
-    - Set use_rag=True to enable context retrieval from knowledge base
     """
+    print(f"\n[Chat] New request: '{request.message[:50]}...' (RAG: {request.use_rag}, Provider: {request.provider})")
+    
     if not request.message or len(request.message.strip()) < 1:
         raise HTTPException(status_code=400, detail="Message is required")
     
     try:
         # Get or create conversation
+        conv_start = datetime.now()
         conversation_id = get_or_create_conversation(request.conversation_id)
         
         # Get conversation history
@@ -1764,14 +1796,18 @@ async def chat(request: ChatRequest):
         # Retrieve RAG context if enabled
         rag_context = ""
         if request.use_rag:
-            rag_context = retrieve_rag_context(request.message)
-            print(f"[Chat] RAG context retrieved: {len(rag_context)} characters")
+            try:
+                rag_context = retrieve_rag_context(request.message)
+                print(f"[Chat] RAG context retrieved: {len(rag_context)} characters")
+            except Exception as e:
+                print(f"[Chat] RAG retrieval failed (non-fatal): {str(e)}")
         
         # Store user message
         add_message_to_conversation(conversation_id, "user", request.message)
         
         # Get response from AI provider
         provider = request.provider.lower() if request.provider else "auto"
+        print(f"[Chat] Processing with provider: {provider}")
         
         if provider == "groq":
             response_text = await chat_with_groq(api_messages, request.use_rag, rag_context)
@@ -1792,20 +1828,30 @@ async def chat(request: ChatRequest):
         
         # Add conversation to RAG store (for future context retrieval)
         if request.use_rag:
-            conversation_text = f"User: {request.message}\nAssistant: {response_text}"
-            add_to_rag_store(conversation_text, {"conversation_id": conversation_id, "type": "conversation"})
+            try:
+                conversation_text = f"User: {request.message}\nAssistant: {response_text}"
+                add_to_rag_store(conversation_text, {"conversation_id": conversation_id, "type": "conversation"})
+            except Exception as e:
+                print(f"[Chat] Failed to add to RAG store (non-fatal): {str(e)}")
+        
+        msg_count = len(conversation_store[conversation_id]["messages"])
+        duration = (datetime.now() - conv_start).total_seconds()
+        print(f"[Chat] Success! Response length: {len(response_text)}, Duration: {duration:.2f}s, Msg Count: {msg_count}")
         
         return ChatResponse(
             response=response_text,
             conversation_id=conversation_id,
             provider=used_provider,
-            message_count=len(conversation_store[conversation_id]["messages"]),
+            message_count=msg_count,
             timestamp=datetime.now().isoformat(),
             success=True
         )
     except HTTPException:
         raise
     except Exception as e:
+        print(f"[Chat] CRITICAL ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error in chat: {str(e)}")
 
 # Get Conversation History Endpoint
@@ -1837,14 +1883,19 @@ async def delete_conversation(conversation_id: str):
     return {"message": "Conversation deleted successfully", "conversation_id": conversation_id}
 
 # RAG Knowledge Store Endpoint (renamed from /chat/knowledge)
+# RAG Knowledge Store Endpoint (renamed from /chat/knowledge)
+class KnowledgeRequest(BaseModel):
+    text: str
+    metadata: Optional[Dict] = None
+
 @app.post("/rag/knowledge")
-async def add_knowledge(text: str, metadata: Optional[Dict] = None):
+async def add_knowledge(request: KnowledgeRequest):
     """Add knowledge to RAG store for context retrieval in chat"""
-    if not text or len(text.strip()) < 10:
+    if not request.text or len(request.text.strip()) < 10:
         raise HTTPException(status_code=400, detail="Text must be at least 10 characters")
     
-    add_to_rag_store(text, metadata)
-    return {"message": "Knowledge added to RAG store successfully", "text_length": len(text)}
+    add_to_rag_store(request.text, request.metadata)
+    return {"message": "Knowledge added to RAG store successfully", "text_length": len(request.text)}
 
 # ==================== SAVED SUMMARIZER WITH QUESTION GENERATION ====================
 
@@ -2685,9 +2736,18 @@ async def edumentor_generate_lesson(request: EduMentorRequest):
             f"You are EduMentor, a personal learning assistant specializing in {request.subject}.",
             f"Create a comprehensive, engaging lesson about '{request.topic}' in {request.subject}.",
             "",
-            "The lesson should include:",
+            "**FORMATTING RULES:**",
+            "- You MUST use Markdown for all formatting.",
+            "- Use `#` for the Main Title.",
+            "- Use `##` for Section Headers (Introduction, Key Concepts, etc.).",
+            "- Use `###` for sub-sections if needed.",
+            "- Use `**` for bold key terms and emphasis.",
+            "- Use `-` or `1.` for lists. Do not use plain paragraphs for lists.",
+            "- Use `>` for important callouts or summaries.",
+            "",
+            "The lesson content should include:",
             "1. **Introduction**: Clear overview and importance",
-            "2. **Key Concepts**: Break down main ideas simply",
+            "2. **Key Concepts**: Break down main ideas simply (use bullet points)",
             "3. **Detailed Explanation**: Thorough explanation with examples",
             "4. **Real-world Applications**: Practical uses",
             "5. **Practice Exercises**: 2-3 exercises to reinforce learning",

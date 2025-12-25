@@ -1,0 +1,511 @@
+import React from 'react';
+import Sidebar from '../components/Sidebar';
+import { FaVolumeUp, FaPlus, FaHistory, FaTrashAlt, FaPaperclip, FaArrowUp, FaChevronDown } from 'react-icons/fa';
+import { useKarma } from '../contexts/KarmaContext';
+import { containsProfanity } from '../utils/profanityDetector';
+
+const Chatbot = () => {
+    const { addKarma } = useKarma();
+    const [message, setMessage] = React.useState('');
+    const [selectedModel, setSelectedModel] = React.useState(() => localStorage.getItem('chatbot_selectedModel') || 'Grok');
+    const [isModelOpen, setIsModelOpen] = React.useState(false);
+    const [chatHistory, setChatHistory] = React.useState(() => {
+        const saved = localStorage.getItem('chatbot_chatHistory');
+        return saved ? JSON.parse(saved) : [
+            {
+                role: 'assistant',
+                content: "🙏 Namaste! I am Gurukul, your personal AI guide to ancient wisdom and modern learning. What knowledge are you seeking today?"
+            }
+        ];
+    });
+    const [loading, setLoading] = React.useState(false);
+    const [conversationId, setConversationId] = React.useState(() => localStorage.getItem('chatbot_conversationId') || null);
+    const chatEndRef = React.useRef(null);
+
+    // State for Features
+    const [showHistory, setShowHistory] = React.useState(false);
+    const [savedChats, setSavedChats] = React.useState([]);
+    const [showDeleteMenu, setShowDeleteMenu] = React.useState(false);
+    const [hasReceivedChatKarma, setHasReceivedChatKarma] = React.useState(() => {
+        return localStorage.getItem('chatbot_hasReceivedChatKarma') === 'true';
+    });
+
+    // Active Persistence Effects
+    React.useEffect(() => {
+        localStorage.setItem('chatbot_selectedModel', selectedModel);
+    }, [selectedModel]);
+
+    React.useEffect(() => {
+        localStorage.setItem('chatbot_chatHistory', JSON.stringify(chatHistory));
+    }, [chatHistory]);
+
+    React.useEffect(() => {
+        if (conversationId) {
+            localStorage.setItem('chatbot_conversationId', conversationId);
+        } else {
+            localStorage.removeItem('chatbot_conversationId');
+        }
+    }, [conversationId]);
+
+    React.useEffect(() => {
+        localStorage.setItem('chatbot_hasReceivedChatKarma', hasReceivedChatKarma.toString());
+    }, [hasReceivedChatKarma]);
+
+    // RAG / Knowledge State
+    const [knowledgeModalOpen, setKnowledgeModalOpen] = React.useState(false);
+    const [knowledgeText, setKnowledgeText] = React.useState("");
+    const [knowledgeLoading, setKnowledgeLoading] = React.useState(false);
+
+    // Initial Load of History
+    React.useEffect(() => {
+        const loaded = localStorage.getItem('gurukul_saved_chats');
+        if (loaded) setSavedChats(JSON.parse(loaded));
+    }, []);
+
+    // Auto-scroll to bottom
+    React.useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatHistory]);
+
+    // Save History Helper
+    const saveToHistory = (id, firstMessage) => {
+        setSavedChats(prev => {
+            if (prev.find(c => c.id === id)) return prev; // Already saved
+            const newChat = {
+                id,
+                title: firstMessage.substring(0, 30) + (firstMessage.length > 30 ? '...' : ''),
+                date: new Date().toLocaleDateString()
+            };
+            const updated = [newChat, ...prev];
+            localStorage.setItem('gurukul_saved_chats', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
+    const handleSendMessage = async () => {
+        if (!message.trim()) return;
+
+        // Check for profanity
+        if (containsProfanity(message)) {
+            addKarma(-20, 'Inappropriate language detected ⚠️');
+            alert('Please keep the conversation respectful.');
+            return;
+        }
+
+        const userMsg = { role: 'user', content: message };
+        setChatHistory(prev => [...prev, userMsg]);
+        const currentMsg = message; // Capture for title
+        setMessage('');
+        setLoading(true);
+
+        // Award karma for first chat message
+        if (!hasReceivedChatKarma && !conversationId) {
+            addKarma(20, 'Started chatting! 💬');
+            setHasReceivedChatKarma(true);
+        }
+
+        try {
+            // Map selected model to backend provider if needed, or send as is
+            // Backend likely handles 'auto' or specific names.
+            // For now, we'll send 'auto' or the selected name if backend supports it.
+
+            const response = await fetch('http://127.0.0.1:3000/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: userMsg.content,
+                    conversation_id: conversationId,
+                    provider: 'auto', // Or map selectedModel: Grok, Uniguru etc.
+                    use_rag: true
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to get response');
+
+            const data = await response.json();
+
+            if (data.conversation_id) {
+                setConversationId(data.conversation_id);
+                // If this is the start of a clean conversation, save it
+                if (!conversationId) {
+                    saveToHistory(data.conversation_id, currentMsg);
+                }
+            }
+
+            const botMsg = { role: 'assistant', content: data.response };
+            setChatHistory(prev => [...prev, botMsg]);
+        } catch (error) {
+            console.error("Chat Error:", error);
+            setChatHistory(prev => [...prev, { role: 'assistant', content: "I apologize, but I encountered an error connectng to the wisdom source. Please try again." }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleNewChat = () => {
+        setChatHistory([
+            {
+                role: 'assistant',
+                content: "🙏 Namaste! I am Gurukul, your personal AI guide to ancient wisdom and modern learning. What new topic shall we explore?"
+            }
+        ]);
+        setConversationId(null);
+        setHasReceivedChatKarma(false);
+        setShowHistory(false);
+        // Clear persistence for current active chat
+        localStorage.removeItem('chatbot_chatHistory');
+        localStorage.removeItem('chatbot_conversationId');
+        localStorage.removeItem('chatbot_hasReceivedChatKarma');
+    };
+
+    const handleLoadChat = async (id) => {
+        setLoading(true);
+        setShowHistory(false);
+        try {
+            const response = await fetch(`http://127.0.0.1:3000/chat/history/${id}`);
+            if (!response.ok) throw new Error("Failed to load history");
+            const data = await response.json();
+
+            // Transform backend messages to UI format
+            // Backend sends: role, content
+            if (data.messages) {
+                setChatHistory(data.messages.map(m => ({ role: m.role, content: m.content })));
+                setConversationId(id);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Could not load this chat history.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteCurrent = async () => {
+        if (!conversationId) return;
+        if (!confirm("Delete this conversation permanently?")) return;
+
+        try {
+            await fetch(`http://127.0.0.1:3000/chat/history/${conversationId}`, { method: 'DELETE' });
+
+            // Remove from local list
+            const updated = savedChats.filter(c => c.id !== conversationId);
+            setSavedChats(updated);
+            localStorage.setItem('gurukul_saved_chats', JSON.stringify(updated));
+
+            handleNewChat();
+            setShowDeleteMenu(false);
+        } catch (error) {
+            alert("Failed to delete chat");
+        }
+    };
+
+    const handleDeleteAll = () => {
+        if (!confirm("Are you sure you want to clear your ENTIRE chat history list? This cannot be undone.")) return;
+
+        // Note: We are only clearing LOCAL references here as per plan, 
+        // unless we want to loop call DELETE api (risk of rate limit/time).
+        // For now, clearing local list is "Forget All".
+        setSavedChats([]);
+        localStorage.removeItem('gurukul_saved_chats');
+        handleNewChat();
+        setShowDeleteMenu(false);
+    };
+
+    const handleTeachAgent = async () => {
+        if (!knowledgeText.trim()) return;
+        setKnowledgeLoading(true);
+        try {
+            const response = await fetch('http://127.0.0.1:3000/rag/knowledge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: knowledgeText,
+                    metadata: { source: 'user_input', date: new Date().toISOString() }
+                })
+            });
+            if (!response.ok) throw new Error("Failed to add knowledge");
+            alert("Success! I have learned this new information.");
+            setKnowledgeText("");
+            setKnowledgeModalOpen(false);
+        } catch (error) {
+            alert("Failed to teach agent: " + error.message);
+        } finally {
+            setKnowledgeLoading(false);
+        }
+    };
+
+    const handleClearChat = () => {
+        setChatHistory([
+            {
+                role: 'assistant',
+                content: "🙏 Namaste! I am Gurukul, your personal AI guide. The slate is clean. What shall we discuss?"
+            }
+        ]);
+        setConversationId(null);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+        }
+    };
+
+    // Simplified Markdown Renderer
+    const renderChatContent = (text) => {
+        return text.split('\n').map((line, i) => {
+            if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+                return <li key={i} className="ml-4 list-disc text-lg">{line.trim().substring(2)}</li>;
+            }
+            // Headers
+            if (line.trim().startsWith('### ')) {
+                return <h3 key={i} className="text-xl font-bold mt-2 mb-1 text-accent">{line.trim().replace('### ', '')}</h3>;
+            }
+            if (line.trim().startsWith('## ')) {
+                return <h2 key={i} className="text-2xl font-bold mt-3 mb-2 text-accent">{line.trim().replace('## ', '')}</h2>;
+            }
+            // Bold
+            const parts = line.split(/(\*\*.*?\*\*)/g);
+            return (
+                <p key={i} className="mb-1 leading-relaxed text-lg">
+                    {parts.map((part, j) => {
+                        if (part.startsWith('**') && part.endsWith('**')) {
+                            return <strong key={j} className="text-accent font-bold">{part.slice(2, -2)}</strong>;
+                        }
+                        return part;
+                    })}
+                </p>
+            );
+        });
+    };
+
+    return (
+        <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6 relative">
+            {/* Left Sidebar */}
+            <Sidebar />
+
+            {/* Main Content Area */}
+            <main className="flex-grow flex gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+
+                {/* Center Panel - Chat Interface */}
+                <div className="flex-grow glass-panel no-hover rounded-3xl border border-white/10 relative overflow-hidden flex flex-col shadow-2xl h-[calc(100vh-100px)]">
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-6 pb-4 shrink-0 border-b border-white/5">
+                        <div className="flex items-center gap-4">
+                            <h1 className="text-3xl font-bold font-heading text-white">Chatbot</h1>
+                            <button className="text-gray-400 hover:text-white transition-colors">
+                                <FaVolumeUp />
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setKnowledgeModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 rounded-lg text-sm text-accent transition-colors border border-accent/20"
+                            >
+                                <span className="text-lg">🧠</span> Teach
+                            </button>
+                            <button
+                                onClick={handleNewChat}
+                                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-gray-300 transition-colors border border-white/5"
+                            >
+                                <FaPlus className="text-xs" /> New Chat
+                            </button>
+                            <button
+                                onClick={() => setShowHistory(!showHistory)}
+                                className={`p-2 transition-colors ${showHistory ? 'text-accent bg-white/10 rounded-lg' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                <FaHistory />
+                            </button>
+
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowDeleteMenu(!showDeleteMenu)}
+                                    className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                                >
+                                    <FaTrashAlt />
+                                </button>
+                                {/* Delete Dropdown */}
+                                {showDeleteMenu && (
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+                                        <button
+                                            onClick={handleDeleteCurrent}
+                                            disabled={!conversationId}
+                                            className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-red-900/20 hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed border-b border-white/5"
+                                        >
+                                            Delete Current Chat
+                                        </button>
+                                        <button
+                                            onClick={handleDeleteAll}
+                                            className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 font-medium"
+                                        >
+                                            Clear All History
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Chat Area - Edge to Edge Scrollbar */}
+                    <div className="flex-grow overflow-y-scroll custom-scrollbar flex flex-col px-6">
+                        <div className="mt-auto py-6 space-y-6">
+                            {chatHistory.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-gray-500">
+                                    <p>Start a conversation...</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col space-y-6">
+                                    {chatHistory.map((msg, index) => (
+                                        <div key={index} className={`flex flex-col gap-1 items-${msg.role === 'user' ? 'end' : 'start'} max-w-full`}>
+                                            <div className={`glass-panel p-4 rounded-2xl ${msg.role === 'user' ? 'rounded-tr-none bg-white/20 border border-white/10 text-white font-medium' : 'rounded-tl-none bg-white/5 border border-white/5 text-gray-200'} text-lg leading-relaxed shadow-sm max-w-[85%]`}>
+                                                {msg.role === 'user' ? msg.content : renderChatContent(msg.content)}
+                                            </div>
+                                            <div className="flex items-center gap-2 px-1">
+                                                <span className="text-xs text-gray-500 font-medium capitalize">{msg.role === 'user' ? 'You' : 'Guru AI'}</span>
+                                                {msg.role === 'assistant' && (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-200 border border-amber-500/20">{selectedModel}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {loading && (
+                                <div className="flex flex-col gap-1 items-start max-w-2xl">
+                                    <div className="glass-panel p-4 rounded-2xl rounded-tl-none bg-white/5 border border-white/5 shadow-sm">
+                                        <div className="flex gap-2">
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="p-6 pt-0 shrink-0">
+                        <div className="bg-black/60 backdrop-blur-sm p-4 rounded-2xl border border-white/5 shadow-inner flex items-center gap-4 relative">
+
+                            {/* Model Selector (Custom Dropdown) */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsModelOpen(!isModelOpen)}
+                                    onBlur={() => setTimeout(() => setIsModelOpen(false), 200)}
+                                    className={`flex items-center gap-2 bg-white/5 border text-gray-300 py-1.5 px-4 rounded-lg hover:bg-white/10 transition-all duration-300 text-xs font-medium ${isModelOpen ? 'border-accent/50 ring-2 ring-accent/20 bg-white/10 text-white' : 'border-white/10'}`}
+                                >
+                                    <span>{selectedModel}</span>
+                                    <FaChevronDown className={`text-[10px] text-gray-400 transition-transform duration-300 ${isModelOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {/* Dropdown Menu (Opens Upwards) */}
+                                <div className={`absolute bottom-full mb-2 left-0 w-32 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 origin-bottom ${isModelOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}`}>
+                                    {['Grok', 'Uniguru', 'Arabic Model'].map((model) => (
+                                        <div
+                                            key={model}
+                                            onClick={() => {
+                                                setSelectedModel(model);
+                                                setIsModelOpen(false);
+                                            }}
+                                            className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-accent cursor-pointer transition-colors flex items-center justify-between group"
+                                        >
+                                            {model}
+                                            {selectedModel === model && <div className="w-1 h-1 rounded-full bg-accent shadow-[0_0_5px_rgba(232,185,117,0.8)]"></div>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Text Input */}
+                            <input
+                                type="text"
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                placeholder="Ask about ancient Indian wisdom..."
+                                className="flex-grow bg-transparent border-none outline-none text-gray-200 placeholder-gray-500 font-light"
+                                onKeyDown={handleKeyDown}
+                            />
+
+                            {/* Send Button */}
+                            <button
+                                onClick={handleSendMessage}
+                                disabled={loading || !message.trim()}
+                                className="p-3 bg-accent/20 hover:bg-accent/30 text-accent rounded-xl transition-all shadow-lg border border-accent/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <FaArrowUp />
+                            </button>
+                        </div>
+                        <p className="text-center text-[10px] text-gray-600 mt-2 font-mono">Tip: Use Shift+Enter for a new line</p>
+
+                    </div>
+                </div>
+
+                {/* History Sidebar Panel (Overlay) */}
+                {showHistory && (
+                    <div className="absolute right-4 top-24 bottom-4 w-80 glass-panel border border-white/10 rounded-3xl z-50 flex flex-col overflow-hidden animate-fade-in-up bg-[#0f110c]/95">
+                        <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                            <h2 className="text-xl font-heading font-bold text-white">History</h2>
+                            <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white"><FaChevronDown className="rotate-90" /></button>
+                        </div>
+                        <div className="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-2">
+                            {savedChats.length === 0 ? (
+                                <p className="text-center text-gray-500 text-sm mt-10">No history yet.</p>
+                            ) : (
+                                savedChats.map((chat) => (
+                                    <div
+                                        key={chat.id}
+                                        onClick={() => handleLoadChat(chat.id)}
+                                        className={`p-3 rounded-xl cursor-pointer transition-all border ${chat.id === conversationId ? 'bg-accent/10 border-accent/30' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
+                                    >
+                                        <h3 className="text-sm font-medium text-gray-200 truncate">{chat.title}</h3>
+                                        <p className="text-[10px] text-gray-500 mt-1">{chat.date}</p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Teach Agent / Knowledge Modal */}
+                {knowledgeModalOpen && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                        <div className="bg-[#151515] w-full max-w-lg rounded-2xl border border-white/10 p-6 shadow-2xl animate-fade-in-up">
+                            <h2 className="text-2xl font-bold font-heading text-white mb-2">Teach Gurukul 🧠</h2>
+                            <p className="text-sm text-gray-400 mb-4">Add knowledge to the agent. It will remember this context and use it for future answers.</p>
+
+                            <textarea
+                                value={knowledgeText}
+                                onChange={(e) => setKnowledgeText(e.target.value)}
+                                placeholder="Paste text, notes, or knowledge here..."
+                                className="w-full h-40 bg-black/50 border border-white/10 rounded-xl p-4 text-gray-300 focus:border-accent/50 outline-none resize-none mb-4 custom-scrollbar"
+                            />
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={() => setKnowledgeModalOpen(false)}
+                                    className="px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleTeachAgent}
+                                    disabled={knowledgeLoading || !knowledgeText.trim()}
+                                    className="px-6 py-2 bg-accent text-black font-semibold rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {knowledgeLoading ? 'Teaching...' : 'Add Knowledge'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </main>
+        </div>
+    );
+};
+
+export default Chatbot;
