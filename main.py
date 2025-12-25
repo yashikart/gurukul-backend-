@@ -2755,7 +2755,33 @@ async def edumentor_generate_lesson(request: EduMentorRequest):
                     raise
         
         if not lesson_content:
-            raise HTTPException(status_code=500, detail="All AI providers failed. Please check your configuration.")
+            # Fallback: Generate a basic lesson structure if all AI providers fail
+            lesson_content = f"""# {request.topic} - {request.subject}
+
+## Introduction
+{request.topic} is an important concept in {request.subject}. Understanding this topic will help you build a strong foundation in the subject.
+
+## Key Concepts
+- Core principles of {request.topic}
+- Fundamental relationships and patterns
+- Essential terminology
+
+## Detailed Explanation
+{request.topic} involves several key aspects that are crucial to understand. Let's explore each one in detail.
+
+## Real-world Applications
+This concept has practical applications in various fields and everyday situations.
+
+## Practice Exercises
+1. Explain {request.topic} in your own words
+2. Identify examples of {request.topic} in real life
+3. Solve a problem related to {request.topic}
+
+## Summary
+{request.topic} is a fundamental concept in {request.subject} that requires careful study and practice.
+
+**Note:** This is a basic lesson structure. For a complete AI-generated lesson, please ensure your AI provider (Groq, Ollama, or LLaMA) is properly configured."""
+            used_provider = "fallback"
         
         # Use orchestration if enabled (enhance content)
         if request.use_orchestration and lesson_content:
