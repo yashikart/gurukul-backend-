@@ -381,27 +381,24 @@ class FinancialAdviceResponse(BaseModel):
     created_at: str
 
 # Wellness Bot Models
-class WellnessProfileRequest(BaseModel):
-    emotional_wellness_score: Optional[int] = 5  # 1-10
-    financial_wellness_score: Optional[int] = 5  # 1-10
-    current_mood_score: Optional[int] = 5  # 1-10
-    stress_level: Optional[int] = 3  # 1-10
+class WellnessSupportRequest(BaseModel):
+    emotional_wellness_score: int  # 1-10 (1=bad, 10=good)
+    financial_wellness_score: int  # 1-10 (1=bad, 10=good)
+    current_mood_score: int  # 1-10 (1=bad, 10=good)
+    stress_level: int  # 1-10 (1=bad, 10=good)
     concerns: Optional[str] = None
 
-class WellnessSessionRequest(BaseModel):
-    profile_id: str
-    message: str
-    session_type: Optional[str] = "general"  # general, emotional, financial
-
-class WellnessSessionResponse(BaseModel):
-    profile_id: str
-    session_id: str
-    response: str
-    mood_analysis: Optional[Dict] = None
-    stress_analysis: Optional[Dict] = None
+class WellnessSupportResponse(BaseModel):
+    emotional_support: str
+    motivational_message: str
+    life_importance: str
+    study_importance: str
+    goal_importance: str
+    positive_affirmations: List[str]
     recommendations: List[str]
+    overall_assessment: str
     provider: str
-    timestamp: str
+    created_at: str
 
 # Helper function to create teacher-like prompt
 def create_teaching_prompt(subject: str, topic: str) -> str:
@@ -2999,160 +2996,300 @@ Provide recommendations as a numbered list, each being specific and actionable."
 
 # ==================== Wellness Bot ====================
 
-@app.post("/agent/wellness/profile", response_model=Dict)
-async def create_wellness_profile(request: WellnessProfileRequest):
+@app.post("/agent/wellness/support", response_model=WellnessSupportResponse)
+async def get_wellness_support(request: WellnessSupportRequest):
     """
-    Create a wellness profile for tracking emotional and financial wellness.
+    Wellness Bot - Generate emotional support, motivational messages, and life guidance.
+    
+    Takes wellness scores (1-10 scale where 1=bad, 10=good) and uses AI models to provide:
+    - Emotional support and encouragement
+    - Motivational messages
+    - Importance of life, study, and completing goals
+    - Positive affirmations
+    - Personalized recommendations
     """
-    profile_id = str(uuid.uuid4())
-    
-    wellness_profiles_store[profile_id] = {
-        "emotional_wellness_score": request.emotional_wellness_score or 5,
-        "financial_wellness_score": request.financial_wellness_score or 5,
-        "current_mood_score": request.current_mood_score or 5,
-        "stress_level": request.stress_level or 3,
-        "concerns": request.concerns,
-        "created_at": datetime.now().isoformat(),
-        "sessions": []
-    }
-    
-    return {
-        "profile_id": profile_id,
-        "message": "Wellness profile created successfully",
-        "created_at": wellness_profiles_store[profile_id]["created_at"]
-    }
-
-@app.post("/agent/wellness/session", response_model=WellnessSessionResponse)
-async def wellness_session(request: WellnessSessionRequest):
-    """
-    Wellness Bot - Chat session for emotional and financial wellness guidance.
-    """
-    if request.profile_id not in wellness_profiles_store:
-        raise HTTPException(status_code=404, detail="Wellness profile not found")
-    
-    if not request.message or len(request.message.strip()) < 5:
-        raise HTTPException(status_code=400, detail="Message is required (minimum 5 characters)")
-    
-    profile = wellness_profiles_store[request.profile_id]
-    session_id = str(uuid.uuid4())
-    
-    # Build wellness-aware prompt
-    wellness_context = f"""Wellness Profile:
-- Emotional Wellness: {profile['emotional_wellness_score']}/10
-- Financial Wellness: {profile['financial_wellness_score']}/10
-- Current Mood: {profile['current_mood_score']}/10
-- Stress Level: {profile['stress_level']}/10
-- Previous Concerns: {profile.get('concerns', 'None')}
-
-User Message: {request.message}
-
-You are a compassionate wellness assistant. Provide empathetic, supportive guidance that addresses:
-1. Emotional support and validation
-2. Practical wellness strategies
-3. Stress management techniques
-4. Financial wellness if relevant
-5. Actionable steps for improvement
-
-Be warm, understanding, and encouraging. Provide specific, helpful advice."""
-
-    # Generate response
-    messages = [{"role": "user", "content": wellness_context}]
-    response_text = ""
-    used_provider = "auto"
+    # Validate scores (1-10 range)
+    if not (1 <= request.emotional_wellness_score <= 10):
+        raise HTTPException(status_code=400, detail="emotional_wellness_score must be between 1 and 10")
+    if not (1 <= request.financial_wellness_score <= 10):
+        raise HTTPException(status_code=400, detail="financial_wellness_score must be between 1 and 10")
+    if not (1 <= request.current_mood_score <= 10):
+        raise HTTPException(status_code=400, detail="current_mood_score must be between 1 and 10")
+    if not (1 <= request.stress_level <= 10):
+        raise HTTPException(status_code=400, detail="stress_level must be between 1 and 10")
     
     try:
+        # Determine overall wellness status
+        avg_score = (request.emotional_wellness_score + request.financial_wellness_score + request.current_mood_score) / 3
+        wellness_status = "excellent" if avg_score >= 8 else "good" if avg_score >= 6 else "moderate" if avg_score >= 4 else "needs_attention"
+        
+        # Build comprehensive wellness support prompt
+        wellness_prompt = f"""You are a compassionate, wise wellness counselor and life coach. A person has shared their wellness scores with you:
+
+**Wellness Assessment (Scale: 1=bad, 10=good):**
+- Emotional Wellness: {request.emotional_wellness_score}/10
+- Financial Wellness: {request.financial_wellness_score}/10
+- Current Mood: {request.current_mood_score}/10
+- Stress Level: {request.stress_level}/10
+- Concerns: {request.concerns if request.concerns else "None specified"}
+
+**Overall Status:** {wellness_status.title()}
+
+**Your Task:**
+Provide comprehensive, heartfelt support and guidance. Write in a warm, empathetic, and encouraging tone. Address the following sections:
+
+1. **Emotional Support** (2-3 paragraphs):
+   - Acknowledge their current state with empathy
+   - Provide emotional validation and understanding
+   - Offer comfort and reassurance
+   - Remind them that their feelings are valid and temporary challenges can be overcome
+
+2. **Motivational Message** (1-2 paragraphs):
+   - Inspire them with positive energy
+   - Remind them of their inner strength and resilience
+   - Encourage them to keep moving forward
+   - Use uplifting and empowering language
+
+3. **Importance of Life** (1 paragraph):
+   - Remind them of the preciousness and value of life
+   - Emphasize that every day is an opportunity for growth
+   - Highlight the beauty and potential in their journey
+   - Encourage gratitude and appreciation for life
+
+4. **Importance of Study** (1 paragraph):
+   - Explain why education and learning matter
+   - Connect studying to personal growth and future opportunities
+   - Motivate them to see study as an investment in themselves
+   - Encourage persistence and dedication
+
+5. **Importance of Completing Goals** (1 paragraph):
+   - Explain the value of setting and achieving goals
+   - Connect goal completion to self-confidence and fulfillment
+   - Encourage them to break goals into manageable steps
+   - Remind them that every small step counts
+
+6. **Positive Affirmations** (5-7 short, powerful statements):
+   - Create uplifting affirmations tailored to their situation
+   - Make them specific and actionable
+   - Use present tense and positive language
+
+7. **Personalized Recommendations** (5-7 actionable suggestions):
+   - Based on their scores, provide specific wellness strategies
+   - Include practical steps they can take immediately
+   - Address their concerns if mentioned
+   - Be specific and helpful
+
+8. **Overall Assessment** (1 paragraph):
+   - Summarize their current wellness state
+   - Provide hope and encouragement
+   - Remind them that improvement is always possible
+   - End on a positive, forward-looking note
+
+Write with genuine care, warmth, and wisdom. Be specific and personal. Use encouraging language throughout."""
+
+        # Generate comprehensive wellness support using AI
+        messages = [{"role": "user", "content": wellness_prompt}]
+        wellness_content = ""
+        used_provider = "auto"
+        
         if GROQ_API_KEY:
-            response_text = await chat_with_groq(messages, use_rag=False, rag_context="")
-            used_provider = "groq"
-        elif OLLAMA_BASE_URL:
-            response_text = await chat_with_ollama(messages, use_rag=False, rag_context="")
-            used_provider = "ollama"
-        elif LOCAL_LLAMA_API_URL:
-            response_text = await chat_with_llama(messages, use_rag=False, rag_context="")
-            used_provider = "llama"
+            try:
+                wellness_content = await chat_with_groq(messages, use_rag=False, rag_context="")
+                used_provider = "groq"
+            except Exception as e:
+                print(f"Groq failed: {str(e)}")
+        
+        if not wellness_content and OLLAMA_BASE_URL:
+            try:
+                wellness_content = await chat_with_ollama(messages, use_rag=False, rag_context="")
+                used_provider = "ollama"
+            except Exception as e:
+                print(f"Ollama failed: {str(e)}")
+        
+        if not wellness_content and LOCAL_LLAMA_API_URL:
+            try:
+                wellness_content = await chat_with_llama(messages, use_rag=False, rag_context="")
+                used_provider = "llama"
+            except Exception as e:
+                print(f"LLaMA failed: {str(e)}")
+        
+        # Parse the AI response into sections
+        # Try to extract different sections from the response
+        emotional_support = ""
+        motivational_message = ""
+        life_importance = ""
+        study_importance = ""
+        goal_importance = ""
+        positive_affirmations = []
+        recommendations = []
+        overall_assessment = ""
+        
+        if wellness_content:
+            # Try to parse structured response
+            lines = wellness_content.split('\n')
+            current_section = None
+            current_text = []
+            
+            for line in lines:
+                line_lower = line.lower().strip()
+                if 'emotional support' in line_lower or '1.' in line_lower:
+                    if current_section and current_text:
+                        if current_section == 'emotional':
+                            emotional_support = '\n'.join(current_text).strip()
+                    current_section = 'emotional'
+                    current_text = []
+                elif 'motivational' in line_lower or '2.' in line_lower:
+                    if current_section and current_text:
+                        if current_section == 'emotional':
+                            emotional_support = '\n'.join(current_text).strip()
+                    current_section = 'motivational'
+                    current_text = []
+                elif 'importance of life' in line_lower or '3.' in line_lower:
+                    if current_section and current_text:
+                        if current_section == 'motivational':
+                            motivational_message = '\n'.join(current_text).strip()
+                    current_section = 'life'
+                    current_text = []
+                elif 'importance of study' in line_lower or '4.' in line_lower:
+                    if current_section and current_text:
+                        if current_section == 'life':
+                            life_importance = '\n'.join(current_text).strip()
+                    current_section = 'study'
+                    current_text = []
+                elif 'importance of completing goals' in line_lower or 'importance of goals' in line_lower or '5.' in line_lower:
+                    if current_section and current_text:
+                        if current_section == 'study':
+                            study_importance = '\n'.join(current_text).strip()
+                    current_section = 'goal'
+                    current_text = []
+                elif 'affirmations' in line_lower or '6.' in line_lower:
+                    if current_section and current_text:
+                        if current_section == 'goal':
+                            goal_importance = '\n'.join(current_text).strip()
+                    current_section = 'affirmations'
+                    current_text = []
+                elif 'recommendations' in line_lower or '7.' in line_lower:
+                    if current_section and current_text:
+                        if current_section == 'affirmations':
+                            positive_affirmations = [l.strip('- •').strip() for l in current_text if l.strip() and len(l.strip()) > 10]
+                    current_section = 'recommendations'
+                    current_text = []
+                elif 'overall assessment' in line_lower or '8.' in line_lower:
+                    if current_section and current_text:
+                        if current_section == 'recommendations':
+                            recommendations = [l.strip('- •').strip() for l in current_text if l.strip() and len(l.strip()) > 10]
+                    current_section = 'assessment'
+                    current_text = []
+                else:
+                    if current_section and line.strip():
+                        current_text.append(line)
+            
+            # Finalize last section
+            if current_section == 'assessment' and current_text:
+                overall_assessment = '\n'.join(current_text).strip()
+            elif current_section == 'recommendations' and current_text:
+                recommendations = [l.strip('- •').strip() for l in current_text if l.strip() and len(l.strip()) > 10]
+            elif current_section == 'affirmations' and current_text:
+                positive_affirmations = [l.strip('- •').strip() for l in current_text if l.strip() and len(l.strip()) > 10]
+            elif current_section == 'goal' and current_text:
+                goal_importance = '\n'.join(current_text).strip()
+            elif current_section == 'study' and current_text:
+                study_importance = '\n'.join(current_text).strip()
+            elif current_section == 'life' and current_text:
+                life_importance = '\n'.join(current_text).strip()
+            elif current_section == 'motivational' and current_text:
+                motivational_message = '\n'.join(current_text).strip()
+            elif current_section == 'emotional' and current_text:
+                emotional_support = '\n'.join(current_text).strip()
+        
+        # Fallback content if parsing fails or AI didn't respond
+        if not emotional_support:
+            emotional_support = f"""I want you to know that your feelings are completely valid. With an emotional wellness score of {request.emotional_wellness_score}/10, you're navigating through some challenges, and that takes courage. Remember, emotional wellness is a journey, not a destination. Every step you take toward understanding and caring for yourself matters deeply. You have the strength within you to overcome difficult moments, and I believe in your ability to grow and heal."""
+        
+        if not motivational_message:
+            motivational_message = f"""You are stronger than you know, and more capable than you might feel right now. Your current mood score of {request.current_mood_score}/10 doesn't define your potential. Every day is a new opportunity to take small steps toward feeling better. Remember, progress isn't always linear, but every effort counts. Keep moving forward, one step at a time."""
+        
+        if not life_importance:
+            life_importance = """Life is a precious gift, filled with infinite possibilities and opportunities for growth. Every moment you're alive is a chance to learn, to love, to create, and to make a difference. Your life has inherent value and meaning, regardless of the challenges you face. Embrace each day as an opportunity to discover something new about yourself and the world around you."""
+        
+        if not study_importance:
+            study_importance = """Education and learning are powerful tools that unlock doors to your future. Every hour you invest in studying is an investment in yourself—in your knowledge, your skills, and your ability to achieve your dreams. Learning isn't just about grades; it's about expanding your mind, building confidence, and preparing yourself for opportunities that lie ahead. Your dedication to studying today shapes the person you'll become tomorrow."""
+        
+        if not goal_importance:
+            goal_importance = """Completing goals, no matter how small, builds confidence, creates momentum, and proves to yourself that you can achieve what you set your mind to. Each completed goal is a stepping stone toward your larger dreams. When you finish what you start, you're not just achieving an outcome—you're building self-trust, discipline, and the belief that you can overcome obstacles. Every goal you complete is a victory worth celebrating."""
+        
+        if not positive_affirmations:
+            positive_affirmations = [
+                "I am capable of overcoming challenges and growing stronger",
+                "My feelings are valid, and I deserve compassion and care",
+                "Every day brings new opportunities for growth and improvement",
+                "I have the strength within me to achieve my goals",
+                "I am worthy of happiness, success, and fulfillment",
+                "Small steps forward are still progress, and progress matters",
+                "I believe in my ability to create positive change in my life"
+            ]
+        
+        if not recommendations:
+            recommendations = []
+            if request.stress_level >= 7:
+                recommendations.append("Practice deep breathing exercises for 5-10 minutes daily to reduce stress")
+                recommendations.append("Take regular breaks throughout your day to rest and recharge")
+            if request.current_mood_score <= 4:
+                recommendations.append("Engage in activities that bring you joy, even if just for 15 minutes")
+                recommendations.append("Connect with friends, family, or a support network")
+            if request.emotional_wellness_score <= 4:
+                recommendations.append("Practice self-compassion and be kind to yourself")
+                recommendations.append("Consider journaling to express and process your emotions")
+            if request.financial_wellness_score <= 4:
+                recommendations.append("Create a simple budget to track income and expenses")
+                recommendations.append("Set small, achievable financial goals to build confidence")
+            if not recommendations:
+                recommendations = [
+                    "Maintain a daily routine that includes self-care activities",
+                    "Set aside time each day for activities that bring you peace and joy",
+                    "Practice gratitude by writing down three things you're thankful for each day",
+                    "Stay connected with supportive people in your life",
+                    "Remember that seeking help when needed is a sign of strength, not weakness"
+                ]
+        
+        if not overall_assessment:
+            overall_assessment = f"""Based on your wellness scores, you're currently at a {wellness_status} level of overall wellness. This is a snapshot in time, not a permanent state. With emotional wellness at {request.emotional_wellness_score}/10, financial wellness at {request.financial_wellness_score}/10, and mood at {request.current_mood_score}/10, there's room for growth and improvement. Remember, wellness is a journey, and every small step you take toward better self-care, emotional awareness, and goal achievement matters. You have the power to improve your wellness, and I believe in your ability to do so. Keep moving forward with hope and determination."""
+        
+        # If AI provided content but parsing failed, use the full content
+        if wellness_content and not emotional_support:
+            # Split the content intelligently
+            parts = wellness_content.split('\n\n')
+            if len(parts) >= 8:
+                emotional_support = parts[0] if len(parts) > 0 else emotional_support
+                motivational_message = parts[1] if len(parts) > 1 else motivational_message
+                life_importance = parts[2] if len(parts) > 2 else life_importance
+                study_importance = parts[3] if len(parts) > 3 else study_importance
+                goal_importance = parts[4] if len(parts) > 4 else goal_importance
+                if len(parts) > 5:
+                    positive_affirmations = [p.strip() for p in parts[5].split('\n') if p.strip() and len(p.strip()) > 10][:7]
+                if len(parts) > 6:
+                    recommendations = [p.strip() for p in parts[6].split('\n') if p.strip() and len(p.strip()) > 10][:7]
+                overall_assessment = parts[7] if len(parts) > 7 else overall_assessment
+            else:
+                # Use the full content as emotional support if we can't parse
+                emotional_support = wellness_content[:500] if len(wellness_content) > 500 else wellness_content
+        
+        return WellnessSupportResponse(
+            emotional_support=emotional_support,
+            motivational_message=motivational_message,
+            life_importance=life_importance,
+            study_importance=study_importance,
+            goal_importance=goal_importance,
+            positive_affirmations=positive_affirmations[:7],
+            recommendations=recommendations[:7],
+            overall_assessment=overall_assessment,
+            provider=used_provider,
+            created_at=datetime.now().isoformat()
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        response_text = f"I understand you're feeling this way. Let's work through this together. Your wellness scores suggest we should focus on {request.session_type} wellness. Would you like to talk more about what's on your mind?"
-        print(f"Wellness AI failed: {str(e)}")
-    
-    # Analyze mood and stress from response
-    mood_analysis = {
-        "detected_mood": "neutral",
-        "mood_score_estimate": profile['current_mood_score'],
-        "sentiment": "neutral"
-    }
-    
-    stress_analysis = {
-        "current_stress_level": profile['stress_level'],
-        "stress_indicators": [],
-        "recommendations": []
-    }
-    
-    # Generate recommendations
-    recommendations = []
-    if profile['stress_level'] >= 7:
-        recommendations.append("Consider deep breathing exercises or meditation")
-        recommendations.append("Take regular breaks and practice self-care")
-    if profile['current_mood_score'] <= 4:
-        recommendations.append("Engage in activities you enjoy")
-        recommendations.append("Connect with friends or family")
-    if profile['financial_wellness_score'] <= 4:
-        recommendations.append("Review your financial situation and create a budget")
-        recommendations.append("Seek financial counseling if needed")
-    
-    # Save session
-    session_data = {
-        "session_id": session_id,
-        "message": request.message,
-        "response": response_text,
-        "session_type": request.session_type,
-        "timestamp": datetime.now().isoformat()
-    }
-    wellness_profiles_store[request.profile_id]["sessions"].append(session_data)
-    
-    return WellnessSessionResponse(
-        profile_id=request.profile_id,
-        session_id=session_id,
-        response=response_text,
-        mood_analysis=mood_analysis,
-        stress_analysis=stress_analysis,
-        recommendations=recommendations,
-        provider=used_provider,
-        timestamp=datetime.now().isoformat()
-    )
-
-@app.get("/agent/wellness/profile/{profile_id}")
-async def get_wellness_profile(profile_id: str):
-    """Get wellness profile with session history"""
-    if profile_id not in wellness_profiles_store:
-        raise HTTPException(status_code=404, detail="Wellness profile not found")
-    
-    profile = wellness_profiles_store[profile_id].copy()
-    return profile
-
-@app.put("/agent/wellness/profile/{profile_id}/update")
-async def update_wellness_scores(profile_id: str, 
-                                 emotional_score: Optional[int] = None,
-                                 financial_score: Optional[int] = None,
-                                 mood_score: Optional[int] = None,
-                                 stress_level: Optional[int] = None):
-    """Update wellness scores"""
-    if profile_id not in wellness_profiles_store:
-        raise HTTPException(status_code=404, detail="Wellness profile not found")
-    
-    if emotional_score is not None:
-        wellness_profiles_store[profile_id]["emotional_wellness_score"] = max(1, min(10, emotional_score))
-    if financial_score is not None:
-        wellness_profiles_store[profile_id]["financial_wellness_score"] = max(1, min(10, financial_score))
-    if mood_score is not None:
-        wellness_profiles_store[profile_id]["current_mood_score"] = max(1, min(10, mood_score))
-    if stress_level is not None:
-        wellness_profiles_store[profile_id]["stress_level"] = max(1, min(10, stress_level))
-    
-    return {
-        "profile_id": profile_id,
-        "message": "Wellness scores updated successfully",
-        "updated_scores": wellness_profiles_store[profile_id]
-    }
+        raise HTTPException(status_code=500, detail=f"Error generating wellness support: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=HOST, port=PORT, reload=RELOAD)
