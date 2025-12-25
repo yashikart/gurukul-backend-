@@ -368,19 +368,15 @@ class FinancialProfileRequest(BaseModel):
     financial_type: str  # Conservative, Moderate, Aggressive
     risk_level: str  # Low, Moderate, High
 
-class FinancialSimulationRequest(BaseModel):
-    profile_id: str
-    months_to_simulate: Optional[int] = 12
-
-class FinancialSimulationResponse(BaseModel):
-    profile_id: str
-    simulation_period: int  # months
-    initial_balance: float
-    final_balance: float
-    total_savings: float
-    monthly_breakdown: List[Dict]
+class FinancialAdviceResponse(BaseModel):
+    name: str
+    monthly_income: float
+    monthly_expenses: float
+    monthly_savings: float
+    expense_breakdown: List[Dict]
+    financial_advice: str
     recommendations: List[str]
-    goal_progress: Dict
+    goal_analysis: Dict
     provider: str
     created_at: str
 
@@ -2824,143 +2820,182 @@ Return the enhanced lesson:"""
 
 # ==================== Financial Agent Simulator ====================
 
-@app.post("/agent/financial/profile", response_model=Dict)
-async def create_financial_profile(request: FinancialProfileRequest):
+@app.post("/agent/financial/advice", response_model=FinancialAdviceResponse)
+async def get_financial_advice(request: FinancialProfileRequest):
     """
-    Create a financial profile for simulation.
+    FinancialCrew - Generate personalized financial advice based on profile.
+    
+    Takes financial profile data and uses AI models to generate comprehensive
+    financial advice, recommendations, and goal analysis.
     """
     if not request.name or request.monthly_income <= 0:
         raise HTTPException(status_code=400, detail="Name and valid monthly income are required")
     
-    profile_id = str(uuid.uuid4())
-    total_expenses = sum(exp.amount for exp in request.expense_categories)
-    
-    financial_profiles_store[profile_id] = {
-        "name": request.name,
-        "monthly_income": request.monthly_income,
-        "monthly_expenses": total_expenses,
-        "expense_categories": [{"name": exp.name, "amount": exp.amount} for exp in request.expense_categories],
-        "financial_goal": request.financial_goal,
-        "financial_type": request.financial_type,
-        "risk_level": request.risk_level,
-        "created_at": datetime.now().isoformat(),
-        "current_balance": 0.0
-    }
-    
-    return {
-        "profile_id": profile_id,
-        "message": "Financial profile created successfully",
-        "monthly_savings": request.monthly_income - total_expenses,
-        "created_at": financial_profiles_store[profile_id]["created_at"]
-    }
+    try:
+        # Calculate financial metrics
+        total_expenses = sum(exp.amount for exp in request.expense_categories)
+        monthly_savings = request.monthly_income - total_expenses
+        savings_rate = (monthly_savings / request.monthly_income * 100) if request.monthly_income > 0 else 0
+        
+        expense_breakdown = [{"name": exp.name, "amount": exp.amount, "percentage": round((exp.amount / request.monthly_income * 100), 2)} for exp in request.expense_categories]
+        
+        # Build comprehensive financial advice prompt
+        expense_details = "\n".join([f"- {exp.name}: ₹{exp.amount} ({round((exp.amount / request.monthly_income * 100), 2)}% of income)" for exp in request.expense_categories])
+        
+        financial_prompt = f"""You are FinancialCrew, an expert financial advisor. Analyze this financial profile and provide comprehensive, personalized financial advice.
 
-@app.post("/agent/financial/simulate", response_model=FinancialSimulationResponse)
-async def simulate_financial_life(request: FinancialSimulationRequest):
-    """
-    Simulate months of financial life and provide guidance.
-    """
-    if request.profile_id not in financial_profiles_store:
-        raise HTTPException(status_code=404, detail="Financial profile not found")
-    
-    profile = financial_profiles_store[request.profile_id]
-    months = request.months_to_simulate or 12
-    
-    # Calculate monthly savings
-    monthly_savings = profile["monthly_income"] - profile["monthly_expenses"]
-    initial_balance = profile.get("current_balance", 0.0)
-    
-    # Simulate months
-    monthly_breakdown = []
-    current_balance = initial_balance
-    
-    for month in range(1, months + 1):
-        current_balance += monthly_savings
-        monthly_breakdown.append({
-            "month": month,
-            "income": profile["monthly_income"],
-            "expenses": profile["monthly_expenses"],
-            "savings": monthly_savings,
-            "balance": round(current_balance, 2)
-        })
-    
-    final_balance = current_balance
-    total_savings = final_balance - initial_balance
-    
-    # Generate AI recommendations
-    recommendations_prompt = f"""You are a financial advisor. Provide personalized financial guidance based on:
-
-Profile:
-- Name: {profile['name']}
-- Monthly Income: ₹{profile['monthly_income']}
-- Monthly Expenses: ₹{profile['monthly_expenses']}
+**Financial Profile:**
+- Name: {request.name}
+- Monthly Income: ₹{request.monthly_income}
+- Monthly Expenses: ₹{total_expenses}
 - Monthly Savings: ₹{monthly_savings}
-- Financial Goal: {profile['financial_goal']}
-- Financial Type: {profile['financial_type']}
-- Risk Level: {profile['risk_level']}
-- Projected Savings (after {months} months): ₹{total_savings}
+- Savings Rate: {round(savings_rate, 2)}%
 
-Provide 5-7 actionable recommendations to help achieve the financial goal. Be specific and practical."""
+**Expense Breakdown:**
+{expense_details}
 
-    recommendations = []
-    try:
-        messages = [{"role": "user", "content": recommendations_prompt}]
+**Financial Goals:**
+- Primary Goal: {request.financial_goal}
+- Financial Type: {request.financial_type}
+- Risk Tolerance: {request.risk_level}
+
+**Your Task:**
+Provide detailed financial advice covering:
+1. **Financial Health Assessment**: Evaluate their current financial situation
+2. **Savings Analysis**: Comment on their savings rate and monthly savings amount
+3. **Expense Management**: Analyze expense categories and suggest optimizations
+4. **Goal Achievement Strategy**: Provide a clear plan to achieve "{request.financial_goal}"
+5. **Investment Recommendations**: Suggest investment strategies based on their risk level ({request.risk_level})
+6. **Budget Optimization**: Provide specific tips to improve their financial position
+7. **Timeline Estimation**: Estimate how long it might take to achieve their goal
+
+Write in a friendly, encouraging, and professional tone. Be specific with actionable advice. Use ₹ (rupee) symbol for all amounts."""
+
+        # Generate financial advice using AI
+        messages = [{"role": "user", "content": financial_prompt}]
+        financial_advice = ""
+        used_provider = "auto"
+        
         if GROQ_API_KEY:
-            rec_text = await chat_with_groq(messages, use_rag=False, rag_context="")
-            recommendations = [line.strip() for line in rec_text.split('\n') if line.strip() and line.strip()[0] in ['-', '•', '1', '2', '3', '4', '5']][:7]
-        elif OLLAMA_BASE_URL:
-            rec_text = await chat_with_ollama(messages, use_rag=False, rag_context="")
-            recommendations = [line.strip() for line in rec_text.split('\n') if line.strip() and line.strip()[0] in ['-', '•', '1', '2', '3', '4', '5']][:7]
-    except:
-        recommendations = [
-            f"Save ₹{monthly_savings} per month consistently",
-            f"Review and reduce expenses in high-cost categories",
-            f"Consider investing based on your {profile['risk_level']} risk tolerance",
-            f"Track progress toward goal: {profile['financial_goal']}",
-            f"Build emergency fund of 3-6 months expenses"
-        ]
-    
-    # Calculate goal progress
-    goal_amount = 0
-    try:
-        # Try to extract amount from goal text
-        import re
-        goal_match = re.search(r'₹?\s*(\d+(?:,\d+)*(?:\.\d+)?)', profile['financial_goal'])
-        if goal_match:
-            goal_amount = float(goal_match.group(1).replace(',', ''))
-    except:
-        pass
-    
-    goal_progress = {
-        "goal": profile['financial_goal'],
-        "current_savings": round(total_savings, 2),
-        "target_amount": goal_amount,
-        "progress_percentage": round((total_savings / goal_amount * 100) if goal_amount > 0 else 0, 2),
-        "months_remaining": round((goal_amount - total_savings) / monthly_savings) if monthly_savings > 0 and goal_amount > 0 else 0
-    }
-    
-    # Update profile balance
-    financial_profiles_store[request.profile_id]["current_balance"] = final_balance
-    
-    return FinancialSimulationResponse(
-        profile_id=request.profile_id,
-        simulation_period=months,
-        initial_balance=round(initial_balance, 2),
-        final_balance=round(final_balance, 2),
-        total_savings=round(total_savings, 2),
-        monthly_breakdown=monthly_breakdown,
-        recommendations=recommendations,
-        goal_progress=goal_progress,
-        provider="financial_simulator",
-        created_at=datetime.now().isoformat()
-    )
+            try:
+                financial_advice = await chat_with_groq(messages, use_rag=False, rag_context="")
+                used_provider = "groq"
+            except Exception as e:
+                print(f"Groq failed: {str(e)}")
+        
+        if not financial_advice and OLLAMA_BASE_URL:
+            try:
+                financial_advice = await chat_with_ollama(messages, use_rag=False, rag_context="")
+                used_provider = "ollama"
+            except Exception as e:
+                print(f"Ollama failed: {str(e)}")
+        
+        if not financial_advice and LOCAL_LLAMA_API_URL:
+            try:
+                financial_advice = await chat_with_llama(messages, use_rag=False, rag_context="")
+                used_provider = "llama"
+            except Exception as e:
+                print(f"LLaMA failed: {str(e)}")
+        
+        # Fallback advice if all AI providers fail
+        if not financial_advice:
+            financial_advice = f"""**Financial Health Assessment for {request.name}**
 
-@app.get("/agent/financial/profile/{profile_id}")
-async def get_financial_profile(profile_id: str):
-    """Get financial profile details"""
-    if profile_id not in financial_profiles_store:
-        raise HTTPException(status_code=404, detail="Financial profile not found")
-    
-    return financial_profiles_store[profile_id]
+**Current Situation:**
+- Your monthly income of ₹{request.monthly_income} with expenses of ₹{total_expenses} leaves you with ₹{monthly_savings} in monthly savings.
+- Your savings rate is {round(savings_rate, 2)}%, which is {'excellent' if savings_rate >= 20 else 'good' if savings_rate >= 10 else 'needs improvement'}.
+
+**Expense Analysis:**
+{expense_details}
+
+**Goal Achievement Strategy:**
+To achieve your goal of "{request.financial_goal}", focus on:
+1. Maintaining consistent monthly savings of ₹{monthly_savings}
+2. Reviewing and optimizing expense categories
+3. Building an emergency fund first
+4. Then directing savings toward your specific goal
+
+**Recommendations:**
+- Track all expenses carefully
+- Consider automating savings
+- Review your risk tolerance ({request.risk_level}) for investment decisions
+- Set up a dedicated savings account for your goal"""
+        
+        # Generate actionable recommendations
+        recommendations_prompt = f"""Based on this financial profile, provide 5-7 specific, actionable recommendations:
+
+- Monthly Income: ₹{request.monthly_income}
+- Monthly Savings: ₹{monthly_savings}
+- Financial Goal: {request.financial_goal}
+- Risk Level: {request.risk_level}
+
+Provide recommendations as a numbered list, each being specific and actionable."""
+
+        recommendations = []
+        try:
+            rec_messages = [{"role": "user", "content": recommendations_prompt}]
+            if GROQ_API_KEY:
+                rec_text = await chat_with_groq(rec_messages, use_rag=False, rag_context="")
+                recommendations = [line.strip() for line in rec_text.split('\n') if line.strip() and (line.strip()[0].isdigit() or line.strip()[0] in ['-', '•'])]
+                recommendations = [r for r in recommendations if len(r) > 10][:7]
+            elif OLLAMA_BASE_URL:
+                rec_text = await chat_with_ollama(rec_messages, use_rag=False, rag_context="")
+                recommendations = [line.strip() for line in rec_text.split('\n') if line.strip() and (line.strip()[0].isdigit() or line.strip()[0] in ['-', '•'])]
+                recommendations = [r for r in recommendations if len(r) > 10][:7]
+        except:
+            pass
+        
+        # Fallback recommendations
+        if not recommendations:
+            recommendations = [
+                f"Maintain consistent monthly savings of ₹{monthly_savings}",
+                f"Build an emergency fund of 3-6 months expenses (₹{total_expenses * 3} - ₹{total_expenses * 6})",
+                f"Review and optimize your expense categories regularly",
+                f"Set up automatic transfers to a dedicated savings account for '{request.financial_goal}'",
+                f"Consider investment options matching your {request.risk_level} risk tolerance",
+                f"Track your progress toward '{request.financial_goal}' monthly",
+                f"Look for opportunities to increase income or reduce expenses"
+            ]
+        
+        # Calculate goal analysis
+        goal_amount = 0
+        try:
+            import re
+            goal_match = re.search(r'₹?\s*(\d+(?:,\d+)*(?:\.\d+)?)', request.financial_goal)
+            if goal_match:
+                goal_amount = float(goal_match.group(1).replace(',', ''))
+        except:
+            pass
+        
+        months_to_goal = round((goal_amount / monthly_savings)) if monthly_savings > 0 and goal_amount > 0 else 0
+        years_to_goal = round(months_to_goal / 12, 1) if months_to_goal > 0 else 0
+        
+        goal_analysis = {
+            "goal": request.financial_goal,
+            "estimated_cost": goal_amount if goal_amount > 0 else "Not specified",
+            "current_savings": 0,
+            "monthly_savings": round(monthly_savings, 2),
+            "estimated_months": months_to_goal,
+            "estimated_years": years_to_goal,
+            "feasibility": "Achievable" if monthly_savings > 0 and (goal_amount == 0 or months_to_goal <= 120) else "Needs review"
+        }
+        
+        return FinancialAdviceResponse(
+            name=request.name,
+            monthly_income=round(request.monthly_income, 2),
+            monthly_expenses=round(total_expenses, 2),
+            monthly_savings=round(monthly_savings, 2),
+            expense_breakdown=expense_breakdown,
+            financial_advice=financial_advice,
+            recommendations=recommendations,
+            goal_analysis=goal_analysis,
+            provider=used_provider,
+            created_at=datetime.now().isoformat()
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating financial advice: {str(e)}")
 
 # ==================== Wellness Bot ====================
 
