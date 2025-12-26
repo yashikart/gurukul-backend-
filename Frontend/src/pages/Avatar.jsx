@@ -51,8 +51,8 @@ const Avatar = () => {
         localStorage.getItem('avatarImage') || null
     );
     const [position, setPosition] = useState(() => {
-        const saved = localStorage.getItem('avatarPosition');
-        return saved ? JSON.parse(saved) : { x: 0, y: 0.5, z: -4 };
+        const saved = localStorage.getItem('avatarDragPosition');
+        return saved ? JSON.parse(saved) : { x: window.innerWidth - 150, y: 100 };
     });
     const [rotation, setRotation] = useState(() => {
         const saved = localStorage.getItem('avatarRotation');
@@ -69,7 +69,7 @@ const Avatar = () => {
 
     // Save to localStorage whenever values change
     useEffect(() => {
-        localStorage.setItem('avatarPosition', JSON.stringify(position));
+        localStorage.setItem('avatarDragPosition', JSON.stringify(position));
         window.dispatchEvent(new Event('avatarUpdate'));
     }, [position]);
 
@@ -127,7 +127,7 @@ const Avatar = () => {
     };
 
     const handleReset = () => {
-        setPosition({ x: 0, y: 0.5, z: -4 });
+        setPosition({ x: window.innerWidth - 150, y: 100 });
         setRotation({ x: 0, y: 180, z: 0 });
         setScale(0.6);
         setPinMode(true);
@@ -229,7 +229,7 @@ const Avatar = () => {
                     {/* Pin Position */}
                     <div className="mb-6">
                         <label className="text-orange-200 text-xs font-bold uppercase tracking-wider mb-3 block">Pin Position</label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             <ControlInput
                                 label="X"
                                 value={position.x}
@@ -239,11 +239,6 @@ const Avatar = () => {
                                 label="Y"
                                 value={position.y}
                                 onChange={(val) => setPosition({ ...position, y: val })}
-                            />
-                            <ControlInput
-                                label="Z"
-                                value={position.z}
-                                onChange={(val) => setPosition({ ...position, z: val })}
                             />
                         </div>
                     </div>
