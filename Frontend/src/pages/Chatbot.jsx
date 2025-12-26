@@ -404,7 +404,7 @@ const Chatbot = () => {
 
                                 {/* Dropdown Menu (Opens Upwards) */}
                                 <div className={`absolute bottom-full mb-2 left-0 w-32 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 origin-bottom ${isModelOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}`}>
-                                    {['Grok', 'Uniguru', 'Arabic Model'].map((model) => (
+                                    {['Grok', 'Uniguru'].map((model) => (
                                         <div
                                             key={model}
                                             onClick={() => {

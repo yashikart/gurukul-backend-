@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaGlobe, FaChevronDown } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { FaGlobe, FaChevronDown, FaUserCircle } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
 
 import logo from '../assets/logo.svg';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [language, setLanguage] = useState('English');
   const dropdownRef = useRef(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Initialize language based on cookie
   useEffect(() => {
@@ -62,6 +65,15 @@ const Navbar = () => {
     };
 
     changeLanguage();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/signin');
+    } catch (error) {
+      console.error('Failed to log out', error);
+    }
   };
 
   return (
@@ -120,9 +132,24 @@ const Navbar = () => {
 
             {/* Sign In Section */}
             <div className="flex items-center pl-4 border-l border-white/10">
-              <Link to="/signin" className="text-xs font-bold px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10 shadow-lg">
-                Sign In
-              </Link>
+              {user ? (
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-300 flex items-center gap-2">
+                    <FaUserCircle className="text-lg" />
+                    <span>{user.email.split('@')[0]}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="text-xs font-bold px-4 py-2 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
+                  >
+                    Log Out
+                  </button>
+                </div>
+              ) : (
+                <Link to="/signin" className="text-xs font-bold px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10 shadow-lg">
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
         </div>

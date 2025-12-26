@@ -1,8 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FaArrowRight } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const SignIn = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState(null);
+    const { login } = useAuth();
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        try {
+            await login(email, password);
+            navigate('/');
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
     return (
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)] px-4">
             {/* Login Card */}
@@ -16,13 +34,18 @@ const SignIn = () => {
                     <h2 className="text-4xl font-heading font-bold mb-2 text-center text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Welcome Back</h2>
                     <p className="text-center text-gray-400 text-sm mb-8 tracking-wide">Enter the Gurukul to continue your journey.</p>
 
-                    <form className="flex flex-col gap-5">
+                    {error && <div className="bg-red-500/20 text-red-300 p-3 rounded mb-4 text-sm border border-red-500/30 text-center">{error}</div>}
+
+                    <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
                         <div className="space-y-1">
                             <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 ml-1">Email Address</label>
                             <input
                                 type="email"
                                 placeholder="student@gurukul.com"
                                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-accent/50 focus:bg-white/10 transition-all"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
                             />
                         </div>
 
@@ -32,12 +55,13 @@ const SignIn = () => {
                                 type="password"
                                 placeholder="••••••••"
                                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-accent/50 focus:bg-white/10 transition-all"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
                             />
                         </div>
 
-
-
-                        <button className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-500 hover:to-amber-600 text-white font-bold tracking-wide shadow-lg transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
+                        <button type="submit" className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-500 hover:to-amber-600 text-white font-bold tracking-wide shadow-lg transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
                             Sign In <FaArrowRight className="text-sm opacity-80" />
                         </button>
                     </form>
