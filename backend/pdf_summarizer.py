@@ -41,6 +41,15 @@ class PDFSummarizer:
             }
 
         print(f"[PDF Summarizer] Preparing to summarize {len(pages)} pages using Gemini...")
+        
+        # DEBUG: List available models to fix 404 error
+        try:
+            print("[PDF Summarizer] DEBUG: Listing available models...")
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    print(f"[PDF Summarizer] Available Model: {m.name}")
+        except Exception as e:
+            print(f"[PDF Summarizer] DEBUG Error listing models: {e}")
 
         # 1. Construct a single large prompt with all page content
         full_text_content = ""
