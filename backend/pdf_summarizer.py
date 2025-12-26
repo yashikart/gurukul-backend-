@@ -12,7 +12,7 @@ import time
 class PDFSummarizer:
     """Cloud-based PDF summarizer using Google Gemini API"""
     
-    def __init__(self, model_name: str = "gemini-1.5-flash"):
+    def __init__(self, model_name: str = "gemini-2.0-flash"):
         self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
             print("[PDF Summarizer] WARNING: GEMINI_API_KEY not found in environment variables.")
@@ -23,8 +23,8 @@ class PDFSummarizer:
                 # Test model validity with a dummy call
                 # self.model.generate_content("test") 
             except Exception as e:
-                print(f"[PDF Summarizer] Warning: Failed to load model '{model_name}': {e}. Falling back to 'gemini-pro'...")
-                self.model = genai.GenerativeModel("gemini-pro")
+                print(f"[PDF Summarizer] Warning: Failed to load model '{model_name}': {e}. Falling back to 'gemini-flash-latest'...")
+                self.model = genai.GenerativeModel("gemini-flash-latest")
 
     def summarize_all_pages(self, pages: List[str], summary_type: str = "detailed", improve_grammar: bool = False) -> Dict:
         """
@@ -86,8 +86,8 @@ class PDFSummarizer:
             except Exception as e:
                 # Dynamic fallback for "404 Model Not Found" errors during runtime
                 if "404" in str(e) or "not found" in str(e).lower():
-                    print("[PDF Summarizer] Primary model failed (404). Switching to fallback 'gemini-pro' and retrying...")
-                    self.model = genai.GenerativeModel("gemini-pro")
+                    print("[PDF Summarizer] Primary model failed (404). Switching to fallback 'gemini-flash-latest' and retrying...")
+                    self.model = genai.GenerativeModel("gemini-flash-latest")
                     response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
                 else:
                     raise e
