@@ -2,7 +2,7 @@ import React from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaVolumeUp, FaPlus, FaHistory, FaTrashAlt, FaPaperclip, FaArrowUp, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
-import { useKarma } from '../contexts/KarmaContext';
+
 import { containsProfanity } from '../utils/profanityDetector';
 import API_BASE_URL from '../config';
 
