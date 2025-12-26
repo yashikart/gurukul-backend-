@@ -18,7 +18,13 @@ class PDFSummarizer:
             print("[PDF Summarizer] WARNING: GEMINI_API_KEY not found in environment variables.")
         else:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel(model_name)
+            try:
+                self.model = genai.GenerativeModel(model_name)
+                # Test model validity with a dummy call
+                # self.model.generate_content("test") 
+            except Exception as e:
+                print(f"[PDF Summarizer] Warning: Failed to load model '{model_name}': {e}. Falling back to 'gemini-pro'...")
+                self.model = genai.GenerativeModel("gemini-pro")
 
     def summarize_all_pages(self, pages: List[str], summary_type: str = "detailed", improve_grammar: bool = False) -> Dict:
         """
