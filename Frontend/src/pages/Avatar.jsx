@@ -219,10 +219,10 @@ const Avatar = () => {
                     <div className="flex justify-between items-center mb-8 p-3 rounded-xl bg-black/60 border border-white/10">
                         <span className="text-white font-medium">Pin Mode</span>
                         <div
-                            className={`w - 12 h - 6 rounded - full p - 1 cursor - pointer transition - colors duration - 300 ${pinMode ? 'bg-orange-500' : 'bg-gray-600'} `}
+                            className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 ${pinMode ? 'bg-orange-500' : 'bg-gray-600'} `}
                             onClick={() => setPinMode(!pinMode)}
                         >
-                            <div className={`w - 4 h - 4 bg - white rounded - full shadow - md transform transition - transform duration - 300 ${pinMode ? 'translate-x-6' : 'translate-x-0'} `}></div>
+                            <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${pinMode ? 'translate-x-6' : 'translate-x-0'} `}></div>
                         </div>
                     </div>
 
