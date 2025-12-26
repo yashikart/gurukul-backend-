@@ -53,7 +53,7 @@ const Navbar = () => {
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-300 flex items-center gap-2">
                     <FaUserCircle className="text-lg" />
-                    <span>{user.email.split('@')[0]}</span>
+                    <span className="hidden md:block">{user.email.split('@')[0]}</span>
                   </div>
                   <button
                     onClick={handleLogout}
