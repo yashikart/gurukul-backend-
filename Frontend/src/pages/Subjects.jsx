@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar';
 import { FaBook, FaLightbulb, FaBookOpen } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
 import { containsProfanity } from '../utils/profanityDetector';
+import API_BASE_URL from '../config';
 
 const Subjects = () => {
     const { addKarma } = useKarma();
@@ -53,7 +54,7 @@ const Subjects = () => {
         setChatHistory([]); // Reset chat for new topic
 
         try {
-            const response = await fetch('http://127.0.0.1:3000/subject-explorer', {
+            const response = await fetch(`${API_BASE_URL}/subject-explorer`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -107,7 +108,7 @@ const Subjects = () => {
             // Construct context-aware prompt
             const contextMessage = `Context from generated lesson on ${result.topic} (${result.subject}):\n${result.notes}\n\nUser Question: ${userMessage}`;
 
-            const response = await fetch('http://127.0.0.1:3000/chat', {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

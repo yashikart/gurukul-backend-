@@ -4,6 +4,7 @@ import { FaRobot, FaCog, FaCommentAlt, FaBook, FaDollarSign, FaHeartbeat, FaCirc
 import ReactMarkdown from 'react-markdown';
 import { useKarma } from '../contexts/KarmaContext';
 import { containsProfanity } from '../utils/profanityDetector';
+import API_BASE_URL from '../config';
 
 const AGENTS = [
     {
@@ -302,7 +303,7 @@ const AgentSimulator = () => {
         setIsChatEnabled(false); // Lock chat during generation
 
         try {
-            const response = await fetch('http://127.0.0.1:3000/agent/edumentor/generate', {
+            const response = await fetch(`${API_BASE_URL}/agent/edumentor/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
@@ -384,7 +385,7 @@ ${generatedSupport.overall_assessment}
 User Question: ${userMsg.content}`;
             }
 
-            const response = await fetch('http://127.0.0.1:3000/chat', {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -452,7 +453,7 @@ User Question: ${userMsg.content}`;
                 sum + (parseFloat(exp.amount) || 0), 0
             );
 
-            const response = await fetch('http://127.0.0.1:3000/agent/financial/advice', {
+            const response = await fetch(`${API_BASE_URL}/agent/financial/advice`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -500,7 +501,7 @@ User Question: ${userMsg.content}`;
         setIsChatEnabled(false);
 
         try {
-            const response = await fetch('http://127.0.0.1:3000/agent/wellness/support', {
+            const response = await fetch(`${API_BASE_URL}/agent/wellness/support`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(wellnessConfig)

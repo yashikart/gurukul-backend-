@@ -2,6 +2,7 @@ import React from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaFileUpload, FaCloudUploadAlt, FaMagic, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
+import API_BASE_URL from '../config';
 
 const Summarizer = () => {
     const { addKarma } = useKarma();
@@ -111,9 +112,9 @@ const Summarizer = () => {
         formData.append('summary_type', summaryType);
 
         // Determine endpoint based on file type
-        let endpoint = 'http://127.0.0.1:3000/summarize-doc';
+        let endpoint = `${API_BASE_URL}/summarize-doc`;
         if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-            endpoint = 'http://127.0.0.1:3000/summarize-pdf';
+            endpoint = `${API_BASE_URL}/summarize-pdf`;
         }
 
         try {
@@ -171,7 +172,7 @@ const Summarizer = () => {
                 prompt = `Context: The user has uploaded a document named "${file?.name || 'Document'}". contents summary:\n${summaryText}\n\nUser Question: ${chatInput}`;
             }
 
-            const response = await fetch('http://127.0.0.1:3000/chat', {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -2,7 +2,9 @@ import React from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaVolumeUp, FaPlus, FaHistory, FaTrashAlt, FaPaperclip, FaArrowUp, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
+import { useKarma } from '../contexts/KarmaContext';
 import { containsProfanity } from '../utils/profanityDetector';
+import API_BASE_URL from '../config';
 
 const Chatbot = () => {
     const { addKarma } = useKarma();
@@ -109,7 +111,7 @@ const Chatbot = () => {
             // Backend likely handles 'auto' or specific names.
             // For now, we'll send 'auto' or the selected name if backend supports it.
 
-            const response = await fetch('http://127.0.0.1:3000/chat', {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -162,7 +164,7 @@ const Chatbot = () => {
         setLoading(true);
         setShowHistory(false);
         try {
-            const response = await fetch(`http://127.0.0.1:3000/chat/history/${id}`);
+            const response = await fetch(`${API_BASE_URL}/chat/history/${id}`);
             if (!response.ok) throw new Error("Failed to load history");
             const data = await response.json();
 
@@ -185,7 +187,7 @@ const Chatbot = () => {
         if (!confirm("Delete this conversation permanently?")) return;
 
         try {
-            await fetch(`http://127.0.0.1:3000/chat/history/${conversationId}`, { method: 'DELETE' });
+            await fetch(`${API_BASE_URL}/chat/history/${conversationId}`, { method: 'DELETE' });
 
             // Remove from local list
             const updated = savedChats.filter(c => c.id !== conversationId);
@@ -215,7 +217,7 @@ const Chatbot = () => {
         if (!knowledgeText.trim()) return;
         setKnowledgeLoading(true);
         try {
-            const response = await fetch('http://127.0.0.1:3000/rag/knowledge', {
+            const response = await fetch(`${API_BASE_URL}/rag/knowledge`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

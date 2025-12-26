@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaBrain, FaClock, FaQuestionCircle, FaBolt, FaPlay, FaChevronDown, FaCheckCircle, FaTimesCircle, FaArrowRight, FaArrowLeft, FaRedo } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
+import API_BASE_URL from '../config';
 
 const Test = () => {
     const { addKarma } = useKarma();
@@ -37,7 +38,7 @@ const Test = () => {
 
         setLoading(true);
         try {
-            const response = await fetch('http://127.0.0.1:3000/quiz/generate', {
+            const response = await fetch(`${API_BASE_URL}/quiz/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -75,7 +76,7 @@ const Test = () => {
 
         setLoading(true);
         try {
-            const response = await fetch('http://127.0.0.1:3000/quiz/submit', {
+            const response = await fetch(`${API_BASE_URL}/quiz/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

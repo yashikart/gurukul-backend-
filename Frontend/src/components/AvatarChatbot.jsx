@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaPaperPlane, FaRobot } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
+import API_BASE_URL from '../config';
 
 const AvatarChatbot = ({ position, onClose }) => {
     const [messages, setMessages] = useState([{
@@ -52,7 +53,7 @@ const AvatarChatbot = ({ position, onClose }) => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://127.0.0.1:3000/chat', {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
