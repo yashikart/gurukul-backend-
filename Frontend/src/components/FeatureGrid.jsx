@@ -13,13 +13,13 @@ const features = [
 
 const FeatureGrid = () => {
     return (
-        <div className="max-w-6xl mx-auto px-6 w-full">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
                 {features.map((feature, index) => (
                     <Link
                         key={index}
                         to={feature.path}
-                        className="group relative overflow-hidden rounded-2xl p-8 transition-all duration-500 hover:-translate-y-2 block text-center w-full"
+                        className="group relative overflow-hidden rounded-2xl p-6 md:p-8 transition-all duration-500 hover:-translate-y-2 block text-center w-full"
                     >
                         {/* Glass Background - warmer tint */}
                         <div className="absolute inset-0 bg-orange-900/50 backdrop-blur-xl border border-white/10 transition-all duration-500 group-hover:bg-orange-900/60 group-hover:border-accent/30 shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]"></div>
