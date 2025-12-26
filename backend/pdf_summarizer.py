@@ -63,13 +63,15 @@ Page Summaries:
         }
         
         try:
-            # Simple retry mechanism
-            for _ in range(3):
+            # Simple retry mechanism with Exponential Backoff
+            for attempt in range(3):
                 response = requests.post(self.api_url, headers=headers, json=payload, timeout=60)
                 if response.status_code == 200:
                     return response.json()["choices"][0]["message"]["content"]
                 elif response.status_code == 429:
-                    time.sleep(2) # Rate limit wait
+                    wait_time = 3 * (attempt + 1)
+                    print(f"[PDF Summarizer] Rate limit hit. Retrying in {wait_time}s...")
+                    time.sleep(wait_time) # Exponential backoff
                     continue
                 else:
                     return f"API Error: {response.text}"

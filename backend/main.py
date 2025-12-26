@@ -1450,21 +1450,21 @@ async def summarize_pdf(
         pdf_summarizer = PDFSummarizer()
         result = pdf_summarizer.summarize_all_pages(pages, summary_type=summary_type, improve_grammar=False)
         
-        # Improve grammar of all page summaries
-        print("[PDF Summarizer] Improving grammar of page summaries...")
-        for ps in result["page_summaries"]:
-            if ps["summary_length"] > 0:
-                try:
-                    ps["summary"] = await improve_grammar_and_clarity(ps["summary"])
-                except Exception as e:
-                    print(f"[PDF Summarizer] Error improving grammar for page {ps['page_number']}: {str(e)}")
+        # Improve grammar of all page summaries (DISABLED to prevent 429 Rate Limits)
+        # print("[PDF Summarizer] Improving grammar of page summaries...")
+        # for ps in result["page_summaries"]:
+        #    if ps["summary_length"] > 0:
+        #        try:
+        #            ps["summary"] = await improve_grammar_and_clarity(ps["summary"])
+        #        except Exception as e:
+        #            print(f"[PDF Summarizer] Error improving grammar for page {ps['page_number']}: {str(e)}")
         
-        # Improve grammar of overall summary
-        if result["overall_summary"]:
-            try:
-                result["overall_summary"] = await improve_grammar_and_clarity(result["overall_summary"])
-            except Exception as e:
-                print(f"[PDF Summarizer] Error improving overall summary grammar: {str(e)}")
+        # Improve grammar of overall summary (DISABLED to prevent 429 Rate Limits)
+        # if result["overall_summary"]:
+        #    try:
+        #        result["overall_summary"] = await improve_grammar_and_clarity(result["overall_summary"])
+        #    except Exception as e:
+        #        print(f"[PDF Summarizer] Error improving overall summary grammar: {str(e)}")
         
         # Convert to response format
         page_summaries = [
