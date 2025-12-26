@@ -48,12 +48,12 @@ const Navbar = () => {
           {/* Links & Actions */}
           <div className="flex items-center gap-8">
             {/* Sign In Section */}
-            <div className="flex items-center">
+            <div className="hidden lg:flex items-center">
               {user ? (
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-300 flex items-center gap-2">
                     <FaUserCircle className="text-lg" />
-                    <span className="hidden md:block">{user.email.split('@')[0]}</span>
+                    <span>{user.email.split('@')[0]}</span>
                   </div>
                   <button
                     onClick={handleLogout}

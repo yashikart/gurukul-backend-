@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
     FaThLarge,
     FaBookOpen,
@@ -9,9 +9,12 @@ import {
     FaVideo,
     FaRobot,
     FaUserAstronaut,
-    FaCog
+    FaCog,
+    FaSignOutAlt,
+    FaUserCircle
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard" },
@@ -26,6 +29,18 @@ const menuItems = [
 
 const Sidebar = () => {
     const { isSidebarOpen, closeSidebar } = useSidebar();
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            closeSidebar();
+            navigate('/signin');
+        } catch (error) {
+            console.error('Failed to log out', error);
+        }
+    };
 
     return (
         <>
@@ -47,7 +62,7 @@ const Sidebar = () => {
                 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}>
 
-                {/* Mobile Header (Close Button implied by backdrop, but maybe good to separate visual) */}
+                {/* Mobile Header */}
                 <div className="lg:hidden mb-6 mt-2 flex items-center gap-3 px-2">
                     <span className="text-xl font-bold font-heading text-white">Menu</span>
                 </div>
@@ -60,7 +75,7 @@ const Sidebar = () => {
                             <NavLink
                                 key={index}
                                 to={item.path}
-                                onClick={closeSidebar} // Close on click
+                                onClick={closeSidebar}
                                 className={({ isActive }) => `
                     flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
                     ${isActive
@@ -74,8 +89,9 @@ const Sidebar = () => {
                         ))}
                     </div>
 
-                    {/* Settings at Bottom */}
-                    <div className="pt-3 border-t border-white/10 mt-2">
+                    {/* Footer Actions */}
+                    <div className="pt-3 border-t border-white/10 mt-2 space-y-2">
+                        {/* Settings */}
                         <NavLink
                             to="/settings"
                             onClick={closeSidebar}
@@ -89,6 +105,23 @@ const Sidebar = () => {
                             <FaCog className="text-lg opacity-80 group-hover:opacity-100" />
                             <span className="text-sm font-medium tracking-wide">Settings</span>
                         </NavLink>
+
+                        {/* Mobile User Section */}
+                        {user && (
+                            <div className="lg:hidden mt-4 pt-4 border-t border-white/10">
+                                <div className="flex items-center gap-3 px-4 mb-3">
+                                    <FaUserCircle className="text-xl text-orange-400" />
+                                    <span className="text-sm text-gray-300 font-medium truncate">{user.email}</span>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-4 px-4 py-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all border border-red-500/20"
+                                >
+                                    <FaSignOutAlt className="text-lg" />
+                                    <span className="text-sm font-bold tracking-wide">Log Out</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                 </div>
