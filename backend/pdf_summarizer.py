@@ -70,8 +70,18 @@ class PDFSummarizer:
 
         try:
             # 3. Call Gemini API
-            print("[PDF Summarizer] Sending request to Gemini (this may take a few seconds)...")
-            response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            # 3. Call Gemini API
+            print("[PDF Summarizer] Sending request to Gemini...")
+            try:
+                response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            except Exception as e:
+                # Dynamic fallback for "404 Model Not Found" errors during runtime
+                if "404" in str(e) or "not found" in str(e).lower():
+                    print("[PDF Summarizer] Primary model failed (404). Switching to fallback 'gemini-pro' and retrying...")
+                    self.model = genai.GenerativeModel("gemini-pro")
+                    response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+                else:
+                    raise e
             
             # 4. Parse Response
             try:
