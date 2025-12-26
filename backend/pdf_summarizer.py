@@ -1,363 +1,122 @@
 """
-Advanced PDF Summarizer with Multi-Page Support
-Uses BART model for contextual, comprehensive summarization
+Multi-Page PDF Summarizer using Groq Cloud API
+Replaces local transformers to avoid Memory Crash on Free Tier Hosting.
 """
 
-import torch
-from transformers import pipeline, BartForConditionalGeneration, BartTokenizer
+import os
+import requests
+import json
 from typing import List, Dict, Optional
-import re
+import time
 
 class PDFSummarizer:
-    """Advanced PDF summarizer with multi-page support and comprehensive coverage"""
+    """Cloud-based PDF summarizer using Groq API"""
     
-    def __init__(self, model_name: str = "facebook/bart-large-cnn"):
-        """
-        Initialize PDF summarizer
+    def __init__(self, model_name: str = "llama-3.3-70b-versatile"):
+        self.api_key = os.getenv("GROQ_API_KEY")
+        self.api_url = os.getenv("GROQ_API_ENDPOINT", "https://api.groq.com/openai/v1/chat/completions")
+        self.model_name = os.getenv("GROQ_MODEL_NAME", model_name)
         
-        Args:
-            model_name: Hugging Face model name (default: facebook/bart-large-cnn)
-        """
-        self.model_name = model_name
-        self.tokenizer = None
-        self.model = None
-        self.summarizer = None
-        self.max_chunk_length = 1024
-        self._initialized = False
-    
-    def _initialize(self):
-        """Lazy initialization of model and tokenizer"""
-        if not self._initialized:
-            try:
-                print(f"[PDF Summarizer] Loading model: {self.model_name}")
-                self.tokenizer = BartTokenizer.from_pretrained(self.model_name)
-                self.model = BartForConditionalGeneration.from_pretrained(self.model_name)
-                self.summarizer = pipeline(
-                    "summarization", 
-                    model=self.model, 
-                    tokenizer=self.tokenizer, 
-                    framework="pt"
-                )
-                self._initialized = True
-                print(f"[PDF Summarizer] Model loaded successfully!")
-            except Exception as e:
-                print(f"[PDF Summarizer] Error loading model: {str(e)}")
-                raise
-    
-    def _split_into_sentences(self, text: str) -> List[str]:
-        """Split text into sentences"""
-        # Simple sentence splitting
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        return [s.strip() for s in sentences if len(s.strip()) > 10]
-    
-    def _chunk_text(self, text: str, max_tokens: int = 900) -> List[str]:
-        """Split text into chunks that fit within token limit"""
-        sentences = self._split_into_sentences(text)
-        chunks = []
-        current_chunk = []
-        current_length = 0
+        if not self.api_key:
+            print("[PDF Summarizer] WARNING: GROQ_API_KEY not found in environment variables.")
+
+    def _call_groq(self, text: str, prompt_type: str = "summarize", target_length: str = "detailed") -> str:
+        """Helper to call Groq API"""
+        if not self.api_key:
+            return "Error: GROQ_API_KEY not configured."
+
+        system_prompt = "You are an expert summarizer. Analyze the text and provide a high-quality summary."
         
-        for sentence in sentences:
-            sentence_tokens = len(self.tokenizer.encode(sentence, add_special_tokens=False))
-            
-            if current_length + sentence_tokens > max_tokens and current_chunk:
-                chunks.append(" ".join(current_chunk))
-                current_chunk = [sentence]
-                current_length = sentence_tokens
-            else:
-                current_chunk.append(sentence)
-                current_length += sentence_tokens
+        if prompt_type == "summarize":
+            user_prompt = f"""
+Please provide a {target_length} summary of the following text from a page of a document.
+Focus on the key points, main arguments, and important details.
+Do not add preamble like "Here is the summary". just give the summary directly.
+
+Text to summarize:
+{text[:15000]} 
+""" # Limit to 15k chars to be safe 
+        elif prompt_type == "overall":
+            user_prompt = f"""
+Here are summaries of multiple pages from a document. 
+Please synthesize them into one cohesive, comprehensive overall summary of the entire document.
+Ensure smooth flow and logical structure.
+Target Length: {target_length}
+
+Page Summaries:
+{text[:20000]}
+"""
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
         
-        if current_chunk:
-            chunks.append(" ".join(current_chunk))
+        payload = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": 0.5,
+            "max_tokens": 2048
+        }
         
-        return chunks
-    
-    def summarize_page(self, page_text: str, page_num: int, max_length: int = 150, min_length: int = 40, improve_grammar: bool = True, target_chars: int = 500) -> str:
+        try:
+            # Simple retry mechanism
+            for _ in range(3):
+                response = requests.post(self.api_url, headers=headers, json=payload, timeout=60)
+                if response.status_code == 200:
+                    return response.json()["choices"][0]["message"]["content"]
+                elif response.status_code == 429:
+                    time.sleep(2) # Rate limit wait
+                    continue
+                else:
+                    return f"API Error: {response.text}"
+            return "Error: Failed to get response from Groq API after retries"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def summarize_page(self, page_text: str, page_num: int, **kwargs) -> str:
         """Summarize a single page"""
         if not page_text or len(page_text.strip()) < 50:
             return f"[Page {page_num}]: Insufficient content"
+            
+        summary_type = kwargs.get('summary_type', 'detailed')
+        print(f"[PDF Summarizer] Summarizing Page {page_num} via Groq...")
         
-        self._initialize()
-        
-        try:
-            encoded = self.tokenizer.encode(page_text, truncation=False)
-            
-            if len(encoded) > self.max_chunk_length:
-                # Chunk and summarize
-                chunks = self._chunk_text(page_text, max_tokens=900)
-                chunk_summaries = []
-                
-                for i, chunk in enumerate(chunks):
-                    try:
-                        summary = self.summarizer(chunk, max_length=max_length, min_length=min_length, do_sample=False)
-                        chunk_summaries.append(summary[0]['summary_text'])
-                    except Exception as e:
-                        print(f"[PDF Summarizer] Error summarizing chunk {i+1} of page {page_num}: {str(e)}")
-                        chunk_summaries.append(chunk[:200])
-                
-                # Combine chunk summaries
-                combined = " ".join(chunk_summaries)
-                if len(self.tokenizer.encode(combined, truncation=False)) > self.max_chunk_length:
-                    # Summarize the combined summary
-                    final = self.summarizer(combined, max_length=max_length + 30, min_length=min_length + 10, do_sample=False)
-                    summary_text = final[0]['summary_text']
-                else:
-                    summary_text = combined
-            else:
-                summary = self.summarizer(page_text, max_length=max_length, min_length=min_length, do_sample=False)
-                summary_text = summary[0]['summary_text']
-            
-            # Adjust summary length to target ~500 characters
-            if target_chars > 0:
-                current_length = len(summary_text)
-                attempts = 0
-                max_attempts = 3
-                
-                while attempts < max_attempts:
-                    if current_length < target_chars * 0.8:  # If too short (less than 80% of target), expand
-                        # Try to expand the summary
-                        try:
-                            expanded_max = min(max_length + (target_chars - current_length) // 4, 250)
-                            expanded = self.summarizer(
-                                page_text, 
-                                max_length=expanded_max, 
-                                min_length=min_length + 20, 
-                                do_sample=False
-                            )
-                            expanded_text = expanded[0]['summary_text']
-                            if len(expanded_text) > current_length:
-                                summary_text = expanded_text
-                                current_length = len(summary_text)
-                                print(f"[PDF Summarizer] Page {page_num} summary expanded to {current_length} chars (target: {target_chars})")
-                        except Exception as e:
-                            print(f"[PDF Summarizer] Error expanding summary: {str(e)}")
-                        attempts += 1
-                    elif current_length > target_chars * 1.3:  # If too long (more than 130% of target), trim
-                        # Keep first ~500 chars but try to end at sentence boundary
-                        sentences = summary_text.split('. ')
-                        trimmed = []
-                        char_count = 0
-                        for sentence in sentences:
-                            if char_count + len(sentence) + 2 <= target_chars:
-                                trimmed.append(sentence)
-                                char_count += len(sentence) + 2
-                            else:
-                                break
-                        if trimmed:
-                            summary_text = '. '.join(trimmed) + '.'
-                            current_length = len(summary_text)
-                            print(f"[PDF Summarizer] Page {page_num} summary trimmed to {current_length} chars (target: {target_chars})")
-                        else:
-                            # Fallback: truncate at word boundary
-                            words = summary_text.split()
-                            trimmed_words = []
-                            char_count = 0
-                            for word in words:
-                                if char_count + len(word) + 1 <= target_chars:
-                                    trimmed_words.append(word)
-                                    char_count += len(word) + 1
-                                else:
-                                    break
-                            if trimmed_words:
-                                summary_text = ' '.join(trimmed_words) + '.'
-                                current_length = len(summary_text)
-                        attempts += 1
-                    else:
-                        # Summary is within acceptable range (80%-130% of target)
-                        print(f"[PDF Summarizer] Page {page_num} summary length: {current_length} chars (target: {target_chars})")
-                        break
-            
-            # Improve grammar and clarity if enabled
-            if improve_grammar and summary_text:
-                try:
-                    import asyncio
-                    # Try to get the grammar improvement function from main module
-                    try:
-                        import sys
-                        if 'main' in sys.modules:
-                            main_module = sys.modules['main']
-                            if hasattr(main_module, 'improve_grammar_and_clarity'):
-                                # Run async function
-                                loop = asyncio.get_event_loop()
-                                if loop.is_running():
-                                    # If loop is running, create a task
-                                    import concurrent.futures
-                                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                                        future = executor.submit(asyncio.run, main_module.improve_grammar_and_clarity(summary_text))
-                                        summary_text = future.result(timeout=30)
-                                else:
-                                    summary_text = loop.run_until_complete(main_module.improve_grammar_and_clarity(summary_text))
-                    except Exception as e:
-                        print(f"[PDF Summarizer] Grammar improvement not available: {str(e)}")
-                except Exception as e:
-                    print(f"[PDF Summarizer] Error improving grammar: {str(e)}")
-            
-            return summary_text
-        except Exception as e:
-            print(f"[PDF Summarizer] Error summarizing page {page_num}: {str(e)}")
-            return f"[Page {page_num}]: Error - {str(e)}"
-    
+        return self._call_groq(page_text, prompt_type="summarize", target_length=summary_type)
+
     def summarize_all_pages(self, pages: List[str], summary_type: str = "detailed", improve_grammar: bool = True) -> Dict:
-        """
-        Summarize all pages comprehensively
-        
-        Args:
-            pages: List of page texts
-            summary_type: "concise", "detailed", or "comprehensive"
-        
-        Returns:
-            Dictionary with page summaries and overall summary
-        """
-        self._initialize()
-        
-        print(f"[PDF Summarizer] Processing {len(pages)} pages with {summary_type} summary type...")
-        
-        # Determine summary parameters based on type
-        # Determine summary parameters based on type
-        # Each page should give approximately different characters
-        if summary_type == "concise":
-            page_max_length = 80  # Target ~300 chars
-            page_min_length = 40
-            overall_max_length = 150
-            overall_min_length = 50
-            target_chars = 300
-        elif summary_type == "detailed":
-            page_max_length = 250  # Target ~1000 chars
-            page_min_length = 100
-            overall_max_length = 400
-            overall_min_length = 150
-            target_chars = 800
-        else:  # comprehensive
-            # Much larger limits for comprehensive
-            page_max_length = 400  # Target ~1500 chars
-            page_min_length = 200
-            overall_max_length = 800
-            overall_min_length = 300
-            target_chars = 1500
-        
-        # Step 1: Summarize each page individually
+        """Summarize all pages"""
         page_summaries = []
+        
+        # Process each page
         for i, page_text in enumerate(pages, 1):
-            if page_text and len(page_text.strip()) > 50:
-                print(f"[PDF Summarizer] Summarizing page {i}/{len(pages)}...")
-                page_summary = self.summarize_page(page_text, i, page_max_length, page_min_length, improve_grammar=improve_grammar, target_chars=target_chars)
-                page_summaries.append({
-                    "page_number": i,
-                    "summary": page_summary,
-                    "original_length": len(page_text),
-                    "summary_length": len(page_summary)
-                })
-            else:
-                print(f"[PDF Summarizer] Page {i} has insufficient content, skipping...")
-                page_summaries.append({
-                    "page_number": i,
-                    "summary": f"[Page {i}]: No content available",
-                    "original_length": len(page_text) if page_text else 0,
-                    "summary_length": 0
-                })
-        
-        # Step 2: Create comprehensive overall summary from all page summaries
-        print(f"[PDF Summarizer] Creating overall summary from {len(page_summaries)} page summaries...")
-        
-        # Combine all page summaries
-        combined_summaries = "\n\n".join([
-            f"Page {ps['page_number']}: {ps['summary']}" 
-            for ps in page_summaries 
-            if ps['summary_length'] > 0
-        ])
-        
-        if not combined_summaries or len(combined_summaries.strip()) < 100:
-            return {
-                "page_summaries": page_summaries,
-                "overall_summary": "Unable to generate overall summary - insufficient content",
-                "total_pages": len(pages),
-                "pages_summarized": len([ps for ps in page_summaries if ps['summary_length'] > 0])
-            }
-        
+            summary = self.summarize_page(page_text, i, summary_type=summary_type)
+            page_summaries.append({
+                "page_number": i,
+                "summary": summary,
+                "original_length": len(page_text) if page_text else 0,
+                "summary_length": len(summary)
+            })
+            # Small delay to avoid rate limits
+            time.sleep(0.5)
+            
         # Create overall summary
-        try:
-            # Check if combined summaries are too long
-            encoded = self.tokenizer.encode(combined_summaries, truncation=False)
-            
-            if len(encoded) > self.max_chunk_length:
-                # Use recursive summarization
-                chunks = self._chunk_text(combined_summaries, max_tokens=900)
-                chunk_summaries = []
-                
-                for i, chunk in enumerate(chunks):
-                    try:
-                        summary = self.summarizer(
-                            chunk, 
-                            max_length=overall_max_length // len(chunks) + 50, 
-                            min_length=overall_min_length // len(chunks) + 20, 
-                            do_sample=False
-                        )
-                        chunk_summaries.append(summary[0]['summary_text'])
-                    except Exception as e:
-                        print(f"[PDF Summarizer] Error in chunk {i+1}: {str(e)}")
-                        chunk_summaries.append(chunk[:300])
-                
-                # Final summary of chunk summaries
-                final_input = " ".join(chunk_summaries)
-                if len(self.tokenizer.encode(final_input, truncation=False)) > self.max_chunk_length:
-                    # One more round
-                    final = self.summarizer(
-                        final_input, 
-                        max_length=overall_max_length, 
-                        min_length=overall_min_length, 
-                        do_sample=False
-                    )
-                    overall_summary = final[0]['summary_text']
-                else:
-                    final = self.summarizer(
-                        final_input, 
-                        max_length=overall_max_length, 
-                        min_length=overall_min_length, 
-                        do_sample=False
-                    )
-                    overall_summary = final[0]['summary_text']
-            else:
-                # Single pass summary
-                overall = self.summarizer(
-                    combined_summaries, 
-                    max_length=overall_max_length, 
-                    min_length=overall_min_length, 
-                    do_sample=False
-                )
-                overall_summary = overall[0]['summary_text']
-            
-            print(f"[PDF Summarizer] Overall summary created: {len(overall_summary)} characters")
-            
-            # Improve grammar of overall summary
-            if improve_grammar and overall_summary:
-                try:
-                    import sys
-                    if 'main' in sys.modules:
-                        main_module = sys.modules['main']
-                        if hasattr(main_module, 'improve_grammar_and_clarity'):
-                            import asyncio
-                            loop = asyncio.get_event_loop()
-                            if loop.is_running():
-                                import concurrent.futures
-                                with concurrent.futures.ThreadPoolExecutor() as executor:
-                                    future = executor.submit(asyncio.run, main_module.improve_grammar_and_clarity(overall_summary))
-                                    overall_summary = future.result(timeout=30)
-                            else:
-                                overall_summary = loop.run_until_complete(main_module.improve_grammar_and_clarity(overall_summary))
-                            print(f"[PDF Summarizer] Overall summary grammar improved")
-                except Exception as e:
-                    print(f"[PDF Summarizer] Error improving overall summary grammar: {str(e)}")
-            
-        except Exception as e:
-            print(f"[PDF Summarizer] Error creating overall summary: {str(e)}")
-            overall_summary = combined_summaries[:500] + "..."
+        valid_summaries = [ps['summary'] for ps in page_summaries if "Error" not in ps['summary']]
+        combined_text = "\n\n".join(valid_summaries)
         
+        if combined_text:
+            print("[PDF Summarizer] Generating Overall Summary via Groq...")
+            overall_summary = self._call_groq(combined_text, prompt_type="overall", target_length=summary_type)
+        else:
+            overall_summary = "Could not generate overall summary."
+
         return {
             "page_summaries": page_summaries,
             "overall_summary": overall_summary,
             "total_pages": len(pages),
-            "pages_summarized": len([ps for ps in page_summaries if ps['summary_length'] > 0]),
+            "pages_summarized": len(page_summaries),
             "summary_type": summary_type
         }
-
