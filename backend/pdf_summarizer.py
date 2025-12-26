@@ -1,124 +1,113 @@
 """
-Multi-Page PDF Summarizer using Groq Cloud API
-Replaces local transformers to avoid Memory Crash on Free Tier Hosting.
+Multi-Page PDF Summarizer using Google Gemini API
+Replaces Groq to avoid Rate Limiting and leverage large context window.
 """
 
 import os
-import requests
+import google.generativeai as genai
 import json
 from typing import List, Dict, Optional
 import time
 
 class PDFSummarizer:
-    """Cloud-based PDF summarizer using Groq API"""
+    """Cloud-based PDF summarizer using Google Gemini API"""
     
-    def __init__(self, model_name: str = "llama-3.1-8b-instant"):
-        self.api_key = os.getenv("GROQ_API_KEY")
-        self.api_url = os.getenv("GROQ_API_ENDPOINT", "https://api.groq.com/openai/v1/chat/completions")
-        self.model_name = os.getenv("GROQ_MODEL_NAME", model_name)
-        
+    def __init__(self, model_name: str = "gemini-1.5-flash"):
+        self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            print("[PDF Summarizer] WARNING: GROQ_API_KEY not found in environment variables.")
-
-    def _call_groq(self, text: str, prompt_type: str = "summarize", target_length: str = "detailed") -> str:
-        """Helper to call Groq API"""
-        if not self.api_key:
-            return "Error: GROQ_API_KEY not configured."
-
-        system_prompt = "You are an expert summarizer. Analyze the text and provide a high-quality summary."
-        
-        if prompt_type == "summarize":
-            user_prompt = f"""
-Please provide a {target_length} summary of the following text from a page of a document.
-Focus on the key points, main arguments, and important details.
-Do not add preamble like "Here is the summary". just give the summary directly.
-
-Text to summarize:
-{text[:15000]} 
-""" # Limit to 15k chars to be safe 
-        elif prompt_type == "overall":
-            user_prompt = f"""
-Here are summaries of multiple pages from a document. 
-Please synthesize them into one cohesive, comprehensive overall summary of the entire document.
-Ensure smooth flow and logical structure.
-Target Length: {target_length}
-
-Page Summaries:
-{text[:20000]}
-"""
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "temperature": 0.5,
-            "max_tokens": 2048
-        }
-        
-        try:
-            # Simple retry mechanism with Exponential Backoff
-            for attempt in range(3):
-                response = requests.post(self.api_url, headers=headers, json=payload, timeout=60)
-                if response.status_code == 200:
-                    return response.json()["choices"][0]["message"]["content"]
-                elif response.status_code == 429:
-                    wait_time = 3 * (attempt + 1)
-                    print(f"[PDF Summarizer] Rate limit hit. Retrying in {wait_time}s...")
-                    time.sleep(wait_time) # Exponential backoff
-                    continue
-                else:
-                    return f"API Error: {response.text}"
-            return "Error: Failed to get response from Groq API after retries"
-        except Exception as e:
-            return f"Error: {str(e)}"
-
-    def summarize_page(self, page_text: str, page_num: int, **kwargs) -> str:
-        """Summarize a single page"""
-        if not page_text or len(page_text.strip()) < 50:
-            return f"[Page {page_num}]: Insufficient content"
-            
-        summary_type = kwargs.get('summary_type', 'detailed')
-        print(f"[PDF Summarizer] Summarizing Page {page_num} via Groq...")
-        
-        return self._call_groq(page_text, prompt_type="summarize", target_length=summary_type)
-
-    def summarize_all_pages(self, pages: List[str], summary_type: str = "detailed", improve_grammar: bool = True) -> Dict:
-        """Summarize all pages"""
-        page_summaries = []
-        
-        # Process each page
-        for i, page_text in enumerate(pages, 1):
-            summary = self.summarize_page(page_text, i, summary_type=summary_type)
-            page_summaries.append({
-                "page_number": i,
-                "summary": summary,
-                "original_length": len(page_text) if page_text else 0,
-                "summary_length": len(summary)
-            })
-            # Small delay to avoid rate limits
-            time.sleep(0.5)
-            
-        # Create overall summary
-        valid_summaries = [ps['summary'] for ps in page_summaries if "Error" not in ps['summary']]
-        combined_text = "\n\n".join(valid_summaries)
-        
-        if combined_text:
-            print("[PDF Summarizer] Generating Overall Summary via Groq...")
-            overall_summary = self._call_groq(combined_text, prompt_type="overall", target_length=summary_type)
+            print("[PDF Summarizer] WARNING: GEMINI_API_KEY not found in environment variables.")
         else:
-            overall_summary = "Could not generate overall summary."
+            genai.configure(api_key=self.api_key)
+            self.model = genai.GenerativeModel(model_name)
 
-        return {
-            "page_summaries": page_summaries,
-            "overall_summary": overall_summary,
-            "total_pages": len(pages),
-            "pages_summarized": len(page_summaries),
-            "summary_type": summary_type
-        }
+    def summarize_all_pages(self, pages: List[str], summary_type: str = "detailed", improve_grammar: bool = False) -> Dict:
+        """
+        Summarize ALL pages in a single API call using Gemini's large context window.
+        Returns a dictionary matching the expected structure.
+        """
+        if not self.api_key:
+            return {
+                "page_summaries": [],
+                "overall_summary": "Error: GEMINI_API_KEY not configured.",
+                "total_pages": len(pages),
+                "pages_summarized": 0,
+                "summary_type": summary_type
+            }
+
+        print(f"[PDF Summarizer] Preparing to summarize {len(pages)} pages using Gemini...")
+
+        # 1. Construct a single large prompt with all page content
+        full_text_content = ""
+        for i, page_text in enumerate(pages, 1):
+            full_text_content += f"\n--- START OF PAGE {i} ---\n{page_text}\n--- END OF PAGE {i} ---\n"
+
+        # 2. Define the prompt for structured JSON output
+        prompt = f"""
+        You are an expert document summarizer. 
+        I will provide the text content of a PDF document, separated by page markers.
+        
+        Your task is to:
+        1. Create a detailed overall summary of the ENTIRE document.
+        2. Create a brief summary for EACH individual page.
+        
+        Output format: JSON object with keys "overall_summary" (string) and "page_summaries" (list of strings, in page order).
+        
+        Summary requirements:
+        - Overall summary should be comprehensive, capturing all key points, arguments, and conclusions.
+        - Page summaries should be concise (2-3 sentences max).
+        - Maintain the original meaning and context.
+        - Do not use markdown formatting in the JSON JSON string values.
+        
+        Document Content:
+        {full_text_content}
+        """
+
+        try:
+            # 3. Call Gemini API
+            print("[PDF Summarizer] Sending request to Gemini (this may take a few seconds)...")
+            response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            
+            # 4. Parse Response
+            try:
+                result = json.loads(response.text)
+                overall_summary = result.get("overall_summary", "Summary generation failed to return overall summary.")
+                raw_page_summaries = result.get("page_summaries", [])
+            except json.JSONDecodeError:
+                # Fallback if valid JSON wasn't returned
+                print("[PDF Summarizer] Failed to parse JSON response. Falling back to raw text.")
+                overall_summary = response.text
+                raw_page_summaries = []
+
+            # 5. Format output for existing backend structure
+            formatted_page_summaries = []
+            
+            # Map raw summaries back to pages (handle mismatches gracefully)
+            for i, page_text in enumerate(pages, 1):
+                raw_summary = raw_page_summaries[i-1] if i <= len(raw_page_summaries) else "Summary not generated for this page."
+                
+                formatted_page_summaries.append({
+                    "page_number": i,
+                    "summary": raw_summary,
+                    "original_length": len(page_text) if page_text else 0,
+                    "summary_length": len(raw_summary)
+                })
+
+            print("[PDF Summarizer] Gemini processing complete!")
+            
+            return {
+                "page_summaries": formatted_page_summaries,
+                "overall_summary": overall_summary,
+                "total_pages": len(pages),
+                "pages_summarized": len(formatted_page_summaries),
+                "summary_type": summary_type
+            }
+
+        except Exception as e:
+            print(f"[PDF Summarizer] Error calling Gemini: {str(e)}")
+            return {
+                "page_summaries": [],
+                "overall_summary": f"Error during summarization: {str(e)}",
+                "total_pages": len(pages),
+                "pages_summarized": 0,
+                "summary_type": summary_type
+            }
