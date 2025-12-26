@@ -12,7 +12,7 @@ import time
 class DOCSummarizer:
     """Cloud-based DOC summarizer using Groq API"""
     
-    def __init__(self, model_name: str = "llama-3.3-70b-versatile"):
+    def __init__(self, model_name: str = "llama-3.1-8b-instant"):
         self.api_key = os.getenv("GROQ_API_KEY")
         self.api_url = os.getenv("GROQ_API_ENDPOINT", "https://api.groq.com/openai/v1/chat/completions")
         self.model_name = os.getenv("GROQ_MODEL_NAME", model_name)
