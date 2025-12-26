@@ -282,20 +282,20 @@ const Chatbot = () => {
     };
 
     return (
-        <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6 relative">
+        <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 relative">
             {/* Left Sidebar */}
             <Sidebar />
 
             {/* Main Content Area */}
-            <main className="flex-grow flex gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex gap-3 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
 
                 {/* Center Panel - Chat Interface */}
-                <div className="flex-grow glass-panel no-hover rounded-3xl border border-white/10 relative overflow-hidden flex flex-col shadow-2xl h-[calc(100vh-100px)]">
+                <div className="flex-grow glass-panel no-hover rounded-3xl border border-white/10 relative overflow-hidden flex flex-col shadow-2xl h-[calc(100vh-80px)] sm:h-[calc(100vh-100px)]">
 
                     {/* Header */}
-                    <div className="flex items-center justify-between p-6 pb-4 shrink-0 border-b border-white/5">
-                        <div className="flex items-center gap-4">
-                            <h1 className="text-3xl font-bold font-heading text-white">Chatbot</h1>
+                    <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 pb-3 sm:pb-4 shrink-0 border-b border-white/5">
+                        <div className="flex items-center gap-2 sm:gap-4">
+                            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-heading text-white">Chatbot</h1>
                             <button className="text-gray-400 hover:text-white transition-colors">
                                 <FaVolumeUp />
                             </button>
@@ -350,8 +350,8 @@ const Chatbot = () => {
                     </div>
 
                     {/* Chat Area - Edge to Edge Scrollbar */}
-                    <div className="flex-grow overflow-y-scroll custom-scrollbar flex flex-col px-6">
-                        <div className="mt-auto py-6 space-y-6">
+                    <div className="flex-grow overflow-y-scroll custom-scrollbar flex flex-col px-3 sm:px-4 md:px-6">
+                        <div className="mt-auto py-4 sm:py-6 space-y-4 sm:space-y-6">
                             {chatHistory.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                                     <p>Start a conversation...</p>
@@ -390,8 +390,8 @@ const Chatbot = () => {
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-6 pt-0 shrink-0">
-                        <div className="bg-black/60 backdrop-blur-sm p-4 rounded-2xl border border-white/5 shadow-inner flex items-center gap-4 relative">
+                    <div className="p-3 sm:p-4 md:p-6 pt-0 shrink-0">
+                        <div className="bg-black/60 backdrop-blur-sm p-3 sm:p-4 rounded-2xl border border-white/5 shadow-inner flex items-center gap-2 sm:gap-4 relative">
 
                             {/* Model Selector (Custom Dropdown) */}
                             <div className="relative">
@@ -448,7 +448,7 @@ const Chatbot = () => {
 
                 {/* History Sidebar Panel (Overlay) */}
                 {showHistory && (
-                    <div className="absolute right-4 top-24 bottom-4 w-80 glass-panel border border-white/10 rounded-3xl z-50 flex flex-col overflow-hidden animate-fade-in-up bg-[#0f110c]/95">
+                    <div className="fixed sm:absolute right-2 sm:right-4 top-20 sm:top-24 bottom-2 sm:bottom-4 w-[calc(100vw-1rem)] sm:w-80 max-w-sm glass-panel border border-white/10 rounded-3xl z-50 flex flex-col overflow-hidden animate-fade-in-up bg-[#0f110c]/95">
                         <div className="p-6 border-b border-white/10 flex justify-between items-center">
                             <h2 className="text-xl font-heading font-bold text-white">History</h2>
                             <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white"><FaChevronDown className="rotate-90" /></button>

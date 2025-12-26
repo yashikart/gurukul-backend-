@@ -143,7 +143,7 @@ const App = () => {
             <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
               <Navbar />
 
-              <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-4 mt-20">
+              <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/signin" element={<SignIn />} />
@@ -180,7 +180,7 @@ const App = () => {
               {/* Karma Notifications */}
               <KarmaNotification />
 
-              <footer className="text-center py-6 text-sm text-gray-500 relative z-10">
+              <footer className="text-center py-4 sm:py-6 text-xs sm:text-sm text-gray-500 relative z-10 px-4">
                 <p>© 2024 Gurukul. All rights reserved.</p>
               </footer>
             </div>

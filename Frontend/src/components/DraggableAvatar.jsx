@@ -49,22 +49,28 @@ const DraggableAvatar = () => {
         };
     }, []);
 
-    const handleMouseDown = (e) => {
+    const handleStart = (e) => {
         if (settings.pinMode) return; // Can't drag in pin mode
 
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
         setIsDragging(true);
-        setClickStart({ x: e.clientX, y: e.clientY });
+        setClickStart({ x: clientX, y: clientY });
         setDragStart({
-            x: e.clientX - dragPosition.x,
-            y: e.clientY - dragPosition.y
+            x: clientX - dragPosition.x,
+            y: clientY - dragPosition.y
         });
         e.preventDefault();
     };
 
-    const handleMouseMove = (e) => {
+    const handleMove = (e) => {
         if (isDragging && !settings.pinMode) {
-            const newX = e.clientX - dragStart.x;
-            const newY = e.clientY - dragStart.y;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const newX = clientX - dragStart.x;
+            const newY = clientY - dragStart.y;
 
             // Keep within viewport bounds
             const avatarSize = 128 * settings.scale;
@@ -78,17 +84,20 @@ const DraggableAvatar = () => {
         }
     };
 
-    const handleMouseUp = (e) => {
+    const handleEnd = (e) => {
         if (isDragging) {
+            const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
             setIsDragging(false);
 
             // Save drag position
             localStorage.setItem('avatarDragPosition', JSON.stringify(dragPosition));
 
-            // Check if it was a click (< 5px movement)
+            // Check if it was a click/tap (< 5px movement)
             const distance = Math.sqrt(
-                Math.pow(e.clientX - clickStart.x, 2) +
-                Math.pow(e.clientY - clickStart.y, 2)
+                Math.pow(clientX - clickStart.x, 2) +
+                Math.pow(clientY - clickStart.y, 2)
             );
 
             if (distance < 5) {
@@ -99,11 +108,15 @@ const DraggableAvatar = () => {
 
     useEffect(() => {
         if (isDragging) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleEnd);
+            window.addEventListener('touchmove', handleMove, { passive: false });
+            window.addEventListener('touchend', handleEnd);
             return () => {
-                window.removeEventListener('mousemove', handleMouseMove);
-                window.removeEventListener('mouseup', handleMouseUp);
+                window.removeEventListener('mousemove', handleMove);
+                window.removeEventListener('mouseup', handleEnd);
+                window.removeEventListener('touchmove', handleMove);
+                window.removeEventListener('touchend', handleEnd);
             };
         }
     }, [isDragging]);
@@ -123,7 +136,8 @@ const DraggableAvatar = () => {
     return (
         <>
             <div
-                onMouseDown={handleMouseDown}
+                onMouseDown={handleStart}
+                onTouchStart={handleStart}
                 style={{
                     position: 'fixed',
                     left: 0,
@@ -133,9 +147,10 @@ const DraggableAvatar = () => {
                     zIndex: 9999,
                     transformOrigin: 'center',
                     transition: isDragging ? 'none' : 'transform 0.3s ease',
-                    userSelect: 'none'
+                    userSelect: 'none',
+                    touchAction: 'none'
                 }}
-                className="w-32 h-32 rounded-full shadow-2xl overflow-hidden hover:scale-110 transition-transform"
+                className="w-24 h-24 sm:w-32 sm:h-32 rounded-full shadow-2xl overflow-hidden hover:scale-110 transition-transform"
             >
                 <img
                     src={image}

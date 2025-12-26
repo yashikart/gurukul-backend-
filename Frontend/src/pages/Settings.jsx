@@ -130,13 +130,13 @@ const Settings = () => {
     ];
 
     return (
-        <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6">
+        <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex flex-col lg:flex-row gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col lg:flex-row gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 {/* Navigation Panel */}
-                <div className="w-full lg:w-64 glass-panel no-hover p-6 rounded-3xl border border-white/10 h-fit">
-                    <h1 className="text-2xl font-bold text-white mb-8 px-2">Settings</h1>
+                <div className="w-full lg:w-64 glass-panel no-hover p-4 sm:p-6 rounded-3xl border border-white/10 h-fit">
+                    <h1 className="text-xl sm:text-2xl font-bold text-white mb-6 sm:mb-8 px-2">Settings</h1>
                     <div className="space-y-2">
                         {navItems.map((item) => (
                             <button
@@ -155,7 +155,7 @@ const Settings = () => {
                 </div>
 
                 {/* Content Panel */}
-                <div className="flex-grow glass-panel no-hover p-6 md:p-8 rounded-3xl border border-white/10 relative overflow-hidden h-auto lg:h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
+                <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-8 rounded-3xl border border-white/10 relative overflow-hidden h-auto lg:h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
                     {/* Decorative Elements */}
                     <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
 

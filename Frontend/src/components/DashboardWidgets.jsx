@@ -22,19 +22,19 @@ export const StudyTimeWidget = ({ targetGoalSeconds, timeLeft, isActive, totalSt
     }
 
     return (
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 relative overflow-hidden group">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
-                    <FaClock />
+        <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden group">
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/20 text-blue-400">
+                    <FaClock className="text-sm sm:text-base" />
                 </div>
-                <h3 className="font-semibold text-gray-200">Today's Study Time</h3>
+                <h3 className="text-sm sm:text-base font-semibold text-gray-200">Today's Study Time</h3>
             </div>
 
             <div className="relative z-10">
-                <div className="text-4xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white mb-2 tabular-nums">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white mb-2 tabular-nums">
                     {formatTime(totalStudyTime)}
                 </div>
-                <p className="text-xs text-blue-300/60 mb-4">{percentage}% of daily goal ({goalDisplay})</p>
+                <p className="text-xs text-blue-300/60 mb-3 sm:mb-4">{percentage}% of daily goal ({goalDisplay})</p>
 
                 {/* Progress Bar (Animation) */}
                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -66,21 +66,21 @@ export const KarmaWidget = () => {
     const level = getKarmaLevel(karma);
 
     return (
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 relative overflow-hidden group">
+        <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden group">
             <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
-                        <FaStar />
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-1.5 sm:p-2 rounded-lg bg-purple-500/20 text-purple-400">
+                        <FaStar className="text-sm sm:text-base" />
                     </div>
-                    <h3 className="font-semibold text-gray-200">Karma</h3>
+                    <h3 className="text-sm sm:text-base font-semibold text-gray-200">Karma</h3>
                 </div>
-                <span className={`text-xs font-bold ${level.color} ${level.bg} px-2 py-1 rounded`}>{level.label}</span>
+                <span className={`text-[10px] sm:text-xs font-bold ${level.color} ${level.bg} px-1.5 sm:px-2 py-0.5 sm:py-1 rounded`}>{level.label}</span>
             </div>
 
-            <div className="relative z-10 grid grid-cols-2 gap-4 mt-4">
+            <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
                 <div>
-                    <div className="text-4xl font-bold font-heading text-purple-200">{karma}</div>
-                    <p className="text-xs text-purple-300/60 mt-1">Total Points</p>
+                    <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-purple-200">{karma}</div>
+                    <p className="text-[10px] sm:text-xs text-purple-300/60 mt-1">Total Points</p>
                 </div>
                 <div className="text-xs space-y-2 text-gray-400 border-l border-white/10 pl-4">
                     <div className="flex justify-between">
@@ -101,15 +101,15 @@ export const KarmaWidget = () => {
 };
 
 export const AchievementsWidget = () => (
-    <div className="glass-panel p-6 rounded-2xl border border-white/10 relative overflow-hidden row-span-2">
-        <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 rounded-lg bg-yellow-500/20 text-yellow-400">
-                <FaBolt />
+    <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden row-span-2">
+        <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-yellow-500/20 text-yellow-400">
+                <FaBolt className="text-sm sm:text-base" />
             </div>
-            <h3 className="font-semibold text-gray-200">Achievements</h3>
+            <h3 className="text-sm sm:text-base font-semibold text-gray-200">Achievements</h3>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
             {[
                 { icon: FaTrophy, label: "First Day Completed", color: "text-yellow-400" },
                 { icon: FaChartLine, label: "Week Warrior", color: "text-orange-400" },
@@ -184,23 +184,23 @@ export const GoalWidget = ({ timeLeft, isActive, onStart, onStop }) => {
     };
 
     return (
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 relative overflow-hidden col-span-2 flex flex-col justify-center items-center text-center transition-all duration-300">
-            <div className="mb-4">
-                <FaTrophy className={`text-3xl text-accent mb-2 mx-auto transition-all ${isActive ? 'animate-pulse scale-110' : 'opacity-80'}`} />
-                <h3 className="font-semibold text-gray-200">Daily Goal</h3>
+        <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden col-span-2 flex flex-col justify-center items-center text-center transition-all duration-300">
+            <div className="mb-3 sm:mb-4">
+                <FaTrophy className={`text-2xl sm:text-3xl text-accent mb-2 mx-auto transition-all ${isActive ? 'animate-pulse scale-110' : 'opacity-80'}`} />
+                <h3 className="text-sm sm:text-base font-semibold text-gray-200">Daily Goal</h3>
             </div>
 
             {isSetting ? (
                 <div className="flex flex-col items-center gap-4 animate-fade-in-up w-full">
 
                     {/* Time Inputs */}
-                    <div className="flex items-center gap-2 text-3xl font-bold font-heading text-white">
+                    <div className="flex items-center gap-1 sm:gap-2 text-xl sm:text-2xl md:text-3xl font-bold font-heading text-white">
                         <input
                             type="text"
                             value={hrs}
                             onChange={(e) => handleInput(e.target.value, setHrs)}
                             placeholder="00"
-                            className="bg-transparent border-b-2 border-white/20 w-16 text-center focus:outline-none focus:border-accent transition-colors placeholder-white/30"
+                            className="bg-transparent border-b-2 border-white/20 w-12 sm:w-14 md:w-16 text-center focus:outline-none focus:border-accent transition-colors placeholder-white/30 text-lg sm:text-xl md:text-2xl"
                         />
                         <span className="text-gray-400 -mt-2">:</span>
                         <input
@@ -208,7 +208,7 @@ export const GoalWidget = ({ timeLeft, isActive, onStart, onStop }) => {
                             value={mins}
                             onChange={(e) => handleInput(e.target.value, setMins)}
                             placeholder="00"
-                            className="bg-transparent border-b-2 border-white/20 w-16 text-center focus:outline-none focus:border-accent transition-colors placeholder-white/30"
+                            className="bg-transparent border-b-2 border-white/20 w-12 sm:w-14 md:w-16 text-center focus:outline-none focus:border-accent transition-colors placeholder-white/30 text-lg sm:text-xl md:text-2xl"
                         />
                         <span className="text-gray-400 -mt-2">:</span>
                         <input
@@ -216,10 +216,10 @@ export const GoalWidget = ({ timeLeft, isActive, onStart, onStop }) => {
                             value={secs}
                             onChange={(e) => handleInput(e.target.value, setSecs)}
                             placeholder="00"
-                            className="bg-transparent border-b-2 border-white/20 w-16 text-center focus:outline-none focus:border-accent transition-colors placeholder-white/30"
+                            className="bg-transparent border-b-2 border-white/20 w-12 sm:w-14 md:w-16 text-center focus:outline-none focus:border-accent transition-colors placeholder-white/30 text-lg sm:text-xl md:text-2xl"
                         />
                     </div>
-                    <div className="flex justify-between w-full max-w-[200px] text-[10px] uppercase tracking-wider text-gray-500 font-bold px-2">
+                    <div className="flex justify-between w-full max-w-[200px] text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-500 font-bold px-2">
                         <span>Hrs</span>
                         <span>Mins</span>
                         <span>Secs</span>
@@ -242,14 +242,14 @@ export const GoalWidget = ({ timeLeft, isActive, onStart, onStop }) => {
                 </div>
             ) : (
                 <>
-                    <div className="text-5xl font-bold font-heading text-white mb-2 tabular-nums tracking-tight">
+                    <div className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading text-white mb-2 tabular-nums tracking-tight">
                         {formatTime(timeLeft)}
                     </div>
 
                     {isActive ? (
                         <button
                             onClick={handleStopClick}
-                            className="mt-4 px-8 py-3 bg-red-500/80 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg hover:shadow-red-500/20 transition-all transform hover:-translate-y-1"
+                            className="mt-3 sm:mt-4 px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base bg-red-500/80 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg hover:shadow-red-500/20 transition-all transform hover:-translate-y-1"
                         >
                             Stop
                         </button>
@@ -261,7 +261,7 @@ export const GoalWidget = ({ timeLeft, isActive, onStart, onStop }) => {
                                 setMins('00');
                                 setSecs('00');
                             }}
-                            className="mt-4 px-8 py-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform hover:-translate-y-1"
+                            className="mt-3 sm:mt-4 px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl shadow-lg hover:shadow-orange-500/20 transition-all transform hover:-translate-y-1"
                         >
                             Set New Goal
                         </button>

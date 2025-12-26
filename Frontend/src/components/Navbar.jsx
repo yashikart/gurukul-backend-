@@ -21,9 +21,9 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="absolute top-0 left-0 w-full z-50 py-6 transition-all duration-300">
-      <div className="container mx-auto px-6">
-        <div className="glass-panel px-8 py-4 rounded-full flex items-center justify-between bg-black/60 backdrop-blur-xl border-white/5">
+    <nav className="absolute top-0 left-0 w-full z-50 py-3 sm:py-6 transition-all duration-300">
+      <div className="container mx-auto px-3 sm:px-6">
+        <div className="glass-panel px-4 sm:px-8 py-3 sm:py-4 rounded-full flex items-center justify-between bg-black/60 backdrop-blur-xl border-white/5">
 
           {/* Brand & Toggle */}
           <div className="flex items-center gap-4">
@@ -37,33 +37,33 @@ const Navbar = () => {
               </button>
             )}
 
-            <Link to="/" className="flex items-center gap-3 cursor-pointer group">
-              <img src={logo} alt="Gurukul Logo" className="h-8 w-8 object-contain" />
-              <span className="text-2xl font-bold font-heading tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 group-hover:to-white transition-all">
+            <Link to="/" className="flex items-center gap-2 sm:gap-3 cursor-pointer group">
+              <img src={logo} alt="Gurukul Logo" className="h-6 w-6 sm:h-8 sm:w-8 object-contain" />
+              <span className="text-lg sm:text-2xl font-bold font-heading tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 group-hover:to-white transition-all">
                 Gurukul
               </span>
             </Link>
           </div>
 
           {/* Links & Actions */}
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-2 sm:gap-4 lg:gap-8">
             {/* Sign In Section */}
             <div className="hidden lg:flex items-center">
               {user ? (
-                <div className="flex items-center gap-4">
-                  <div className="text-sm text-gray-300 flex items-center gap-2">
-                    <FaUserCircle className="text-lg" />
-                    <span>{user.email.split('@')[0]}</span>
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <div className="text-xs sm:text-sm text-gray-300 flex items-center gap-1 sm:gap-2">
+                    <FaUserCircle className="text-base sm:text-lg" />
+                    <span className="hidden xl:inline">{user.email.split('@')[0]}</span>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="text-xs font-bold px-4 py-2 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
+                    className="text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all border border-red-500/20"
                   >
                     Log Out
                   </button>
                 </div>
               ) : (
-                <Link to="/signin" className="text-xs font-bold px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10 shadow-lg">
+                <Link to="/signin" className="text-xs font-bold px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10 shadow-lg">
                   Sign In
                 </Link>
               )}

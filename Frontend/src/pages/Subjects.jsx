@@ -305,33 +305,33 @@ const Subjects = () => {
     };
 
     return (
-        <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6 pb-12">
+        <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-8 sm:pb-12">
             {/* Left Sidebar */}
             <Sidebar />
 
             {/* Main Content Area */}
-            <main className="flex-grow flex flex-col gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
 
                 {/* Center Panel - Subject Explorer Form */}
                 {!loading && !result && (
-                    <div className="flex-grow glass-panel no-hover p-6 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center shadow-2xl">
+                    <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center shadow-2xl">
 
                         {/* Header */}
-                        <div className="mb-8">
-                            <h1 className="text-4xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-orange-100 to-orange-50 mb-4 drop-shadow-sm">
+                        <div className="mb-6 sm:mb-8">
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-orange-100 to-orange-50 mb-3 sm:mb-4 drop-shadow-sm">
                                 Subject Explorer
                             </h1>
-                            <p className="text-gray-300 max-w-lg mx-auto font-light">
+                            <p className="text-gray-300 max-w-lg mx-auto font-light text-sm sm:text-base px-4">
                                 Select a subject and enter a topic to begin your learning journey
                             </p>
                         </div>
 
                         {/* Form Container */}
-                        <div className="w-full max-w-xl bg-black/60 backdrop-blur-sm p-6 rounded-2xl border border-white/5 shadow-inner">
+                        <div className="w-full max-w-xl bg-black/60 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-white/5 shadow-inner">
 
                             {/* Subject Input */}
-                            <div className="mb-4 text-left">
-                                <label className="block text-gray-300 text-sm font-semibold mb-2 ml-1">Subject:</label>
+                            <div className="mb-3 sm:mb-4 text-left">
+                                <label className="block text-gray-300 text-xs sm:text-sm font-semibold mb-2 ml-1">Subject:</label>
                                 <div className="relative group">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                         <FaBook className="text-gray-500 group-focus-within:text-accent transition-colors" />
@@ -347,8 +347,8 @@ const Subjects = () => {
                             </div>
 
                             {/* Topic Input */}
-                            <div className="mb-6 text-left">
-                                <label className="block text-gray-300 text-sm font-semibold mb-2 ml-1">Topic:</label>
+                            <div className="mb-4 sm:mb-6 text-left">
+                                <label className="block text-gray-300 text-xs sm:text-sm font-semibold mb-2 ml-1">Topic:</label>
                                 <div className="relative group">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                         <FaLightbulb className="text-gray-500 group-focus-within:text-accent transition-colors" />
@@ -366,7 +366,7 @@ const Subjects = () => {
                             {/* Action Button */}
                             <button
                                 onClick={handleGenerate}
-                                className="w-full py-4 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-lg rounded-xl shadow-lg transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                                className="w-full py-3 sm:py-4 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-base sm:text-lg rounded-xl shadow-lg transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2"
                             >
                                 <FaBookOpen />
                                 Generate Lesson
@@ -377,10 +377,10 @@ const Subjects = () => {
 
                 {/* Loading State */}
                 {loading && (
-                    <div className="flex-grow flex flex-col items-center justify-center p-10">
-                        <div className="animate-spin h-16 w-16 border-4 border-accent border-t-transparent rounded-full mb-6 shadow-lg shadow-accent/20"></div>
-                        <h2 className="text-2xl font-bold text-white mb-2 animate-pulse">Generating your lesson...</h2>
-                        <p className="text-gray-400">Consulting AI Knowledge Base • Curating Videos • Structuring Notes</p>
+                    <div className="flex-grow flex flex-col items-center justify-center p-6 sm:p-10">
+                        <div className="animate-spin h-12 w-12 sm:h-16 sm:w-16 border-4 border-accent border-t-transparent rounded-full mb-4 sm:mb-6 shadow-lg shadow-accent/20"></div>
+                        <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 animate-pulse text-center px-4">Generating your lesson...</h2>
+                        <p className="text-gray-400 text-sm sm:text-base text-center px-4">Consulting AI Knowledge Base • Curating Videos • Structuring Notes</p>
                     </div>
                 )}
 
@@ -389,10 +389,10 @@ const Subjects = () => {
                     <div className="animate-fade-in-up">
 
                         {/* Notes & Chat Container */}
-                        <div className="glass-panel p-4 md:p-8 rounded-3xl border border-white/10 mb-6 bg-black/40">
-                            <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
-                                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-300 to-amber-200 flex items-center gap-3">
-                                    <FaBookOpen className="text-orange-400" />
+                        <div className="glass-panel p-3 sm:p-4 md:p-8 rounded-3xl border border-white/10 mb-4 sm:mb-6 bg-black/40">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-6 sm:mb-8 border-b border-white/10 pb-4 sm:pb-6">
+                                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-300 to-amber-200 flex items-center gap-2 sm:gap-3">
+                                    <FaBookOpen className="text-orange-400 text-lg sm:text-xl" />
                                     {result.topic}
                                 </h2>
                                 <button
@@ -405,7 +405,7 @@ const Subjects = () => {
                             </div>
 
                             {/* Notes Content */}
-                            <div className="prose prose-invert max-w-none text-gray-200 leading-relaxed mb-8 p-8 bg-black/20 rounded-2xl border border-white/5 shadow-inner">
+                            <div className="prose prose-invert max-w-none text-gray-200 leading-relaxed mb-6 sm:mb-8 p-4 sm:p-6 md:p-8 bg-black/20 rounded-2xl border border-white/5 shadow-inner text-sm sm:text-base">
                                 {renderContent(result.notes)}
                             </div>
 
@@ -413,15 +413,15 @@ const Subjects = () => {
                             <div className="h-px bg-white/10 my-8"></div>
 
                             {/* Contextual Chat Interface */}
-                            <div className="bg-black/40 rounded-xl p-6 border border-white/5">
-                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <div className="bg-black/40 rounded-xl p-4 sm:p-6 border border-white/5">
+                                <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                                     Ask doubts about this topic
                                 </h3>
 
                                 {/* Chat History */}
                                 {chatHistory.length > 0 && (
-                                    <div className="mb-4 max-h-60 overflow-y-auto space-y-3 custom-scrollbar pr-2">
+                                    <div className="mb-3 sm:mb-4 max-h-48 sm:max-h-60 overflow-y-auto space-y-2 sm:space-y-3 custom-scrollbar pr-2">
                                         {chatHistory.map((msg, idx) => (
                                             <div key={idx} className={`p-4 rounded-xl text-base ${msg.role === 'user' ? 'bg-orange-900/30 ml-auto border border-orange-500/20 max-w-[80%]' : 'bg-white/5 border border-white/10 max-w-[90%]'}`}>
                                                 <span className={`font-bold block text-xs mb-1 ${msg.role === 'user' ? 'text-orange-400' : 'text-purple-400'}`}>
@@ -441,12 +441,12 @@ const Subjects = () => {
                                         onChange={(e) => setChatInput(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && handleChat()}
                                         placeholder="Ask a follow-up question..."
-                                        className="flex-grow px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50"
+                                        className="flex-grow px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/50"
                                     />
                                     <button
                                         onClick={handleChat}
                                         disabled={chatLoading}
-                                        className="px-6 py-3 bg-accent text-black font-bold rounded-xl hover:bg-accent/90 transition-colors disabled:opacity-50"
+                                        className="px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base bg-accent text-black font-bold rounded-xl hover:bg-accent/90 transition-colors disabled:opacity-50"
                                     >
                                         {chatLoading ? '...' : 'Send'}
                                     </button>
@@ -455,13 +455,13 @@ const Subjects = () => {
                         </div>
 
                         {/* YouTube Recommendations */}
-                        <div className="glass-panel p-8 rounded-3xl border border-white/10 bg-black/40">
-                            <h2 className="text-2xl font-bold text-red-500 mb-6 flex items-center gap-3">
+                        <div className="glass-panel p-4 sm:p-6 md:p-8 rounded-3xl border border-white/10 bg-black/40">
+                            <h2 className="text-xl sm:text-2xl font-bold text-red-500 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
                                 {/* Using text for icon if FaYoutube not imported, but assuming it works or fallback */}
                                 Video Recommendations
                             </h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 {result.youtube_recommendations.map((video, idx) => (
                                     <a
                                         key={idx}

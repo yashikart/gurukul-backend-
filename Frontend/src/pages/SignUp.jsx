@@ -28,17 +28,17 @@ const SignUp = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-100px)] px-4">
+        <div className="flex items-center justify-center min-h-[calc(100vh-100px)] px-3 sm:px-4 py-4">
             {/* Registration Card */}
-            <div className="w-full max-w-md glass-panel p-6 md:p-10 animate-fade-in-up border border-white/10 shadow-2xl relative overflow-hidden">
+            <div className="w-full max-w-md glass-panel p-5 sm:p-6 md:p-10 animate-fade-in-up border border-white/10 shadow-2xl relative overflow-hidden">
 
                 {/* Subtle decorative glow */}
                 <div className="absolute -top-10 -left-10 w-32 h-32 bg-accent/20 rounded-full blur-3xl"></div>
                 <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-orange-900/40 rounded-full blur-3xl"></div>
 
                 <div className="relative z-10">
-                    <h2 className="text-4xl font-heading font-bold mb-2 text-center text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Join Gurukul</h2>
-                    <p className="text-center text-gray-400 text-sm mb-8 tracking-wide">Begin your path to wisdom and discovery.</p>
+                    <h2 className="text-3xl sm:text-4xl font-heading font-bold mb-2 text-center text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Join Gurukul</h2>
+                    <p className="text-center text-gray-400 text-xs sm:text-sm mb-6 sm:mb-8 tracking-wide">Begin your path to wisdom and discovery.</p>
 
                     {error && <div className="bg-red-500/20 text-red-300 p-3 rounded mb-4 text-sm border border-red-500/30 text-center">{error}</div>}
                     {message && <div className="bg-green-500/20 text-green-300 p-3 rounded mb-4 text-sm border border-green-500/30 text-center">{message}</div>}

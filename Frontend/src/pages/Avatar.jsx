@@ -134,10 +134,10 @@ const Avatar = () => {
     };
 
     return (
-        <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6">
+        <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex flex-col lg:flex-row gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col lg:flex-row gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
 
                 {/* Main Content: Avatar Grid */}
                 <div className="flex-grow glass-panel no-hover p-4 md:p-8 rounded-3xl border border-white/10 flex flex-col shadow-2xl relative overflow-hidden">
@@ -145,10 +145,10 @@ const Avatar = () => {
                     <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
 
                     {/* Header */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative z-10 gap-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 sm:mb-8 relative z-10 gap-3 sm:gap-4">
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Avatar Management</h1>
-                            <p className="text-gray-300 text-sm">Upload and customize your draggable avatar</p>
+                            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">Avatar Management</h1>
+                            <p className="text-gray-300 text-xs sm:text-sm">Upload and customize your draggable avatar</p>
                         </div>
                         <div className="flex gap-3 w-full md:w-auto">
                             <input
@@ -212,8 +212,8 @@ const Avatar = () => {
                 </div>
 
                 {/* Right Panel: Settings */}
-                <div className="w-full lg:w-80 glass-panel no-hover p-6 rounded-3xl border border-white/10 flex flex-col shadow-2xl h-fit">
-                    <h2 className="text-xl font-bold text-white mb-6">Avatar Settings</h2>
+                <div className="w-full lg:w-80 glass-panel no-hover p-4 sm:p-6 rounded-3xl border border-white/10 flex flex-col shadow-2xl h-fit">
+                    <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6">Avatar Settings</h2>
 
                     {/* Pin Mode Toggle */}
                     <div className="flex justify-between items-center mb-8 p-3 rounded-xl bg-black/60 border border-white/10">

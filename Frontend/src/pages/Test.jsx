@@ -110,7 +110,7 @@ const Test = () => {
     // --- Renderers ---
 
     const renderSetup = () => (
-        <div className="w-full bg-gradient-to-br from-orange-900/10 to-black/20 border border-orange-500/20 rounded-2xl p-8 relative group animate-fade-in-up">
+        <div className="w-full bg-gradient-to-br from-orange-900/10 to-black/20 border border-orange-500/20 rounded-2xl p-4 sm:p-6 md:p-8 relative group animate-fade-in-up">
             <div className="absolute inset-0 overflow-hidden rounded-2xl">
                 <div className="absolute -top-20 -right-20 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl group-hover:bg-orange-500/20 transition-all duration-700"></div>
             </div>
@@ -124,7 +124,7 @@ const Test = () => {
                     Configure your AI-powered assessment.
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                     {/* Subject */}
                     <div className="relative z-50">
                         <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1 mb-2 block">Subject</label>
@@ -220,12 +220,12 @@ const Test = () => {
                 </div>
 
                 {/* Question Card */}
-                <div className="flex-grow glass-panel p-8 rounded-3xl border border-white/10 flex flex-col justify-center">
-                    <h3 className="text-2xl font-bold text-white mb-8 leading-snug">
+                <div className="flex-grow glass-panel p-4 sm:p-6 md:p-8 rounded-3xl border border-white/10 flex flex-col justify-center">
+                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-6 sm:mb-8 leading-snug">
                         {currentQ.question}
                     </h3>
 
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4">
                         {Object.entries(currentQ.options).map(([key, text]) => (
                             <div
                                 key={key}
@@ -277,26 +277,26 @@ const Test = () => {
         return (
             <div className="w-full flex-grow flex flex-col gap-8 animate-fade-in-up">
                 {/* Score Card */}
-                <div className="w-full bg-gradient-to-r from-gray-900 to-black border border-white/10 rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden">
+                <div className="w-full bg-gradient-to-r from-gray-900 to-black border border-white/10 rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-l from-orange-500/10 to-transparent"></div>
 
                     <div className="z-10">
-                        <h2 className="text-3xl font-bold text-white mb-2">Quiz Complete!</h2>
-                        <p className="text-gray-400">You scored {quizResult.correct_answers} out of {quizResult.total_questions}</p>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Quiz Complete!</h2>
+                        <p className="text-sm sm:text-base text-gray-400">You scored {quizResult.correct_answers} out of {quizResult.total_questions}</p>
                     </div>
 
-                    <div className="flex items-center gap-6 z-10 mt-6 md:mt-0">
+                    <div className="flex items-center gap-4 sm:gap-6 z-10 mt-6 md:mt-0">
                         <div className="text-center">
-                            <div className="text-5xl font-bold text-orange-500">{quizResult.score_percentage}%</div>
+                            <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-orange-500">{quizResult.score_percentage}%</div>
                             <div className="text-xs text-orange-400 uppercase tracking-wide mt-1">Score</div>
                         </div>
                         <div className="h-12 w-px bg-white/10"></div>
                         <div className="text-center">
-                            <div className="text-2xl font-bold text-green-400">{quizResult.correct_answers}</div>
+                            <div className="text-xl sm:text-2xl font-bold text-green-400">{quizResult.correct_answers}</div>
                             <div className="text-xs text-gray-500 uppercase tracking-wide">Correct</div>
                         </div>
                         <div className="text-center">
-                            <div className="text-2xl font-bold text-red-400">{quizResult.wrong_answers}</div>
+                            <div className="text-xl sm:text-2xl font-bold text-red-400">{quizResult.wrong_answers}</div>
                             <div className="text-xs text-gray-500 uppercase tracking-wide">Wrong</div>
                         </div>
                     </div>
@@ -347,17 +347,17 @@ const Test = () => {
     };
 
     return (
-        <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6">
+        <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                <div className="flex-grow glass-panel no-hover p-10 rounded-3xl border border-white/10 relative flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-100px)]">
+            <main className="flex-grow flex gap-3 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/10 relative flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-100px)]">
 
                     {/* Header only in setup mode or sticky mini header? Let's just keep the title simple */}
-                    <div className="mb-8 w-full flex justify-between items-center">
+                    <div className="mb-4 sm:mb-8 w-full flex justify-between items-center">
                         <div>
-                            <h1 className="text-3xl font-bold font-heading text-white">Test Center</h1>
-                            {mode === 'taking' && <p className="text-gray-500 text-sm">Focus Mode Active</p>}
+                            <h1 className="text-2xl sm:text-3xl font-bold font-heading text-white">Test Center</h1>
+                            {mode === 'taking' && <p className="text-gray-500 text-xs sm:text-sm">Focus Mode Active</p>}
                         </div>
                         {mode !== 'setup' && (
                             <button onClick={() => { if (confirm("Quit quiz?")) setMode('setup'); }} className="text-xs text-red-400 hover:text-red-300">Quit Session</button>

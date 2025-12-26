@@ -287,32 +287,32 @@ const Summarizer = () => {
     };
 
     return (
-        <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6 pb-12">
+        <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-8 sm:pb-12">
             {/* Left Sidebar */}
             <Sidebar />
 
             {/* Main Content Area */}
-            <main className="flex-grow flex flex-col gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
 
                 {/* Center Panel - Smart Document Analysis */}
                 {!result && (
-                    <div className="flex-grow glass-panel no-hover p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center shadow-2xl min-h-[500px]">
+                    <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center shadow-2xl min-h-[400px] sm:min-h-[500px]">
 
                         {/* Header */}
-                        <div className="mb-8">
-                            <h1 className="text-5xl font-bold font-heading text-white mb-4 drop-shadow-sm">
+                        <div className="mb-6 sm:mb-8">
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading text-white mb-3 sm:mb-4 drop-shadow-sm px-4">
                                 Smart Document Analysis
                             </h1>
-                            <p className="text-lg text-gray-300 max-w-xl mx-auto font-light">
+                            <p className="text-base sm:text-lg text-gray-300 max-w-xl mx-auto font-light px-4">
                                 Upload your documents for instant AI-powered summaries
                             </p>
-                            <p className="text-xs text-gray-500 mt-2">
+                            <p className="text-xs text-gray-500 mt-2 px-4">
                                 Supported formats: PDF, DOCX • Max size: 10MB
                             </p>
                         </div>
 
                         {/* Controls Container */}
-                        <div className="flex flex-wrap items-center justify-center gap-6 mb-8 w-full max-w-2xl">
+                        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-6 sm:mb-8 w-full max-w-2xl px-4">
 
                             {/* AI Model Selector */}
                             <div className="flex flex-col items-start gap-2">
@@ -357,10 +357,10 @@ const Summarizer = () => {
                         </div>
 
                         {/* Drop Zone / File Display */}
-                        <div className="w-full max-w-lg mb-8">
+                        <div className="w-full max-w-lg mb-6 sm:mb-8 px-4">
                             <label
                                 htmlFor="file-upload"
-                                className={`flex flex-col items-center justify-center w-full h-56 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 group ${file ? 'border-accent/50 bg-accent/5' : 'border-white/20 bg-white/5 hover:bg-white/10'}`}
+                                className={`flex flex-col items-center justify-center w-full h-48 sm:h-56 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 group ${file ? 'border-accent/50 bg-accent/5' : 'border-white/20 bg-white/5 hover:bg-white/10'}`}
                             >
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     {file ? (
@@ -436,9 +436,9 @@ const Summarizer = () => {
 
                 {/* Result Section with Chat */}
                 {result && (
-                    <div className="flex flex-col lg:flex-row gap-6 animate-fade-in-up h-auto lg:h-[calc(100vh-140px)]">
+                    <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 animate-fade-in-up h-auto lg:h-[calc(100vh-140px)]">
                         {/* Summary Column (Left - Scrollable) */}
-                        <div className="lg:w-3/5 glass-panel p-8 rounded-3xl border border-white/10 bg-black/40 flex flex-col h-full overflow-hidden">
+                        <div className="lg:w-3/5 glass-panel p-4 sm:p-6 md:p-8 rounded-3xl border border-white/10 bg-black/40 flex flex-col h-full overflow-hidden">
                             <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4 shrink-0">
                                 <div className="flex items-center gap-4">
                                     <h2 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -466,9 +466,9 @@ const Summarizer = () => {
                         </div>
 
                         {/* Chat Column (Right) */}
-                        <div className="lg:w-2/5 glass-panel p-6 rounded-3xl border border-white/10 bg-black/40 flex flex-col h-full">
-                            <div className="mb-4 border-b border-white/10 pb-2 shrink-0">
-                                <h3 className="text-xl font-bold text-white">Chat with Document</h3>
+                        <div className="lg:w-2/5 glass-panel p-4 sm:p-6 rounded-3xl border border-white/10 bg-black/40 flex flex-col h-full">
+                            <div className="mb-3 sm:mb-4 border-b border-white/10 pb-2 shrink-0">
+                                <h3 className="text-lg sm:text-xl font-bold text-white">Chat with Document</h3>
                                 <p className="text-xs text-gray-400">Ask questions about the summary</p>
                             </div>
 

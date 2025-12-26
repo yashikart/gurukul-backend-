@@ -14,8 +14,9 @@ const AvatarChatbot = ({ position, onClose }) => {
 
     // Smart positioning near avatar
     const getChatPosition = () => {
-        const chatWidth = 350;
-        const chatHeight = 500;
+        const isMobile = window.innerWidth < 640;
+        const chatWidth = isMobile ? window.innerWidth - 32 : 350;
+        const chatHeight = isMobile ? 400 : 500;
         const padding = 20;
 
         // Try to position to the left of avatar
@@ -95,7 +96,7 @@ const AvatarChatbot = ({ position, onClose }) => {
     return (
         <div
             style={getChatPosition()}
-            className="fixed w-[350px] h-[500px] bg-black/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-orange-500/30 flex flex-col z-[10000] animate-fade-in-up"
+            className="fixed w-[calc(100vw-2rem)] sm:w-[350px] h-[400px] sm:h-[500px] max-h-[80vh] bg-black/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-orange-500/30 flex flex-col z-[10000] animate-fade-in-up"
         >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-orange-600/20 to-amber-600/20">

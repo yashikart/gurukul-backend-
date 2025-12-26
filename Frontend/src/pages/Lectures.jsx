@@ -20,22 +20,22 @@ const Lectures = () => {
     };
 
     return (
-        <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6">
+        <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                <div className="flex-grow glass-panel no-hover p-6 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-100px)]">
+            <main className="flex-grow flex gap-3 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-100px)]">
 
                     {/* Header */}
-                    <div className="mb-10 w-full">
-                        <h1 className="text-4xl font-bold font-heading text-white mb-2">Video Lectures</h1>
-                        <p className="text-lg text-gray-400 font-light">
+                    <div className="mb-6 sm:mb-10 w-full">
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white mb-2">Video Lectures</h1>
+                        <p className="text-base sm:text-lg text-gray-400 font-light">
                             Explore comprehensive video courses on popular subjects.
                         </p>
                     </div>
 
                     {/* Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
                         {subjects.map((sub, idx) => (
                             <div
                                 key={idx}
