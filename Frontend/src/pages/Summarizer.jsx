@@ -436,7 +436,7 @@ const Summarizer = () => {
 
                 {/* Result Section with Chat */}
                 {result && (
-                    <div className="flex flex-col lg:flex-row gap-6 animate-fade-in-up h-[calc(100vh-140px)]">
+                    <div className="flex flex-col lg:flex-row gap-6 animate-fade-in-up h-auto lg:h-[calc(100vh-140px)]">
                         {/* Summary Column (Left - Scrollable) */}
                         <div className="lg:w-3/5 glass-panel p-8 rounded-3xl border border-white/10 bg-black/40 flex flex-col h-full overflow-hidden">
                             <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4 shrink-0">

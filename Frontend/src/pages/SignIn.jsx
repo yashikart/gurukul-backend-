@@ -24,7 +24,7 @@ const SignIn = () => {
     return (
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)] px-4">
             {/* Login Card */}
-            <div className="w-full max-w-md glass-panel p-10 animate-fade-in-up border border-white/10 shadow-2xl relative overflow-hidden">
+            <div className="w-full max-w-md glass-panel p-6 md:p-10 animate-fade-in-up border border-white/10 shadow-2xl relative overflow-hidden">
 
                 {/* Subtle decorative glow */}
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-accent/20 rounded-full blur-3xl"></div>

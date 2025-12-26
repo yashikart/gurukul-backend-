@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaGlobe, FaChevronDown, FaUserCircle } from 'react-icons/fa';
+import { FaGlobe, FaChevronDown, FaUserCircle, FaBars, FaTimes } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 
 import logo from '../assets/logo.svg';
 import { useAuth } from '../contexts/AuthContext';
+import { useSidebar } from '../contexts/SidebarContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [language, setLanguage] = useState('English');
   const dropdownRef = useRef(null);
   const { user, logout } = useAuth();
+  const { toggleSidebar, isSidebarOpen } = useSidebar();
   const navigate = useNavigate();
 
   // Initialize language based on cookie
@@ -81,13 +83,25 @@ const Navbar = () => {
       <div className="container mx-auto px-6">
         <div className="glass-panel px-8 py-4 rounded-full flex items-center justify-between bg-black/60 backdrop-blur-xl border-white/5">
 
-          {/* Brand */}
-          <Link to="/" className="flex items-center gap-3 cursor-pointer group">
-            <img src={logo} alt="Gurukul Logo" className="h-8 w-8 object-contain" />
-            <span className="text-2xl font-bold font-heading tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 group-hover:to-white transition-all">
-              Gurukul
-            </span>
-          </Link>
+          {/* Brand & Toggle */}
+          <div className="flex items-center gap-4">
+            {/* Mobile Sidebar Toggle - Visible only when user is logged in (sidebar exists) */}
+            {user && (
+              <button
+                onClick={toggleSidebar}
+                className="lg:hidden text-gray-300 hover:text-white transition-colors"
+              >
+                {isSidebarOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
+              </button>
+            )}
+
+            <Link to="/" className="flex items-center gap-3 cursor-pointer group">
+              <img src={logo} alt="Gurukul Logo" className="h-8 w-8 object-contain" />
+              <span className="text-2xl font-bold font-heading tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 group-hover:to-white transition-all">
+                Gurukul
+              </span>
+            </Link>
+          </div>
 
           {/* Links & Actions */}
           <div className="flex items-center gap-8">

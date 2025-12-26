@@ -998,10 +998,10 @@ User Question: ${userMsg.content}`;
         <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col lg:flex-row gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
 
                 {/* Column 1: Config */}
-                <div className="w-1/4 glass-panel no-hover p-5 rounded-3xl border border-white/10 flex flex-col shadow-2xl h-[calc(100vh-120px)]">
+                <div className="w-full lg:w-1/4 glass-panel no-hover p-5 rounded-3xl border border-white/10 flex flex-col shadow-2xl h-auto lg:h-[calc(100vh-120px)] order-2 lg:order-1">
                     <div className="flex items-center justify-between mb-6 shrink-0">
                         <div className="flex items-center gap-2">
                             <FaCog className="text-orange-500 text-xl" />
@@ -1015,7 +1015,7 @@ User Question: ${userMsg.content}`;
                 </div>
 
                 {/* Column 2: Interaction / Chat */}
-                <div className="w-1/2 glass-panel no-hover p-6 rounded-3xl border border-white/10 flex flex-col shadow-2xl relative overflow-hidden h-[calc(100vh-120px)]">
+                <div className="w-full lg:w-1/2 glass-panel no-hover p-6 rounded-3xl border border-white/10 flex flex-col shadow-2xl relative overflow-hidden h-[600px] lg:h-[calc(100vh-120px)] order-3 lg:order-2">
 
                     {/* Header */}
                     <div className="flex items-center gap-3 mb-4 shrink-0 relative z-10 border-b border-white/5 pb-4">
@@ -1233,7 +1233,7 @@ User Question: ${userMsg.content}`;
                 </div>
 
                 {/* Column 3: Agents List */}
-                <div className="w-1/4 glass-panel no-hover p-5 rounded-3xl border border-white/10 flex flex-col shadow-2xl h-[calc(100vh-120px)]">
+                <div className="w-full lg:w-1/4 glass-panel no-hover p-5 rounded-3xl border border-white/10 flex flex-col shadow-2xl h-auto lg:h-[calc(100vh-120px)] order-1 lg:order-3">
                     <div className="flex items-center gap-2 mb-6 shrink-0">
                         <FaRobot className="text-orange-500 text-xl" />
                         <h2 className="text-lg font-bold text-white">Agents</h2>
@@ -1287,6 +1287,7 @@ User Question: ${userMsg.content}`;
                         })}
                     </div>
                 </div>
+
 
             </main>
         </div>

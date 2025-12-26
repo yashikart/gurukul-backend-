@@ -18,6 +18,7 @@ import DraggableAvatar from './components/DraggableAvatar';
 import { KarmaProvider } from './contexts/KarmaContext';
 import { AuthProvider } from './contexts/AuthContext';
 import KarmaNotification from './components/KarmaNotification';
+import { SidebarProvider } from './contexts/SidebarContext';
 import bgImage from './assets/background.png';
 
 const App = () => {
@@ -138,50 +139,52 @@ const App = () => {
             <div className="overlay"></div>
           </div>
 
-          <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
-            <Navbar />
+          <SidebarProvider>
+            <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
+              <Navbar />
 
-            <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-4 mt-20">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/signin" element={<SignIn />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <PrivateRoute>
-                      <Dashboard
-                        studyTimeSeconds={studyTimeSeconds}
-                        targetGoalSeconds={targetGoalSeconds}
-                        timeLeft={timeLeft}
-                        isActive={isActive}
-                        onStartGoal={handleStartGoal}
-                        onStopGoal={handleStopGoal}
-                      />
-                    </PrivateRoute>
-                  }
-                />
-                <Route path="/subjects" element={<PrivateRoute><Subjects /></PrivateRoute>} />
-                <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
-                <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
-                <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
-                <Route path="/agent-simulator" element={<PrivateRoute><AgentSimulator /></PrivateRoute>} />
-                <Route path="/avatar" element={<PrivateRoute><Avatar /></PrivateRoute>} />
-                <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-                <Route path="/lectures" element={<PrivateRoute><Lectures /></PrivateRoute>} />
-              </Routes>
-            </main>
+              <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-4 mt-20">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/signin" element={<SignIn />} />
+                  <Route path="/signup" element={<SignUp />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <PrivateRoute>
+                        <Dashboard
+                          studyTimeSeconds={studyTimeSeconds}
+                          targetGoalSeconds={targetGoalSeconds}
+                          timeLeft={timeLeft}
+                          isActive={isActive}
+                          onStartGoal={handleStartGoal}
+                          onStopGoal={handleStopGoal}
+                        />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route path="/subjects" element={<PrivateRoute><Subjects /></PrivateRoute>} />
+                  <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
+                  <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
+                  <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
+                  <Route path="/agent-simulator" element={<PrivateRoute><AgentSimulator /></PrivateRoute>} />
+                  <Route path="/avatar" element={<PrivateRoute><Avatar /></PrivateRoute>} />
+                  <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                  <Route path="/lectures" element={<PrivateRoute><Lectures /></PrivateRoute>} />
+                </Routes>
+              </main>
 
-            {/* Draggable Avatar - appears on all pages when image is uploaded */}
-            <DraggableAvatar />
+              {/* Draggable Avatar - appears on all pages when image is uploaded */}
+              <DraggableAvatar />
 
-            {/* Karma Notifications */}
-            <KarmaNotification />
+              {/* Karma Notifications */}
+              <KarmaNotification />
 
-            <footer className="text-center py-6 text-sm text-gray-500 relative z-10">
-              <p>© 2024 Gurukul. All rights reserved.</p>
-            </footer>
-          </div>
+              <footer className="text-center py-6 text-sm text-gray-500 relative z-10">
+                <p>© 2024 Gurukul. All rights reserved.</p>
+              </footer>
+            </div>
+          </SidebarProvider>
         </Router>
       </AuthProvider>
     </KarmaProvider>

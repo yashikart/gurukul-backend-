@@ -137,20 +137,20 @@ const Avatar = () => {
         <div className="flex pt-24 min-h-screen container mx-auto px-4 gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col lg:flex-row gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
 
                 {/* Main Content: Avatar Grid */}
-                <div className="flex-grow glass-panel no-hover p-8 rounded-3xl border border-white/10 flex flex-col shadow-2xl relative overflow-hidden">
+                <div className="flex-grow glass-panel no-hover p-4 md:p-8 rounded-3xl border border-white/10 flex flex-col shadow-2xl relative overflow-hidden">
                     {/* Background Glow */}
                     <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
 
                     {/* Header */}
-                    <div className="flex justify-between items-start mb-8 relative z-10">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 relative z-10 gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-white mb-2">Avatar Management</h1>
+                            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Avatar Management</h1>
                             <p className="text-gray-300 text-sm">Upload and customize your draggable avatar</p>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 w-full md:w-auto">
                             <input
                                 ref={fileInputRef}
                                 type="file"
@@ -160,7 +160,7 @@ const Avatar = () => {
                             />
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="flex items-center gap-2 px-6 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl transition-all border border-orange-500 font-medium shadow-lg shadow-orange-500/20"
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl transition-all border border-orange-500 font-medium shadow-lg shadow-orange-500/20"
                             >
                                 <FaUpload className="text-sm" />
                                 Upload Image
@@ -184,13 +184,13 @@ const Avatar = () => {
                         </div>
 
                         {/* Avatar Preview */}
-                        <div className="flex items-center justify-center p-12 bg-black/40 rounded-2xl border border-white/10">
+                        <div className="flex items-center justify-center p-6 md:p-12 bg-black/40 rounded-2xl border border-white/10">
                             {uploadedImage ? (
                                 <div
                                     className="relative rounded-full shadow-2xl border-4 border-orange-500 overflow-hidden"
                                     style={{
-                                        width: `${128 * scale} px`,
-                                        height: `${128 * scale} px`,
+                                        width: `${128 * scale}px`,
+                                        height: `${128 * scale}px`,
                                         transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) rotateZ(${rotation.z}deg)`
                                     }}
                                 >
@@ -212,7 +212,7 @@ const Avatar = () => {
                 </div>
 
                 {/* Right Panel: Settings */}
-                <div className="w-80 glass-panel no-hover p-6 rounded-3xl border border-white/10 flex flex-col shadow-2xl h-fit">
+                <div className="w-full lg:w-80 glass-panel no-hover p-6 rounded-3xl border border-white/10 flex flex-col shadow-2xl h-fit">
                     <h2 className="text-xl font-bold text-white mb-6">Avatar Settings</h2>
 
                     {/* Pin Mode Toggle */}

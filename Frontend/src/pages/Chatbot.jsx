@@ -303,15 +303,15 @@ const Chatbot = () => {
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => setKnowledgeModalOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 rounded-lg text-sm text-accent transition-colors border border-accent/20"
+                                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-accent/10 hover:bg-accent/20 rounded-lg text-sm text-accent transition-colors border border-accent/20"
                             >
-                                <span className="text-lg">🧠</span> Teach
+                                <span className="text-lg">🧠</span> <span className="hidden md:inline">Teach</span>
                             </button>
                             <button
                                 onClick={handleNewChat}
-                                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-gray-300 transition-colors border border-white/5"
+                                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-gray-300 transition-colors border border-white/5"
                             >
-                                <FaPlus className="text-xs" /> New Chat
+                                <FaPlus className="text-xs" /> <span className="hidden md:inline">New Chat</span>
                             </button>
                             <button
                                 onClick={() => setShowHistory(!showHistory)}
@@ -398,13 +398,13 @@ const Chatbot = () => {
                                 <button
                                     onClick={() => setIsModelOpen(!isModelOpen)}
                                     onBlur={() => setTimeout(() => setIsModelOpen(false), 200)}
-                                    className={`flex items-center gap-2 bg-white/5 border text-gray-300 py-1.5 px-4 rounded-lg hover:bg-white/10 transition-all duration-300 text-xs font-medium ${isModelOpen ? 'border-accent/50 ring-2 ring-accent/20 bg-white/10 text-white' : 'border-white/10'}`}
+                                    className={`flex items-center gap-2 bg-white/5 border text-gray-300 py-1.5 px-2 md:px-4 rounded-lg hover:bg-white/10 transition-all duration-300 text-xs font-medium ${isModelOpen ? 'border-accent/50 ring-2 ring-accent/20 bg-white/10 text-white' : 'border-white/10'}`}
                                 >
-                                    <span>{selectedModel}</span>
+                                    <span className="hidden md:inline">{selectedModel}</span>
+                                    <span className="md:hidden">{selectedModel.substring(0, 1)}</span>
                                     <FaChevronDown className={`text-[10px] text-gray-400 transition-transform duration-300 ${isModelOpen ? 'rotate-180' : ''}`} />
                                 </button>
-
-                                {/* Dropdown Menu (Opens Upwards) */}
+                                {/* ... dropdown ... */}
                                 <div className={`absolute bottom-full mb-2 left-0 w-32 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 origin-bottom ${isModelOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2 pointer-events-none'}`}>
                                     {['Grok', 'Uniguru'].map((model) => (
                                         <div
@@ -427,8 +427,8 @@ const Chatbot = () => {
                                 type="text"
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
-                                placeholder="Ask about ancient Indian wisdom..."
-                                className="flex-grow bg-transparent border-none outline-none text-gray-200 placeholder-gray-500 font-light"
+                                placeholder="Ask..."
+                                className="flex-grow bg-transparent border-none outline-none text-gray-200 placeholder-gray-500 font-light text-sm md:text-base min-w-0"
                                 onKeyDown={handleKeyDown}
                             />
 

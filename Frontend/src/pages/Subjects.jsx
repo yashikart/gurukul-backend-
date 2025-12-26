@@ -314,7 +314,7 @@ const Subjects = () => {
 
                 {/* Center Panel - Subject Explorer Form */}
                 {!loading && !result && (
-                    <div className="flex-grow glass-panel no-hover p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center shadow-2xl">
+                    <div className="flex-grow glass-panel no-hover p-6 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center text-center shadow-2xl">
 
                         {/* Header */}
                         <div className="mb-8">
@@ -389,7 +389,7 @@ const Subjects = () => {
                     <div className="animate-fade-in-up">
 
                         {/* Notes & Chat Container */}
-                        <div className="glass-panel p-8 rounded-3xl border border-white/10 mb-6 bg-black/40">
+                        <div className="glass-panel p-4 md:p-8 rounded-3xl border border-white/10 mb-6 bg-black/40">
                             <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
                                 <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-300 to-amber-200 flex items-center gap-3">
                                     <FaBookOpen className="text-orange-400" />
