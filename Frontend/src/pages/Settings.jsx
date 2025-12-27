@@ -1,12 +1,125 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { FaUser, FaGlobe, FaBell, FaShieldAlt, FaSignOutAlt, FaTrash } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../supabaseClient';
 
 const Settings = () => {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [activeSection, setActiveSection] = useState('profile');
-    const [language, setLanguage] = useState('English');
-    const [reduceMotion, setReduceMotion] = useState(false);
-    const [emailNotifications, setEmailNotifications] = useState(true);
+    
+    // Profile state with localStorage persistence
+    const [fullName, setFullName] = useState(() => {
+        const saved = localStorage.getItem('user_fullName');
+        return saved || (user?.email ? user.email.split('@')[0] : 'Vasco da Gama');
+    });
+    const [email, setEmail] = useState(() => {
+        const saved = localStorage.getItem('user_email');
+        return saved || (user?.email || 'vasco@gurukul.app');
+    });
+    const [bio, setBio] = useState(() => {
+        const saved = localStorage.getItem('user_bio');
+        return saved || 'Navigating the seas of knowledge.';
+    });
+    
+    // Preferences state with localStorage persistence
+    const [language, setLanguage] = useState(() => {
+        const saved = localStorage.getItem('user_language');
+        return saved || 'English';
+    });
+    const [reduceMotion, setReduceMotion] = useState(() => {
+        const saved = localStorage.getItem('user_reduceMotion');
+        return saved === 'true';
+    });
+    
+    // Notifications state with localStorage persistence
+    const [emailNotifications, setEmailNotifications] = useState(() => {
+        const saved = localStorage.getItem('user_emailNotifications');
+        return saved !== 'false'; // Default to true
+    });
+
+    // Persist profile changes
+    useEffect(() => {
+        localStorage.setItem('user_fullName', fullName);
+    }, [fullName]);
+
+    useEffect(() => {
+        localStorage.setItem('user_email', email);
+    }, [email]);
+
+    useEffect(() => {
+        localStorage.setItem('user_bio', bio);
+    }, [bio]);
+
+    // Persist preferences
+    useEffect(() => {
+        localStorage.setItem('user_language', language);
+    }, [language]);
+
+    useEffect(() => {
+        localStorage.setItem('user_reduceMotion', reduceMotion.toString());
+        // Apply reduce motion to document
+        if (reduceMotion) {
+            document.documentElement.style.setProperty('--animation-duration', '0s');
+        } else {
+            document.documentElement.style.removeProperty('--animation-duration');
+        }
+    }, [reduceMotion]);
+
+    // Persist notifications
+    useEffect(() => {
+        localStorage.setItem('user_emailNotifications', emailNotifications.toString());
+    }, [emailNotifications]);
+
+    // Update email from auth context if available
+    useEffect(() => {
+        if (user?.email && !localStorage.getItem('user_email')) {
+            setEmail(user.email);
+        }
+    }, [user]);
+
+    const handleSignOut = async () => {
+        if (window.confirm('Are you sure you want to sign out?')) {
+            try {
+                await logout();
+                navigate('/signin');
+            } catch (error) {
+                console.error('Failed to sign out:', error);
+                alert('Failed to sign out. Please try again.');
+            }
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        const confirmMessage = 'Are you absolutely sure you want to delete your account? This action is IRREVERSIBLE and will delete all your data. Type "DELETE" to confirm.';
+        const userInput = window.prompt(confirmMessage);
+        
+        if (userInput === 'DELETE') {
+            try {
+                // Note: Direct account deletion from client requires admin API or backend endpoint
+                // For now, we'll clear all local data and sign out
+                // In production, you should call a backend API endpoint to handle account deletion
+                
+                // Clear all localStorage data
+                localStorage.clear();
+                
+                // Sign out the user
+                await logout();
+                
+                alert('Your local data has been cleared. Please contact support to permanently delete your account from our servers.');
+                navigate('/signin');
+            } catch (error) {
+                console.error('Failed to delete account:', error);
+                alert('Failed to delete account. Please contact support for assistance.');
+            }
+        }
+    };
+
+    const handleChangeAvatar = () => {
+        navigate('/avatar');
+    };
 
     const renderContent = () => {
         switch (activeSection) {
@@ -20,24 +133,44 @@ const Settings = () => {
                                 <span className="text-4xl">👨‍🚀</span>
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold text-white">Vasco da Gama</h3>
+                                <h3 className="text-xl font-bold text-white">{fullName || 'User'}</h3>
                                 <p className="text-gray-400">Explorer & Student</p>
-                                <button className="mt-2 text-sm text-orange-400 hover:text-orange-300 font-medium">Change Avatar</button>
+                                <button 
+                                    onClick={handleChangeAvatar}
+                                    className="mt-2 text-sm text-orange-400 hover:text-orange-300 font-medium transition-colors"
+                                >
+                                    Change Avatar
+                                </button>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-orange-200 text-xs font-bold uppercase tracking-wider">Full Name</label>
-                                <input type="text" defaultValue="Vasco da Gama" className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors" />
+                                <input 
+                                    type="text" 
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors" 
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-orange-200 text-xs font-bold uppercase tracking-wider">Email Address</label>
-                                <input type="email" defaultValue="vasco@gurukul.app" className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors" />
+                                <input 
+                                    type="email" 
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors" 
+                                />
                             </div>
                             <div className="col-span-1 md:col-span-2 space-y-2">
                                 <label className="text-orange-200 text-xs font-bold uppercase tracking-wider">Bio</label>
-                                <textarea rows="4" defaultValue="Navigating the seas of knowledge." className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors resize-none"></textarea>
+                                <textarea 
+                                    rows="4" 
+                                    value={bio}
+                                    onChange={(e) => setBio(e.target.value)}
+                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors resize-none"
+                                />
                             </div>
                         </div>
                     </div>
@@ -103,11 +236,17 @@ const Settings = () => {
                         <h2 className="text-2xl font-bold text-white mb-6">Security & Account</h2>
 
                         <div className="space-y-4">
-                            <button className="w-full flex items-center justify-between p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all group">
+                            <button 
+                                onClick={handleSignOut}
+                                className="w-full flex items-center justify-between p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all group cursor-pointer"
+                            >
                                 <span className="text-red-400 font-medium group-hover:text-red-300">Sign Out</span>
                                 <FaSignOutAlt className="text-red-400 group-hover:text-red-300" />
                             </button>
-                            <button className="w-full flex items-center justify-between p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all group">
+                            <button 
+                                onClick={handleDeleteAccount}
+                                className="w-full flex items-center justify-between p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all group cursor-pointer"
+                            >
                                 <div>
                                     <p className="text-left text-red-400 font-medium group-hover:text-red-300">Delete Account</p>
                                     <p className="text-left text-red-500/60 text-xs">This action is irreversible</p>
