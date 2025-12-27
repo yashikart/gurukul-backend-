@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaUpload, FaTrash, FaRedo, FaInfoCircle, FaChevronUp, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
+import { useModal } from '../contexts/ModalContext';
 
 const ControlInput = ({ label, value, onChange, unit = "" }) => {
     const handleIncrement = () => onChange(Number((value + 0.1).toFixed(1)));
@@ -45,6 +46,7 @@ const ControlInput = ({ label, value, onChange, unit = "" }) => {
 const Avatar = () => {
     const fileInputRef = useRef(null);
     const { addKarma } = useKarma();
+    const { alert, confirm } = useModal();
 
     // Load from localStorage or use defaults
     const [uploadedImage, setUploadedImage] = useState(() =>
@@ -93,12 +95,12 @@ const Avatar = () => {
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-            alert('Please upload an image file');
+            alert('Please upload an image file', 'Invalid File Type');
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            alert('Image must be less than 5MB');
+            alert('Image must be less than 5MB', 'File Too Large');
             return;
         }
 
@@ -118,11 +120,12 @@ const Avatar = () => {
         reader.readAsDataURL(file);
     };
 
-    const handleRemoveImage = (e) => {
+    const handleRemoveImage = async (e) => {
         e?.stopPropagation();
         e?.preventDefault();
         
-        if (window.confirm('Are you sure you want to remove this avatar?')) {
+        const result = await confirm('Are you sure you want to remove this avatar?', 'Remove Avatar');
+        if (result) {
             setUploadedImage(null);
             localStorage.removeItem('avatarImage');
             window.dispatchEvent(new Event('avatarUpdate'));

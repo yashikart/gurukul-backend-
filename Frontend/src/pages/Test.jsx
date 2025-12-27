@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaBrain, FaClock, FaQuestionCircle, FaBolt, FaPlay, FaChevronDown, FaCheckCircle, FaTimesCircle, FaArrowRight, FaArrowLeft, FaRedo } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
+import { useModal } from '../contexts/ModalContext';
 import API_BASE_URL from '../config';
 
 const Test = () => {
     const { addKarma } = useKarma();
+    const { alert, confirm, error } = useModal();
     // Mode: 'setup', 'taking', 'results'
     const [mode, setMode] = useState('setup');
     const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ const Test = () => {
 
     const handleGenerate = async () => {
         if (!subject || !topic) {
-            alert("Please select a subject and topic.");
+            alert("Please select a subject and topic.", "Validation Error");
             return;
         }
 
@@ -58,7 +60,7 @@ const Test = () => {
             setMode('taking');
         } catch (error) {
             console.error(error);
-            alert("Error generating quiz. Please try again.");
+            error("Error generating quiz. Please try again.", "Generation Error");
         } finally {
             setLoading(false);
         }
@@ -72,7 +74,8 @@ const Test = () => {
     };
 
     const handleSubmit = async () => {
-        if (!confirm("Are you sure you want to submit your quiz?")) return;
+        const result = await confirm("Are you sure you want to submit your quiz?", "Submit Quiz");
+        if (!result) return;
 
         setLoading(true);
         try {
@@ -101,7 +104,7 @@ const Test = () => {
             setMode('results');
         } catch (error) {
             console.error(error);
-            alert("Error submitting quiz.");
+            error("Error submitting quiz.", "Submission Error");
         } finally {
             setLoading(false);
         }
@@ -360,7 +363,7 @@ const Test = () => {
                             {mode === 'taking' && <p className="text-gray-500 text-xs sm:text-sm">Focus Mode Active</p>}
                         </div>
                         {mode !== 'setup' && (
-                            <button onClick={() => { if (confirm("Quit quiz?")) setMode('setup'); }} className="text-xs text-red-400 hover:text-red-300">Quit Session</button>
+                            <button onClick={async () => { const result = await confirm("Quit quiz?", "Quit Session"); if (result) setMode('setup'); }} className="text-xs text-red-400 hover:text-red-300">Quit Session</button>
                         )}
                     </div>
 

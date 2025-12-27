@@ -2,12 +2,14 @@ import React from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaVolumeUp, FaPlus, FaHistory, FaTrashAlt, FaPaperclip, FaArrowUp, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
+import { useModal } from '../contexts/ModalContext';
 
 import { containsProfanity } from '../utils/profanityDetector';
 import API_BASE_URL from '../config';
 
 const Chatbot = () => {
     const { addKarma } = useKarma();
+    const { alert, confirm, success, error } = useModal();
     const [message, setMessage] = React.useState('');
     const [selectedModel, setSelectedModel] = React.useState(() => localStorage.getItem('chatbot_selectedModel') || 'Grok');
     const [isModelOpen, setIsModelOpen] = React.useState(false);
@@ -107,7 +109,7 @@ const Chatbot = () => {
         // Check for profanity
         if (containsProfanity(message)) {
             addKarma(-20, 'Inappropriate language detected ⚠️');
-            alert('Please keep the conversation respectful.');
+            alert('Please keep the conversation respectful.', 'Warning');
             return;
         }
 
@@ -193,7 +195,7 @@ const Chatbot = () => {
             }
         } catch (error) {
             console.error(error);
-            alert("Could not load this chat history.");
+            error("Could not load this chat history.", "Error");
         } finally {
             setLoading(false);
         }
@@ -204,12 +206,13 @@ const Chatbot = () => {
         e?.preventDefault();
         
         if (!conversationId) {
-            alert("No active chat to delete. Start a conversation first.");
+            alert("No active chat to delete. Start a conversation first.", "No Active Chat");
             setShowDeleteMenu(false);
             return;
         }
         
-        if (!confirm("Delete this conversation permanently?")) {
+        const result = await confirm("Delete this conversation permanently?", "Delete Chat");
+        if (!result) {
             setShowDeleteMenu(false);
             return;
         }
@@ -230,16 +233,17 @@ const Chatbot = () => {
             setShowDeleteMenu(false);
         } catch (error) {
             console.error("Delete error:", error);
-            alert("Failed to delete chat: " + error.message);
+            error("Failed to delete chat: " + error.message, "Error");
             setShowDeleteMenu(false);
         }
     };
 
-    const handleDeleteAll = (e) => {
+    const handleDeleteAll = async (e) => {
         e?.stopPropagation();
         e?.preventDefault();
         
-        if (!confirm("Are you sure you want to clear your ENTIRE chat history list? This cannot be undone.")) {
+        const result = await confirm("Are you sure you want to clear your ENTIRE chat history list? This cannot be undone.", "Clear All History");
+        if (!result) {
             setShowDeleteMenu(false);
             return;
         }
@@ -264,11 +268,11 @@ const Chatbot = () => {
                 })
             });
             if (!response.ok) throw new Error("Failed to add knowledge");
-            alert("Success! I have learned this new information.");
+            success("Success! I have learned this new information.", "Knowledge Added");
             setKnowledgeText("");
             setKnowledgeModalOpen(false);
         } catch (error) {
-            alert("Failed to teach agent: " + error.message);
+            error("Failed to teach agent: " + error.message, "Error");
         } finally {
             setKnowledgeLoading(false);
         }

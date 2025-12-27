@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar';
 import { FaRobot, FaCog, FaCommentAlt, FaBook, FaDollarSign, FaHeartbeat, FaCircle, FaPaperPlane, FaSpinner, FaCheckCircle, FaTrashAlt, FaGlobeAmericas, FaUser, FaChevronDown } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 import { useKarma } from '../contexts/KarmaContext';
+import { useModal } from '../contexts/ModalContext';
 import { containsProfanity } from '../utils/profanityDetector';
 import API_BASE_URL from '../config';
 
@@ -47,6 +48,7 @@ const AGENTS = [
 
 const AgentSimulator = () => {
     const { addKarma } = useKarma();
+    const { alert, confirm, error } = useModal();
     // --- State ---
     const [selectedAgent, setSelectedAgent] = useState(() => {
         const saved = localStorage.getItem('agent_sim_selectedAgent');
@@ -198,11 +200,13 @@ const AgentSimulator = () => {
         else localStorage.removeItem(convKey);
     }, [chatHistory, conversationId, selectedAgent]);
 
-    const handleResetAgent = (e) => {
+    const handleResetAgent = async (e) => {
         e?.stopPropagation();
         e?.preventDefault();
         
-        if (!selectedAgent || !window.confirm(`Reset ${selectedAgent.name} session? This will clear all chat history and generated content for this agent.`)) return;
+        if (!selectedAgent) return;
+        const result = await confirm(`Reset ${selectedAgent.name} session? This will clear all chat history and generated content for this agent.`, 'Reset Session');
+        if (!result) return;
 
         const name = selectedAgent.name;
         
@@ -358,7 +362,7 @@ const AgentSimulator = () => {
 
     const handleGenerate = async () => {
         if (!config.subject || !config.topic) {
-            alert("Subject and Topic are required!");
+            alert("Subject and Topic are required!", "Validation Error");
             return;
         }
 
@@ -393,7 +397,7 @@ const AgentSimulator = () => {
 
         } catch (error) {
             console.error(error);
-            alert("Failed to generate lesson. Please try again.");
+            error("Failed to generate lesson. Please try again.", "Generation Error");
         } finally {
             setIsGenerating(false);
         }
@@ -405,7 +409,7 @@ const AgentSimulator = () => {
         // Check for profanity
         if (containsProfanity(message)) {
             addKarma(-20, 'Inappropriate language detected ⚠️');
-            alert('Please keep the conversation respectful.');
+            alert('Please keep the conversation respectful.', 'Warning');
             return;
         }
 
@@ -503,7 +507,7 @@ User Question: ${userMsg.content}`;
 
     const handleGenerateAdvice = async () => {
         if (!financialConfig.name || !financialConfig.monthly_income || parseFloat(financialConfig.monthly_income) <= 0) {
-            alert("Name and valid monthly income are required!");
+            alert("Name and valid monthly income are required!", "Validation Error");
             return;
         }
 
@@ -553,7 +557,7 @@ User Question: ${userMsg.content}`;
 
         } catch (error) {
             console.error(error);
-            alert("Failed to generate financial advice. Please try again.");
+            error("Failed to generate financial advice. Please try again.", "Generation Error");
         } finally {
             setIsGeneratingAdvice(false);
         }
@@ -590,7 +594,7 @@ User Question: ${userMsg.content}`;
 
         } catch (error) {
             console.error(error);
-            alert("Failed to generate wellness support. Please try again.");
+            error("Failed to generate wellness support. Please try again.", "Generation Error");
         } finally {
             setIsGeneratingSupport(false);
         }

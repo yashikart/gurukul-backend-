@@ -2,10 +2,12 @@ import React from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaFileUpload, FaCloudUploadAlt, FaMagic, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
+import { useModal } from '../contexts/ModalContext';
 import API_BASE_URL from '../config';
 
 const Summarizer = () => {
     const { addKarma } = useKarma();
+    const { confirm } = useModal();
     const [selectedModel, setSelectedModel] = React.useState(() => localStorage.getItem('summarizer_selectedModel') || 'Uniguru');
     const [summaryType, setSummaryType] = React.useState(() => localStorage.getItem('summarizer_summaryType') || 'concise');
     const [isSummaryTypeOpen, setIsSummaryTypeOpen] = React.useState(false);
@@ -45,8 +47,9 @@ const Summarizer = () => {
         localStorage.setItem('summarizer_chatHistory', JSON.stringify(chatHistory));
     }, [chatHistory]);
 
-    const handleNewUpload = () => {
-        if (window.confirm("This will clear your current analysis. Continue?")) {
+    const handleNewUpload = async () => {
+        const result = await confirm("This will clear your current analysis. Continue?", "Clear Analysis");
+        if (result) {
             setFile(null);
             setResult(null);
             setChatHistory([]);

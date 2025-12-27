@@ -4,10 +4,12 @@ import Sidebar from '../components/Sidebar';
 import { FaUser, FaGlobe, FaBell, FaShieldAlt, FaSignOutAlt, FaTrash } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
+import { useModal } from '../contexts/ModalContext';
 
 const Settings = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const { confirm, prompt, alert } = useModal();
     const [activeSection, setActiveSection] = useState('profile');
     
     // Profile state with localStorage persistence
@@ -81,20 +83,24 @@ const Settings = () => {
     }, [user]);
 
     const handleSignOut = async () => {
-        if (window.confirm('Are you sure you want to sign out?')) {
+        const result = await confirm('Are you sure you want to sign out?', 'Sign Out');
+        if (result) {
             try {
                 await logout();
                 navigate('/signin');
             } catch (error) {
                 console.error('Failed to sign out:', error);
-                alert('Failed to sign out. Please try again.');
+                alert('Failed to sign out. Please try again.', 'Error');
             }
         }
     };
 
     const handleDeleteAccount = async () => {
-        const confirmMessage = 'Are you absolutely sure you want to delete your account? This action is IRREVERSIBLE and will delete all your data. Type "DELETE" to confirm.';
-        const userInput = window.prompt(confirmMessage);
+        const userInput = await prompt(
+            'Are you absolutely sure you want to delete your account? This action is IRREVERSIBLE and will delete all your data. Type "DELETE" to confirm.',
+            'Delete Account',
+            'Type DELETE to confirm'
+        );
         
         if (userInput === 'DELETE') {
             try {
@@ -108,11 +114,11 @@ const Settings = () => {
                 // Sign out the user
                 await logout();
                 
-                alert('Your local data has been cleared. Please contact support to permanently delete your account from our servers.');
+                await alert('Your local data has been cleared. Please contact support to permanently delete your account from our servers.', 'Account Deletion');
                 navigate('/signin');
             } catch (error) {
                 console.error('Failed to delete account:', error);
-                alert('Failed to delete account. Please contact support for assistance.');
+                alert('Failed to delete account. Please contact support for assistance.', 'Error');
             }
         }
     };

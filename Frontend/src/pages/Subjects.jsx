@@ -2,11 +2,13 @@ import React from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaBook, FaLightbulb, FaBookOpen } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
+import { useModal } from '../contexts/ModalContext';
 import { containsProfanity } from '../utils/profanityDetector';
 import API_BASE_URL from '../config';
 
 const Subjects = () => {
     const { addKarma } = useKarma();
+    const { alert, error } = useModal();
     const [subject, setSubject] = React.useState(() => localStorage.getItem('subjects_subject') || '');
     const [topic, setTopic] = React.useState(() => localStorage.getItem('subjects_topic') || '');
     const [loading, setLoading] = React.useState(false);
@@ -45,7 +47,7 @@ const Subjects = () => {
 
     const handleGenerate = async () => {
         if (!subject || !topic) {
-            alert('Please enter both subject and topic');
+            alert('Please enter both subject and topic', 'Validation Error');
             return;
         }
 
@@ -73,11 +75,11 @@ const Subjects = () => {
                 addKarma(20, 'Content generated! 📚');
                 // Pre-seed chat history? No, let's keep it clean.
             } else {
-                alert('Failed to generate content: ' + (data.detail || 'Unknown error'));
+                error('Failed to generate content: ' + (data.detail || 'Unknown error'), 'Generation Error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Failed to connect to server. Is backend running?');
+            error('Failed to connect to server. Is backend running?', 'Connection Error');
         } finally {
             setLoading(false);
         }
@@ -89,7 +91,7 @@ const Subjects = () => {
         // Check for profanity
         if (containsProfanity(chatInput)) {
             addKarma(-20, 'Inappropriate language detected ⚠️');
-            alert('Please keep the conversation respectful.');
+            alert('Please keep the conversation respectful.', 'Warning');
             return;
         }
 
