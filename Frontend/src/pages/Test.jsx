@@ -30,6 +30,57 @@ const Test = () => {
     const difficulties = ['easy', 'medium', 'hard'];
     const subjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'History', 'Geography', 'Literature', 'Economics'];
 
+    // Function to force Google Translate to re-translate dynamically added content
+    const forceRetranslation = () => {
+        try {
+            const select = document.querySelector('.goog-te-combo');
+            if (!select || !select.value || select.value === 'en') return;
+            
+            const currentLang = select.value;
+            
+            // Method 1: Trigger multiple change events to force re-processing
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    try {
+                        const event = new Event('change', { bubbles: true, cancelable: true });
+                        select.dispatchEvent(event);
+                    } catch (e) {
+                        // Ignore
+                    }
+                }, i * 200);
+            }
+            
+            // Method 2: Temporarily toggle language to force full re-translation
+            setTimeout(() => {
+                try {
+                    const originalValue = select.value;
+                    // Switch to English
+                    select.value = 'en';
+                    const event1 = new Event('change', { bubbles: true });
+                    select.dispatchEvent(event1);
+                    
+                    // Switch back to target language
+                    setTimeout(() => {
+                        select.value = originalValue;
+                        const event2 = new Event('change', { bubbles: true });
+                        select.dispatchEvent(event2);
+                        
+                        // Additional trigger after switching back
+                        setTimeout(() => {
+                            const event3 = new Event('change', { bubbles: true });
+                            select.dispatchEvent(event3);
+                        }, 300);
+                    }, 500);
+                } catch (e) {
+                    // Ignore
+                }
+            }, 1000);
+            
+        } catch (e) {
+            console.warn('Translation retry failed:', e);
+        }
+    };
+
     // --- Handlers ---
 
     const handleGenerate = async () => {
@@ -64,26 +115,10 @@ const Test = () => {
             setCurrentQuestionIndex(0);
             setMode('taking');
             
-            // Trigger Google Translate to re-translate the page after quiz loads
+            // Force Google Translate to re-translate dynamically added content
             setTimeout(() => {
-                try {
-                    // Force Google Translate to re-process the page
-                    if (window.google && window.google.translate) {
-                        const select = document.querySelector('.goog-te-combo');
-                        if (select) {
-                            const currentLang = select.value || 'en';
-                            // Trigger re-translation by briefly changing and changing back
-                            if (currentLang !== 'en') {
-                                select.value = currentLang;
-                                const event = new Event('change', { bubbles: true });
-                                select.dispatchEvent(event);
-                            }
-                        }
-                    }
-                } catch (e) {
-                    // Silently ignore translation errors
-                }
-            }, 500);
+                forceRetranslation();
+            }, 1000);
         } catch (err) {
             console.error("Quiz generation error:", err);
             error("Error generating quiz. Please try again.", "Generation Error");
@@ -235,21 +270,10 @@ const Test = () => {
     // Trigger Google Translate when quiz data or question changes
     useEffect(() => {
         if (mode === 'taking' && quizData && quizData.questions) {
-            // Trigger Google Translate to re-process dynamically added content
+            // Delay to ensure DOM is fully updated
             setTimeout(() => {
-                try {
-                    if (window.google && window.google.translate) {
-                        const select = document.querySelector('.goog-te-combo');
-                        if (select && select.value && select.value !== 'en') {
-                            // Force re-translation by dispatching change event
-                            const event = new Event('change', { bubbles: true });
-                            select.dispatchEvent(event);
-                        }
-                    }
-                } catch (e) {
-                    // Silently ignore
-                }
-            }, 300);
+                forceRetranslation();
+            }, 800);
         }
     }, [mode, quizData, currentQuestionIndex]);
 
