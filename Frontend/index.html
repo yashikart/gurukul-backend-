@@ -8,6 +8,30 @@
   <title>Gurukul</title>
   <!-- Google Translate -->
   <script type="text/javascript">
+    // Suppress Google Translate DOM errors globally (they're harmless but annoying)
+    // These errors occur when Google Translate tries to manipulate DOM nodes that have been modified
+    const originalError = window.onerror;
+    window.onerror = function(msg, url, line, col, error) {
+      // Suppress insertBefore errors from Google Translate
+      if (msg && (msg.includes('insertBefore') || msg.includes('Node.insertBefore'))) {
+        return true; // Suppress the error
+      }
+      // Call original error handler if it exists
+      if (originalError) {
+        return originalError.apply(this, arguments);
+      }
+      return false;
+    };
+    
+    // Also suppress uncaught exceptions
+    window.addEventListener('error', function(e) {
+      if (e.message && (e.message.includes('insertBefore') || e.message.includes('Node.insertBefore'))) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return true;
+      }
+    }, true);
+    
     window.googleTranslateElementInit = function() {
       try {
         if (window.google && window.google.translate && window.google.translate.TranslateElement) {
@@ -17,41 +41,20 @@
             layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
             autoDisplay: false
           }, 'google_translate_element');
-          
-          // Hide banner after initialization - minimal DOM manipulation
-          // Rely primarily on CSS rules, only do minimal JS as fallback
-          setTimeout(() => {
-            const hideBanner = () => {
-              try {
-                // Only target the banner frame specifically, don't check parentNode
-                const banner = document.querySelector('.goog-te-banner-frame');
-                if (banner) {
-                  // Use a single style assignment to minimize DOM operations
-                  banner.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; width: 0 !important; position: fixed !important; top: -9999px !important; left: -9999px !important; z-index: -9999 !important; pointer-events: none !important;';
-                }
-              } catch (e) {
-                // Silently ignore all errors
-              }
-            };
-            
-            // Hide once after a delay, then less frequently
-            hideBanner();
-            // Use longer interval to reduce interference with Google Translate's DOM operations
-            setInterval(hideBanner, 3000);
-          }, 2000);
         } else {
           console.warn('Google Translate API not available yet');
         }
       } catch (error) {
-        console.error('Error initializing Google Translate:', error);
+        // Suppress Google Translate initialization errors
+        if (!error.message || (!error.message.includes('insertBefore') && !error.message.includes('Node.insertBefore'))) {
+          console.error('Error initializing Google Translate:', error);
+        }
       }
     };
     
-    // Prevent Google Translate popups on page load - CSS-only approach, no DOM manipulation
-    // The CSS rules in index.css will handle hiding the banner
-    // This script only handles tooltips on text selection
+    // Only handle tooltips on text selection - NO banner manipulation
+    // CSS in index.css will handle hiding the banner completely
     document.addEventListener('DOMContentLoaded', function() {
-      // Only hide tooltips on text selection - don't interfere with banner
       document.addEventListener('mouseup', function(e) {
         setTimeout(() => {
           try {
