@@ -220,15 +220,19 @@ const Navbar = () => {
       }
       
       // Method 3: Use cookie-based approach (Google Translate uses cookies)
+      // Get current domain for cookie
+      const domain = window.location.hostname;
+      const cookiePath = '/';
+      
       if (langCode === 'en') {
         // Remove translation cookie to show English
-        document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        document.cookie = 'googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${cookiePath};`;
+        document.cookie = `googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${cookiePath};`;
       } else {
-        // Set translation cookie
+        // Set translation cookie - don't set domain to avoid cookie rejection
         const expireDate = new Date();
         expireDate.setFullYear(expireDate.getFullYear() + 1);
-        document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=/;`;
+        document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=${cookiePath}; SameSite=Lax`;
       }
       
       // Method 4: Reload page with translation cookie (last resort)

@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -20,56 +20,52 @@
           
           // Disable text selection popup and hide banner
           setTimeout(() => {
-            // Remove Google Translate banner - multiple methods
-            const removeBanner = () => {
-              const banners = document.querySelectorAll('.goog-te-banner-frame, iframe[src*="translate.google.com"]');
-              banners.forEach(banner => {
-                banner.style.display = 'none';
-                banner.style.visibility = 'hidden';
-                banner.style.opacity = '0';
-                banner.style.height = '0';
-                banner.style.width = '0';
-                banner.style.position = 'fixed';
-                banner.style.top = '-9999px';
-                banner.style.left = '-9999px';
-                banner.style.zIndex = '-9999';
-                try {
-                  banner.remove();
-                } catch (e) {
-                  // Ignore removal errors
-                }
-              });
+            // Hide Google Translate banner - don't remove to avoid DOM conflicts
+            const hideBanner = () => {
+              try {
+                const banners = document.querySelectorAll('.goog-te-banner-frame, iframe[src*="translate.google.com"]');
+                banners.forEach(banner => {
+                  if (banner && banner.parentNode) {
+                    banner.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; width: 0 !important; position: fixed !important; top: -9999px !important; left: -9999px !important; z-index: -9999 !important; pointer-events: none !important;';
+                  }
+                });
+              } catch (e) {
+                // Ignore errors
+              }
             };
             
-            removeBanner();
+            hideBanner();
             
-            // Continuously remove banner
-            setInterval(removeBanner, 100);
+            // Hide banner periodically but less aggressively
+            setInterval(hideBanner, 500);
             
-            // Disable text selection popup by removing event listeners
+            // Disable text selection popup
             document.addEventListener('mouseup', function(e) {
-              // Prevent Google Translate popup on text selection
-              const tooltip = document.querySelector('.goog-tooltip');
-              if (tooltip) {
-                tooltip.style.display = 'none';
-                tooltip.remove();
-              }
+              setTimeout(() => {
+                try {
+                  const tooltip = document.querySelector('.goog-tooltip');
+                  if (tooltip && tooltip.parentNode) {
+                    tooltip.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important;';
+                  }
+                } catch (e) {
+                  // Ignore errors
+                }
+              }, 10);
             }, true);
             
-            // Remove any existing tooltips and banners
+            // Hide tooltips periodically
             setInterval(() => {
-              const tooltips = document.querySelectorAll('.goog-tooltip, .goog-te-balloon-frame, .goog-te-banner-frame');
-              tooltips.forEach(tooltip => {
-                tooltip.style.display = 'none';
-                tooltip.style.visibility = 'hidden';
-                tooltip.style.opacity = '0';
-                try {
-                  tooltip.remove();
-                } catch (e) {
-                  // Ignore removal errors
-                }
-              });
-            }, 100);
+              try {
+                const tooltips = document.querySelectorAll('.goog-tooltip, .goog-te-balloon-frame');
+                tooltips.forEach(tooltip => {
+                  if (tooltip && tooltip.parentNode) {
+                    tooltip.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important;';
+                  }
+                });
+              } catch (e) {
+                // Ignore errors
+              }
+            }, 500);
           }, 1000);
         } else {
           console.warn('Google Translate API not available yet');
@@ -81,47 +77,53 @@
     
     // Prevent Google Translate popups on page load
     document.addEventListener('DOMContentLoaded', function() {
-      // Remove banner immediately - aggressive removal
-      const removeBanner = () => {
-        const banners = document.querySelectorAll('.goog-te-banner-frame, iframe[src*="translate.google.com"], [class*="goog-te-banner"]');
-        banners.forEach(banner => {
-          banner.style.display = 'none';
-          banner.style.visibility = 'hidden';
-          banner.style.opacity = '0';
-          banner.style.height = '0';
-          banner.style.width = '0';
-          banner.style.position = 'fixed';
-          banner.style.top = '-9999px';
-          banner.style.left = '-9999px';
-          banner.style.zIndex = '-9999';
-          try {
-            banner.remove();
-          } catch (e) {
-            // Ignore removal errors
-          }
-        });
+      // Hide banner immediately - don't remove to avoid DOM conflicts
+      const hideBanner = () => {
+        try {
+          const banners = document.querySelectorAll('.goog-te-banner-frame, iframe[src*="translate.google.com"], [class*="goog-te-banner"]');
+          banners.forEach(banner => {
+            if (banner && banner.parentNode) {
+              banner.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; width: 0 !important; position: fixed !important; top: -9999px !important; left: -9999px !important; z-index: -9999 !important; pointer-events: none !important;';
+            }
+          });
+        } catch (e) {
+          // Ignore errors
+        }
       };
       
-      removeBanner();
-      setInterval(removeBanner, 100);
+      hideBanner();
+      setInterval(hideBanner, 500);
       
-      // Also use MutationObserver to catch dynamically added banners
+      // Use MutationObserver to catch dynamically added banners - but be less aggressive
+      let observerTimeout;
       const observer = new MutationObserver(function(mutations) {
-        removeBanner();
+        // Debounce to avoid too many calls
+        clearTimeout(observerTimeout);
+        observerTimeout = setTimeout(() => {
+          hideBanner();
+        }, 100);
       });
       
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
+      try {
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: false
+        });
+      } catch (e) {
+        // Ignore observer errors
+      }
       
       // Prevent text selection popup
       document.addEventListener('mouseup', function(e) {
         setTimeout(() => {
-          const tooltip = document.querySelector('.goog-tooltip');
-          if (tooltip) {
-            tooltip.style.display = 'none';
-            tooltip.remove();
+          try {
+            const tooltip = document.querySelector('.goog-tooltip');
+            if (tooltip && tooltip.parentNode) {
+              tooltip.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important;';
+            }
+          } catch (e) {
+            // Ignore errors
           }
         }, 10);
       }, true);
