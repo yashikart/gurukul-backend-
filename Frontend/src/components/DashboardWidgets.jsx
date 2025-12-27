@@ -31,10 +31,10 @@ export const StudyTimeWidget = ({ targetGoalSeconds, timeLeft, isActive, totalSt
             </div>
 
             <div className="relative z-10">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white mb-2 tabular-nums">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white mb-2 tabular-nums notranslate">
                     {formatTime(totalStudyTime)}
                 </div>
-                <p className="text-xs text-blue-300/60 mb-3 sm:mb-4">{percentage}% of daily goal ({goalDisplay})</p>
+                <p className="text-xs text-blue-300/60 mb-3 sm:mb-4 notranslate">{percentage}% of daily goal ({goalDisplay})</p>
 
                 {/* Progress Bar (Animation) */}
                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -79,7 +79,7 @@ export const KarmaWidget = () => {
 
             <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
                 <div>
-                    <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-purple-200">{karma}</div>
+                    <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-purple-200 notranslate">{karma}</div>
                     <p className="text-[10px] sm:text-xs text-purple-300/60 mt-1">Total Points</p>
                 </div>
                 <div className="text-xs space-y-2 text-gray-400 border-l border-white/10 pl-4">
@@ -242,7 +242,7 @@ export const GoalWidget = ({ timeLeft, isActive, onStart, onStop }) => {
                 </div>
             ) : (
                 <>
-                    <div className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading text-white mb-2 tabular-nums tracking-tight">
+                    <div className="text-3xl sm:text-4xl md:text-5xl font-bold font-heading text-white mb-2 tabular-nums tracking-tight notranslate">
                         {formatTime(timeLeft)}
                     </div>
 

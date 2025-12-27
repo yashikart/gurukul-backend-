@@ -18,14 +18,33 @@
             autoDisplay: false
           }, 'google_translate_element');
           
-          // Disable text selection popup
+          // Disable text selection popup and hide banner
           setTimeout(() => {
-            // Remove Google Translate banner
-            const banner = document.querySelector('.goog-te-banner-frame');
-            if (banner) {
-              banner.style.display = 'none';
-              banner.remove();
-            }
+            // Remove Google Translate banner - multiple methods
+            const removeBanner = () => {
+              const banners = document.querySelectorAll('.goog-te-banner-frame, iframe[src*="translate.google.com"]');
+              banners.forEach(banner => {
+                banner.style.display = 'none';
+                banner.style.visibility = 'hidden';
+                banner.style.opacity = '0';
+                banner.style.height = '0';
+                banner.style.width = '0';
+                banner.style.position = 'fixed';
+                banner.style.top = '-9999px';
+                banner.style.left = '-9999px';
+                banner.style.zIndex = '-9999';
+                try {
+                  banner.remove();
+                } catch (e) {
+                  // Ignore removal errors
+                }
+              });
+            };
+            
+            removeBanner();
+            
+            // Continuously remove banner
+            setInterval(removeBanner, 100);
             
             // Disable text selection popup by removing event listeners
             document.addEventListener('mouseup', function(e) {
@@ -37,12 +56,18 @@
               }
             }, true);
             
-            // Remove any existing tooltips
+            // Remove any existing tooltips and banners
             setInterval(() => {
-              const tooltips = document.querySelectorAll('.goog-tooltip, .goog-te-balloon-frame');
+              const tooltips = document.querySelectorAll('.goog-tooltip, .goog-te-balloon-frame, .goog-te-banner-frame');
               tooltips.forEach(tooltip => {
                 tooltip.style.display = 'none';
-                tooltip.remove();
+                tooltip.style.visibility = 'hidden';
+                tooltip.style.opacity = '0';
+                try {
+                  tooltip.remove();
+                } catch (e) {
+                  // Ignore removal errors
+                }
               });
             }, 100);
           }, 1000);
@@ -56,16 +81,39 @@
     
     // Prevent Google Translate popups on page load
     document.addEventListener('DOMContentLoaded', function() {
-      // Remove banner immediately
+      // Remove banner immediately - aggressive removal
       const removeBanner = () => {
-        const banner = document.querySelector('.goog-te-banner-frame');
-        if (banner) {
+        const banners = document.querySelectorAll('.goog-te-banner-frame, iframe[src*="translate.google.com"], [class*="goog-te-banner"]');
+        banners.forEach(banner => {
           banner.style.display = 'none';
-          banner.remove();
-        }
+          banner.style.visibility = 'hidden';
+          banner.style.opacity = '0';
+          banner.style.height = '0';
+          banner.style.width = '0';
+          banner.style.position = 'fixed';
+          banner.style.top = '-9999px';
+          banner.style.left = '-9999px';
+          banner.style.zIndex = '-9999';
+          try {
+            banner.remove();
+          } catch (e) {
+            // Ignore removal errors
+          }
+        });
       };
+      
       removeBanner();
-      setInterval(removeBanner, 500);
+      setInterval(removeBanner, 100);
+      
+      // Also use MutationObserver to catch dynamically added banners
+      const observer = new MutationObserver(function(mutations) {
+        removeBanner();
+      });
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
       
       // Prevent text selection popup
       document.addEventListener('mouseup', function(e) {

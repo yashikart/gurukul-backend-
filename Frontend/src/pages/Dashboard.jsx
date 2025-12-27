@@ -21,7 +21,7 @@ const Dashboard = ({
             <main className="flex-grow animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <div className="mb-4 sm:mb-8">
                     <h2 className="text-2xl sm:text-3xl font-bold font-heading text-white">Dashboard</h2>
-                    <p className="text-gray-200 text-xs sm:text-sm font-medium">
+                    <p className="text-gray-200 text-xs sm:text-sm font-medium notranslate">
                         {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
