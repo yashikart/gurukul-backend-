@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaBrain, FaClock, FaQuestionCircle, FaBolt, FaPlay, FaChevronDown, FaCheckCircle, FaTimesCircle, FaArrowRight, FaArrowLeft, FaRedo } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
@@ -63,6 +63,27 @@ const Test = () => {
             setAnswers({});
             setCurrentQuestionIndex(0);
             setMode('taking');
+            
+            // Trigger Google Translate to re-translate the page after quiz loads
+            setTimeout(() => {
+                try {
+                    // Force Google Translate to re-process the page
+                    if (window.google && window.google.translate) {
+                        const select = document.querySelector('.goog-te-combo');
+                        if (select) {
+                            const currentLang = select.value || 'en';
+                            // Trigger re-translation by briefly changing and changing back
+                            if (currentLang !== 'en') {
+                                select.value = currentLang;
+                                const event = new Event('change', { bubbles: true });
+                                select.dispatchEvent(event);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Silently ignore translation errors
+                }
+            }, 500);
         } catch (err) {
             console.error("Quiz generation error:", err);
             error("Error generating quiz. Please try again.", "Generation Error");
@@ -211,6 +232,27 @@ const Test = () => {
         </div>
     );
 
+    // Trigger Google Translate when quiz data or question changes
+    useEffect(() => {
+        if (mode === 'taking' && quizData && quizData.questions) {
+            // Trigger Google Translate to re-process dynamically added content
+            setTimeout(() => {
+                try {
+                    if (window.google && window.google.translate) {
+                        const select = document.querySelector('.goog-te-combo');
+                        if (select && select.value && select.value !== 'en') {
+                            // Force re-translation by dispatching change event
+                            const event = new Event('change', { bubbles: true });
+                            select.dispatchEvent(event);
+                        }
+                    }
+                } catch (e) {
+                    // Silently ignore
+                }
+            }, 300);
+        }
+    }, [mode, quizData, currentQuestionIndex]);
+
     const renderTaking = () => {
         if (!quizData || !quizData.questions || !Array.isArray(quizData.questions)) {
             return (
@@ -254,7 +296,7 @@ const Test = () => {
 
                 {/* Question Card */}
                 <div className="flex-grow glass-panel p-4 sm:p-6 md:p-8 rounded-3xl border border-white/10 flex flex-col justify-center">
-                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-6 sm:mb-8 leading-snug">
+                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-6 sm:mb-8 leading-snug" data-translate="yes">
                         {currentQ.question}
                     </h3>
 
@@ -264,11 +306,12 @@ const Test = () => {
                                 key={key}
                                 onClick={() => handleAnswerSelect(currentQ.question_id, key)}
                                 className={`p-4 rounded-xl border cursor-pointer flex items-center gap-4 transition-all duration-200 ${answers[currentQ.question_id] === key ? 'bg-orange-500/20 border-orange-500 text-white' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                                data-translate="yes"
                             >
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border text-sm font-bold notranslate ${answers[currentQ.question_id] === key ? 'bg-orange-500 border-orange-500 text-white' : 'border-white/20 text-gray-500'}`}>
                                     {key}
                                 </div>
-                                <span className="text-lg">{text}</span>
+                                <span className="text-lg" data-translate="yes">{text}</span>
                             </div>
                         ))}
                     </div>
