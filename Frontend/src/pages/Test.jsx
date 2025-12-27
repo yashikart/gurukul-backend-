@@ -141,13 +141,13 @@ const Test = () => {
                             <button
                                 onClick={() => setIsSubjectOpen(!isSubjectOpen)}
                                 onBlur={() => setTimeout(() => setIsSubjectOpen(false), 200)}
-                                className={`w-full p-4 rounded-xl bg-white/5 border text-left flex items-center justify-between transition-all duration-300 notranslate ${isSubjectOpen ? 'border-orange-500/50 ring-2 ring-orange-500/20 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                                className={`w-full p-4 rounded-xl bg-white/5 border text-left flex items-center justify-between transition-all duration-300 ${isSubjectOpen ? 'border-orange-500/50 ring-2 ring-orange-500/20 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                             >
                                 <span className={subject ? "text-white" : "text-gray-500"}>{subject || "Select Subject"}</span>
                                 <FaChevronDown className={`text-xs text-gray-400 transition-transform duration-300 ${isSubjectOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isSubjectOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 max-h-60 overflow-y-auto custom-scrollbar notranslate">
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 max-h-60 overflow-y-auto custom-scrollbar">
                                     {subjects.map(item => (
                                         <div key={item} onClick={() => { setSubject(item); setIsSubjectOpen(false); }} className="px-5 py-3 text-gray-300 hover:bg-white/5 hover:text-orange-400 cursor-pointer flex justify-between">
                                             {item}
@@ -167,7 +167,7 @@ const Test = () => {
                             value={topic}
                             onChange={(e) => setTopic(e.target.value)}
                             placeholder="e.g. Thermodynamics, Algebra..."
-                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-colors notranslate"
+                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-colors"
                         />
                     </div>
 
@@ -178,13 +178,13 @@ const Test = () => {
                             <button
                                 onClick={() => setIsDifficultyOpen(!isDifficultyOpen)}
                                 onBlur={() => setTimeout(() => setIsDifficultyOpen(false), 200)}
-                                className={`w-full p-4 rounded-xl bg-white/5 border text-left flex items-center justify-between transition-all duration-300 notranslate ${isDifficultyOpen ? 'border-orange-500/50 ring-2 ring-orange-500/20 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                                className={`w-full p-4 rounded-xl bg-white/5 border text-left flex items-center justify-between transition-all duration-300 ${isDifficultyOpen ? 'border-orange-500/50 ring-2 ring-orange-500/20 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                             >
                                 <span className="text-white capitalize">{difficulty}</span>
                                 <FaChevronDown className={`text-xs text-gray-400 transition-transform duration-300 ${isDifficultyOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isDifficultyOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 notranslate">
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
                                     {difficulties.map(item => (
                                         <div key={item} onClick={() => { setDifficulty(item); setIsDifficultyOpen(false); }} className="px-5 py-3 text-gray-300 hover:bg-white/5 hover:text-orange-400 cursor-pointer capitalize flex justify-between">
                                             {item}
@@ -244,8 +244,8 @@ const Test = () => {
         return (
             <div className="w-full flex-grow flex flex-col gap-6 animate-fade-in-up">
                 {/* Header / Progress */}
-                <div className="flex items-center justify-between text-gray-400 text-sm notranslate">
-                    <span>Question {currentQuestionIndex + 1} of {quizData.total_questions}</span>
+                <div className="flex items-center justify-between text-gray-400 text-sm">
+                    <span className="notranslate">Question {currentQuestionIndex + 1} of {quizData.total_questions}</span>
                     <span>{quizData.topic} • {quizData.difficulty}</span>
                 </div>
                 <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
@@ -263,7 +263,7 @@ const Test = () => {
                             <div
                                 key={key}
                                 onClick={() => handleAnswerSelect(currentQ.question_id, key)}
-                                className={`p-4 rounded-xl border cursor-pointer flex items-center gap-4 transition-all duration-200 notranslate ${answers[currentQ.question_id] === key ? 'bg-orange-500/20 border-orange-500 text-white' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                                className={`p-4 rounded-xl border cursor-pointer flex items-center gap-4 transition-all duration-200 ${answers[currentQ.question_id] === key ? 'bg-orange-500/20 border-orange-500 text-white' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
                             >
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border text-sm font-bold notranslate ${answers[currentQ.question_id] === key ? 'bg-orange-500 border-orange-500 text-white' : 'border-white/20 text-gray-500'}`}>
                                     {key}
