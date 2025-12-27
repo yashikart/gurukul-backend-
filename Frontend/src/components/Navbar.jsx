@@ -17,15 +17,20 @@ const Navbar = () => {
   useEffect(() => {
     // Initialize Google Translate if available
     const initTranslate = () => {
-      if (window.google && window.google.translate && typeof window.googleTranslateElementInit === 'function') {
+      if (window.google && window.google.translate && window.google.translate.TranslateElement) {
         const translateElement = document.getElementById('google_translate_element');
         if (translateElement && !translateElement.hasChildNodes()) {
-          window.googleTranslateElementInit();
+          try {
+            if (typeof window.googleTranslateElementInit === 'function') {
+              window.googleTranslateElementInit();
+            }
+          } catch (error) {
+            console.error('Error initializing Google Translate:', error);
+          }
         }
-      } else {
-        // Retry if Google Translate hasn't loaded yet
-        setTimeout(initTranslate, 100);
+        return true; // Successfully initialized
       }
+      return false; // Not ready yet
     };
 
     // Load saved language preference
@@ -57,20 +62,35 @@ const Navbar = () => {
     
     if (savedLang && langNames[savedLang]) {
       setCurrentLang(langNames[savedLang]);
-      setTimeout(() => {
-        initTranslate();
-        setTimeout(() => {
-          const select = document.querySelector('.goog-te-combo');
-          if (select && select.value !== savedLang) {
-            select.value = savedLang;
-            const event = new Event('change', { bubbles: true });
-            select.dispatchEvent(event);
-          }
-        }, 500);
-      }, 100);
-    } else {
-      initTranslate();
     }
+
+    // Wait for Google Translate to load, then initialize
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max wait
+    
+    const tryInit = () => {
+      attempts++;
+      if (initTranslate()) {
+        // Successfully initialized, now set language if saved
+        if (savedLang) {
+          setTimeout(() => {
+            const select = document.querySelector('.goog-te-combo');
+            if (select && select.value !== savedLang) {
+              select.value = savedLang;
+              const event = new Event('change', { bubbles: true });
+              select.dispatchEvent(event);
+            }
+          }, 300);
+        }
+      } else if (attempts < maxAttempts) {
+        setTimeout(tryInit, 100);
+      } else {
+        console.warn('Google Translate failed to load after multiple attempts');
+      }
+    };
+
+    // Start trying to initialize
+    tryInit();
   }, []);
 
   useEffect(() => {
