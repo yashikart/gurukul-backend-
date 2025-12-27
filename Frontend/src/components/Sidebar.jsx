@@ -11,7 +11,8 @@ import {
     FaUserAstronaut,
     FaCog,
     FaSignOutAlt,
-    FaUserCircle
+    FaUserCircle,
+    FaFlipboard
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +23,7 @@ const menuItems = [
     { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" },
     { icon: FaComments, label: "Chatbot", path: "/chatbot" },
     { icon: FaClipboardList, label: "Test", path: "/test" },
+    { icon: FaFlipboard, label: "Flashcards", path: "/flashcards" },
     { icon: FaVideo, label: "Lectures", path: "/lectures" },
     { icon: FaRobot, label: "Agent Simulator", path: "/agent-simulator" },
     { icon: FaUserAstronaut, label: "Avatar", path: "/avatar" },

@@ -14,6 +14,7 @@ import AgentSimulator from './pages/AgentSimulator';
 import Avatar from './pages/Avatar';
 import Settings from './pages/Settings';
 import Lectures from './pages/Lectures';
+import Flashcards from './pages/Flashcards';
 import DraggableAvatar from './components/DraggableAvatar';
 import { KarmaProvider } from './contexts/KarmaContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -169,6 +170,7 @@ const App = () => {
                   <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
                   <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
                   <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
+                  <Route path="/flashcards" element={<PrivateRoute><Flashcards /></PrivateRoute>} />
                   <Route path="/agent-simulator" element={<PrivateRoute><AgentSimulator /></PrivateRoute>} />
                   <Route path="/avatar" element={<PrivateRoute><Avatar /></PrivateRoute>} />
                   <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />

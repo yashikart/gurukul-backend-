@@ -4,6 +4,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 3D Card Flip Styles */
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
 :root {
   --font-primary: 'Outfit', sans-serif;
   --font-heading: 'Playfair Display', serif;
