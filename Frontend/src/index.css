@@ -109,44 +109,54 @@ body {
 }
 
 #google_translate_element {
-  visibility: hidden;
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-
-.goog-te-gadget-simple {
-  background-color: transparent !important;
-  border: none !important;
-  font-size: 14px !important;
-  font-family: var(--font-primary) !important;
-  padding: 8px !important;
-  color: var(--color-text-muted) !important;
-  cursor: pointer;
-  transition: color 0.3s ease;
-}
-
-.goog-te-gadget-simple img {
   display: none !important;
 }
 
-.goog-te-gadget-simple .goog-te-menu-value {
-  color: var(--color-text-muted) !important;
-  font-weight: 500 !important;
-  padding-right: 10px !important;
+.goog-te-gadget {
+  display: none !important;
 }
 
-.goog-te-gadget-simple .goog-te-menu-value span {
-  border-left: none !important;
-  color: inherit !important;
+.goog-te-gadget-simple {
+  display: none !important;
 }
 
-.goog-te-gadget-simple .goog-te-menu-value:hover {
+/* Google Translate Dropdown Styling */
+.goog-te-menu-frame {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(26, 28, 22, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.goog-te-menu-value {
   color: var(--color-text-main) !important;
 }
 
-/* Hide "Powered by Google" branding if possible/allowed or just minimal style */
+.goog-te-menu2 {
+  background: rgba(26, 28, 22, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.goog-te-menu2-item {
+  color: var(--color-text-main) !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  transition: background 0.2s ease !important;
+}
+
+.goog-te-menu2-item:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.goog-te-menu2-item-selected {
+  background: rgba(232, 185, 117, 0.1) !important;
+  color: var(--color-accent) !important;
+}
 /* Custom Scrollbar */
 /* Custom Scrollbar strong visibility */
 .custom-scrollbar::-webkit-scrollbar {

@@ -1,5 +1,5 @@
-import React from 'react';
-import { FaUserCircle, FaBars, FaTimes } from 'react-icons/fa';
+import React, { useEffect, useState, useRef } from 'react';
+import { FaUserCircle, FaBars, FaTimes, FaGlobe, FaChevronDown } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 
 import logo from '../assets/logo.svg';
@@ -10,6 +10,84 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const { toggleSidebar, isSidebarOpen } = useSidebar();
   const navigate = useNavigate();
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  const [currentLang, setCurrentLang] = useState('English');
+  const languageMenuRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize Google Translate if available
+    const initTranslate = () => {
+      if (window.google && window.google.translate && typeof window.googleTranslateElementInit === 'function') {
+        const translateElement = document.getElementById('google_translate_element');
+        if (translateElement && !translateElement.hasChildNodes()) {
+          window.googleTranslateElementInit();
+        }
+      } else {
+        // Retry if Google Translate hasn't loaded yet
+        setTimeout(initTranslate, 100);
+      }
+    };
+
+    // Load saved language preference
+    const savedLang = localStorage.getItem('selected_language');
+    const langNames = {
+      'en': 'English',
+      'hi': 'हिंदी',
+      'es': 'Español',
+      'fr': 'Français',
+      'de': 'Deutsch',
+      'it': 'Italiano',
+      'pt': 'Português',
+      'ru': 'Русский',
+      'ja': '日本語',
+      'ko': '한국어',
+      'zh-CN': '中文',
+      'ar': 'العربية',
+      'bn': 'বাংলা',
+      'gu': 'ગુજરાતી',
+      'kn': 'ಕನ್ನಡ',
+      'ml': 'മലയാളം',
+      'mr': 'मराठी',
+      'ne': 'नेपाली',
+      'pa': 'ਪੰਜਾਬੀ',
+      'ta': 'தமிழ்',
+      'te': 'తెలుగు',
+      'ur': 'اردو'
+    };
+    
+    if (savedLang && langNames[savedLang]) {
+      setCurrentLang(langNames[savedLang]);
+      setTimeout(() => {
+        initTranslate();
+        setTimeout(() => {
+          const select = document.querySelector('.goog-te-combo');
+          if (select && select.value !== savedLang) {
+            select.value = savedLang;
+            const event = new Event('change', { bubbles: true });
+            select.dispatchEvent(event);
+          }
+        }, 500);
+      }, 100);
+    } else {
+      initTranslate();
+    }
+  }, []);
+
+  useEffect(() => {
+    // Close language menu when clicking outside
+    const handleClickOutside = (event) => {
+      if (languageMenuRef.current && !languageMenuRef.current.contains(event.target)) {
+        setIsLanguageOpen(false);
+      }
+    };
+
+    if (isLanguageOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isLanguageOpen]);
 
   const handleLogout = async () => {
     try {
@@ -19,6 +97,127 @@ const Navbar = () => {
       console.error('Failed to log out', error);
     }
   };
+
+  const handleLanguageChange = (langCode) => {
+    // Store selected language
+    localStorage.setItem('selected_language', langCode);
+    
+    // Update current language state
+    const langNames = {
+      'en': 'English',
+      'hi': 'हिंदी',
+      'es': 'Español',
+      'fr': 'Français',
+      'de': 'Deutsch',
+      'it': 'Italiano',
+      'pt': 'Português',
+      'ru': 'Русский',
+      'ja': '日本語',
+      'ko': '한국어',
+      'zh-CN': '中文',
+      'ar': 'العربية',
+      'bn': 'বাংলা',
+      'gu': 'ગુજરાતી',
+      'kn': 'ಕನ್ನಡ',
+      'ml': 'മലയാളം',
+      'mr': 'मराठी',
+      'ne': 'नेपाली',
+      'pa': 'ਪੰਜਾਬੀ',
+      'ta': 'தமிழ்',
+      'te': 'తెలుగు',
+      'ur': 'اردو'
+    };
+    setCurrentLang(langNames[langCode] || 'English');
+    
+    // Use Google Translate API to change language
+    if (window.google && window.google.translate) {
+      const select = document.querySelector('.goog-te-combo');
+      if (select) {
+        select.value = langCode;
+        const event = new Event('change', { bubbles: true });
+        select.dispatchEvent(event);
+      } else {
+        // If select doesn't exist yet, wait and retry
+        setTimeout(() => {
+          const select = document.querySelector('.goog-te-combo');
+          if (select) {
+            select.value = langCode;
+            const event = new Event('change', { bubbles: true });
+            select.dispatchEvent(event);
+          }
+        }, 200);
+      }
+    }
+    setIsLanguageOpen(false);
+  };
+
+  const getCurrentLanguage = () => {
+    const langNames = {
+      'en': 'English',
+      'hi': 'हिंदी',
+      'es': 'Español',
+      'fr': 'Français',
+      'de': 'Deutsch',
+      'it': 'Italiano',
+      'pt': 'Português',
+      'ru': 'Русский',
+      'ja': '日本語',
+      'ko': '한국어',
+      'zh-CN': '中文',
+      'ar': 'العربية',
+      'bn': 'বাংলা',
+      'gu': 'ગુજરાતી',
+      'kn': 'ಕನ್ನಡ',
+      'ml': 'മലയാളം',
+      'mr': 'मराठी',
+      'ne': 'नेपाली',
+      'pa': 'ਪੰਜਾਬੀ',
+      'ta': 'தமிழ்',
+      'te': 'తెలుగు',
+      'ur': 'اردو'
+    };
+
+    // Try to get from Google Translate select
+    if (window.google && window.google.translate) {
+      const select = document.querySelector('.goog-te-combo');
+      if (select && select.value) {
+        return langNames[select.value] || 'English';
+      }
+    }
+
+    // Fallback to saved preference
+    const savedLang = localStorage.getItem('selected_language');
+    if (savedLang && langNames[savedLang]) {
+      return langNames[savedLang];
+    }
+
+    return currentLang;
+  };
+
+  const languages = [
+    { code: 'en', name: 'English', native: 'English' },
+    { code: 'hi', name: 'Hindi', native: 'हिंदी' },
+    { code: 'es', name: 'Spanish', native: 'Español' },
+    { code: 'fr', name: 'French', native: 'Français' },
+    { code: 'de', name: 'German', native: 'Deutsch' },
+    { code: 'it', name: 'Italian', native: 'Italiano' },
+    { code: 'pt', name: 'Portuguese', native: 'Português' },
+    { code: 'ru', name: 'Russian', native: 'Русский' },
+    { code: 'ja', name: 'Japanese', native: '日本語' },
+    { code: 'ko', name: 'Korean', native: '한국어' },
+    { code: 'zh-CN', name: 'Chinese', native: '中文' },
+    { code: 'ar', name: 'Arabic', native: 'العربية' },
+    { code: 'bn', name: 'Bengali', native: 'বাংলা' },
+    { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી' },
+    { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ' },
+    { code: 'ml', name: 'Malayalam', native: 'മലയാളം' },
+    { code: 'mr', name: 'Marathi', native: 'मराठी' },
+    { code: 'ne', name: 'Nepali', native: 'नेपाली' },
+    { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+    { code: 'ta', name: 'Tamil', native: 'தமிழ்' },
+    { code: 'te', name: 'Telugu', native: 'తెలుగు' },
+    { code: 'ur', name: 'Urdu', native: 'اردو' }
+  ];
 
   return (
     <nav className="absolute top-0 left-0 w-full z-50 py-3 sm:py-6 transition-all duration-300">
@@ -47,6 +246,43 @@ const Navbar = () => {
 
           {/* Links & Actions */}
           <div className="flex items-center gap-2 sm:gap-4 lg:gap-8">
+            {/* Language Selector */}
+            <div className="relative" ref={languageMenuRef}>
+              <button
+                onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all border border-white/10 text-xs sm:text-sm"
+                title="Change Language"
+              >
+                <FaGlobe className="text-sm sm:text-base" />
+                <span className="hidden sm:inline">{currentLang}</span>
+                <FaChevronDown className={`text-[10px] transition-transform ${isLanguageOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Language Dropdown */}
+              {isLanguageOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 sm:w-56 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => handleLanguageChange(lang.code)}
+                      className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-orange-400 transition-colors flex items-center justify-between border-b border-white/5 last:border-b-0"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{lang.native}</span>
+                        <span className="text-xs text-gray-500">{lang.name}</span>
+                      </div>
+                      {currentLang === lang.native && (
+                        <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Hidden Google Translate Element */}
+              <div id="google_translate_element" className="hidden"></div>
+            </div>
+
             {/* Sign In Section */}
             <div className="hidden lg:flex items-center">
               {user ? (
