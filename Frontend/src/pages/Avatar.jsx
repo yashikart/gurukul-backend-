@@ -118,7 +118,10 @@ const Avatar = () => {
         reader.readAsDataURL(file);
     };
 
-    const handleRemoveImage = () => {
+    const handleRemoveImage = (e) => {
+        e?.stopPropagation();
+        e?.preventDefault();
+        
         if (window.confirm('Are you sure you want to remove this avatar?')) {
             setUploadedImage(null);
             localStorage.removeItem('avatarImage');
@@ -175,6 +178,7 @@ const Avatar = () => {
                             {uploadedImage && (
                                 <button
                                     onClick={handleRemoveImage}
+                                    type="button"
                                     className="text-red-400 hover:text-red-300 text-xs border border-red-500/30 hover:border-red-500/50 px-3 py-1.5 rounded-lg transition-all bg-red-500/10 flex items-center gap-2"
                                 >
                                     <FaTrash size={12} />

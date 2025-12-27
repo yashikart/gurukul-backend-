@@ -23,6 +23,7 @@ const Chatbot = () => {
     const [loading, setLoading] = React.useState(false);
     const [conversationId, setConversationId] = React.useState(() => localStorage.getItem('chatbot_conversationId') || null);
     const chatEndRef = React.useRef(null);
+    const deleteMenuRef = React.useRef(null);
 
     // State for Features
     const [showHistory, setShowHistory] = React.useState(false);
@@ -68,6 +69,22 @@ const Chatbot = () => {
     React.useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatHistory]);
+
+    // Close delete menu when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (deleteMenuRef.current && !deleteMenuRef.current.contains(event.target)) {
+                setShowDeleteMenu(false);
+            }
+        };
+
+        if (showDeleteMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => {
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
+        }
+    }, [showDeleteMenu]);
 
     // Save History Helper
     const saveToHistory = (id, firstMessage) => {
@@ -182,12 +199,27 @@ const Chatbot = () => {
         }
     };
 
-    const handleDeleteCurrent = async () => {
-        if (!conversationId) return;
-        if (!confirm("Delete this conversation permanently?")) return;
+    const handleDeleteCurrent = async (e) => {
+        e?.stopPropagation();
+        e?.preventDefault();
+        
+        if (!conversationId) {
+            alert("No active chat to delete. Start a conversation first.");
+            setShowDeleteMenu(false);
+            return;
+        }
+        
+        if (!confirm("Delete this conversation permanently?")) {
+            setShowDeleteMenu(false);
+            return;
+        }
 
         try {
-            await fetch(`${API_BASE_URL}/chat/history/${conversationId}`, { method: 'DELETE' });
+            const response = await fetch(`${API_BASE_URL}/chat/history/${conversationId}`, { method: 'DELETE' });
+            
+            if (!response.ok) {
+                throw new Error('Failed to delete conversation');
+            }
 
             // Remove from local list
             const updated = savedChats.filter(c => c.id !== conversationId);
@@ -197,16 +229,22 @@ const Chatbot = () => {
             handleNewChat();
             setShowDeleteMenu(false);
         } catch (error) {
-            alert("Failed to delete chat");
+            console.error("Delete error:", error);
+            alert("Failed to delete chat: " + error.message);
+            setShowDeleteMenu(false);
         }
     };
 
-    const handleDeleteAll = () => {
-        if (!confirm("Are you sure you want to clear your ENTIRE chat history list? This cannot be undone.")) return;
+    const handleDeleteAll = (e) => {
+        e?.stopPropagation();
+        e?.preventDefault();
+        
+        if (!confirm("Are you sure you want to clear your ENTIRE chat history list? This cannot be undone.")) {
+            setShowDeleteMenu(false);
+            return;
+        }
 
-        // Note: We are only clearing LOCAL references here as per plan, 
-        // unless we want to loop call DELETE api (risk of rate limit/time).
-        // For now, clearing local list is "Forget All".
+        // Clear all saved chats
         setSavedChats([]);
         localStorage.removeItem('gurukul_saved_chats');
         handleNewChat();
@@ -320,16 +358,22 @@ const Chatbot = () => {
                                 <FaHistory />
                             </button>
 
-                            <div className="relative">
+                            <div className="relative" ref={deleteMenuRef}>
                                 <button
-                                    onClick={() => setShowDeleteMenu(!showDeleteMenu)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowDeleteMenu(!showDeleteMenu);
+                                    }}
                                     className="p-2 text-gray-400 hover:text-red-400 transition-colors"
                                 >
                                     <FaTrashAlt />
                                 </button>
                                 {/* Delete Dropdown */}
                                 {showDeleteMenu && (
-                                    <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+                                    <div 
+                                        className="absolute right-0 top-full mt-2 w-48 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
                                         <button
                                             onClick={handleDeleteCurrent}
                                             disabled={!conversationId}

@@ -71,15 +71,9 @@ const AgentSimulator = () => {
             use_orchestration: false
         };
     });
-    const [lastGenConfig, setLastGenConfig] = useState(() => {
-        const saved = localStorage.getItem('agent_sim_edumentor_lastGenConfig');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [lastGenConfig, setLastGenConfig] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedLesson, setGeneratedLesson] = useState(() => {
-        const saved = localStorage.getItem('agent_sim_edumentor_lesson');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [generatedLesson, setGeneratedLesson] = useState(null);
 
     // FinancialCrew Specific State
     const [financialConfig, setFinancialConfig] = useState(() => {
@@ -94,15 +88,9 @@ const AgentSimulator = () => {
             risk_level: 'Moderate'
         };
     });
-    const [lastFinancialConfig, setLastFinancialConfig] = useState(() => {
-        const saved = localStorage.getItem('agent_sim_financial_lastGenConfig');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [lastFinancialConfig, setLastFinancialConfig] = useState(null);
     const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
-    const [generatedAdvice, setGeneratedAdvice] = useState(() => {
-        const saved = localStorage.getItem('agent_sim_financial_advice');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [generatedAdvice, setGeneratedAdvice] = useState(null);
     const [isFinancialTypeOpen, setIsFinancialTypeOpen] = useState(false);
     const [isRiskLevelOpen, setIsRiskLevelOpen] = useState(false);
 
@@ -117,15 +105,9 @@ const AgentSimulator = () => {
             concerns: ''
         };
     });
-    const [lastWellnessConfig, setLastWellnessConfig] = useState(() => {
-        const saved = localStorage.getItem('agent_sim_wellness_lastGenConfig');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [lastWellnessConfig, setLastWellnessConfig] = useState(null);
     const [isGeneratingSupport, setIsGeneratingSupport] = useState(false);
-    const [generatedSupport, setGeneratedSupport] = useState(() => {
-        const saved = localStorage.getItem('agent_sim_wellness_support');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [generatedSupport, setGeneratedSupport] = useState(null);
 
     // Shared State
     const [isChatEnabled, setIsChatEnabled] = useState(() => {
@@ -139,25 +121,68 @@ const AgentSimulator = () => {
     const [conversationId, setConversationId] = useState(() => localStorage.getItem('agent_sim_conversationId') || null);
     const chatEndRef = useRef(null);
 
-    // Sync chat history to/from agent-specific storage
+    // Sync all agent-specific data when switching agents
     useEffect(() => {
         if (!selectedAgent) return;
-        const key = `agent_sim_chatHistory_${selectedAgent.name}`;
-        const saved = localStorage.getItem(key);
-        setChatHistory(saved ? JSON.parse(saved) : []);
+        
+        const agentName = selectedAgent.name;
+        
+        // Sync chat history
+        const chatKey = `agent_sim_chatHistory_${agentName}`;
+        const savedChat = localStorage.getItem(chatKey);
+        setChatHistory(savedChat ? JSON.parse(savedChat) : []);
 
-        // Also sync conversationId per agent?
-        const convKey = `agent_sim_conversationId_${selectedAgent.name}`;
+        // Sync conversationId
+        const convKey = `agent_sim_conversationId_${agentName}`;
         setConversationId(localStorage.getItem(convKey) || null);
 
-        // Also sync isChatEnabled?
-        const enabledKey = `agent_sim_isEnabled_${selectedAgent.name}`;
-        const wasEnabled = localStorage.getItem(enabledKey) === 'true';
-        if (selectedAgent.name === 'EduMentor' || selectedAgent.name === 'FinancialCrew' || selectedAgent.name === 'WellnessBot') {
-            // For these, use the persistent result state to determine enablement
-            const resultKey = `agent_sim_${selectedAgent.name.toLowerCase()}_${selectedAgent.name === 'EduMentor' ? 'lesson' : (selectedAgent.name === 'FinancialCrew' ? 'advice' : 'support')}`;
-            setIsChatEnabled(!!localStorage.getItem(resultKey));
+        // Clear other agents' generated content first
+        if (agentName !== 'EduMentor') {
+            setGeneratedLesson(null);
+            setLastGenConfig(null);
+        }
+        if (agentName !== 'FinancialCrew') {
+            setGeneratedAdvice(null);
+            setLastFinancialConfig(null);
+        }
+        if (agentName !== 'WellnessBot') {
+            setGeneratedSupport(null);
+            setLastWellnessConfig(null);
+        }
+
+        // Load agent-specific generated content
+        if (agentName === 'EduMentor') {
+            const lessonKey = `agent_sim_edumentor_lesson_${agentName}`;
+            const savedLesson = localStorage.getItem(lessonKey);
+            setGeneratedLesson(savedLesson ? JSON.parse(savedLesson) : null);
+            
+            const lastConfigKey = `agent_sim_edumentor_lastGenConfig_${agentName}`;
+            const savedLastConfig = localStorage.getItem(lastConfigKey);
+            setLastGenConfig(savedLastConfig ? JSON.parse(savedLastConfig) : null);
+            
+            setIsChatEnabled(!!savedLesson);
+        } else if (agentName === 'FinancialCrew') {
+            const adviceKey = `agent_sim_financial_advice_${agentName}`;
+            const savedAdvice = localStorage.getItem(adviceKey);
+            setGeneratedAdvice(savedAdvice ? JSON.parse(savedAdvice) : null);
+            
+            const lastConfigKey = `agent_sim_financial_lastGenConfig_${agentName}`;
+            const savedLastConfig = localStorage.getItem(lastConfigKey);
+            setLastFinancialConfig(savedLastConfig ? JSON.parse(savedLastConfig) : null);
+            
+            setIsChatEnabled(!!savedAdvice);
+        } else if (agentName === 'WellnessBot') {
+            const supportKey = `agent_sim_wellness_support_${agentName}`;
+            const savedSupport = localStorage.getItem(supportKey);
+            setGeneratedSupport(savedSupport ? JSON.parse(savedSupport) : null);
+            
+            const lastConfigKey = `agent_sim_wellness_lastGenConfig_${agentName}`;
+            const savedLastConfig = localStorage.getItem(lastConfigKey);
+            setLastWellnessConfig(savedLastConfig ? JSON.parse(savedLastConfig) : null);
+            
+            setIsChatEnabled(!!savedSupport);
         } else {
+            // For non-config agents, chat is always enabled
             setIsChatEnabled(true);
         }
     }, [selectedAgent]);
@@ -173,14 +198,21 @@ const AgentSimulator = () => {
         else localStorage.removeItem(convKey);
     }, [chatHistory, conversationId, selectedAgent]);
 
-    const handleResetAgent = () => {
-        if (!selectedAgent || !window.confirm(`Reset ${selectedAgent.name} session?`)) return;
+    const handleResetAgent = (e) => {
+        e?.stopPropagation();
+        e?.preventDefault();
+        
+        if (!selectedAgent || !window.confirm(`Reset ${selectedAgent.name} session? This will clear all chat history and generated content for this agent.`)) return;
 
         const name = selectedAgent.name;
+        
+        // Clear state
         if (name === 'EduMentor') {
             setGeneratedLesson(null);
             setLastGenConfig(null);
             setConfig({ subject: '', topic: '', include_wikipedia: false, use_knowledge_store: false, use_orchestration: false });
+            localStorage.removeItem(`agent_sim_edumentor_lesson_${name}`);
+            localStorage.removeItem(`agent_sim_edumentor_lastGenConfig_${name}`);
         } else if (name === 'FinancialCrew') {
             setGeneratedAdvice(null);
             setLastFinancialConfig(null);
@@ -193,6 +225,8 @@ const AgentSimulator = () => {
                 financial_type: 'Moderate',
                 risk_level: 'Moderate'
             });
+            localStorage.removeItem(`agent_sim_financial_advice_${name}`);
+            localStorage.removeItem(`agent_sim_financial_lastGenConfig_${name}`);
         } else if (name === 'WellnessBot') {
             setGeneratedSupport(null);
             setLastWellnessConfig(null);
@@ -203,13 +237,15 @@ const AgentSimulator = () => {
                 stress_level: 5,
                 concerns: ''
             });
+            localStorage.removeItem(`agent_sim_wellness_support_${name}`);
+            localStorage.removeItem(`agent_sim_wellness_lastGenConfig_${name}`);
         }
 
         setChatHistory([]);
         setConversationId(null);
         setIsChatEnabled(false);
 
-        // Clear storage
+        // Clear all agent-specific storage
         const keys = [
             `agent_sim_chatHistory_${name}`,
             `agent_sim_conversationId_${name}`,
@@ -227,50 +263,80 @@ const AgentSimulator = () => {
         localStorage.setItem('agent_sim_edumentor_config', JSON.stringify(config));
     }, [config]);
 
+    // Persist generated content per-agent
     useEffect(() => {
-        localStorage.setItem('agent_sim_edumentor_lesson', JSON.stringify(generatedLesson));
-    }, [generatedLesson]);
+        if (!selectedAgent) return;
+        if (selectedAgent.name === 'EduMentor') {
+            if (generatedLesson) {
+                localStorage.setItem(`agent_sim_edumentor_lesson_${selectedAgent.name}`, JSON.stringify(generatedLesson));
+            } else {
+                localStorage.removeItem(`agent_sim_edumentor_lesson_${selectedAgent.name}`);
+            }
+        }
+    }, [generatedLesson, selectedAgent]);
 
     useEffect(() => {
-        localStorage.setItem('agent_sim_edumentor_lastGenConfig', JSON.stringify(lastGenConfig));
-    }, [lastGenConfig]);
+        if (!selectedAgent) return;
+        if (selectedAgent.name === 'EduMentor') {
+            if (lastGenConfig) {
+                localStorage.setItem(`agent_sim_edumentor_lastGenConfig_${selectedAgent.name}`, JSON.stringify(lastGenConfig));
+            } else {
+                localStorage.removeItem(`agent_sim_edumentor_lastGenConfig_${selectedAgent.name}`);
+            }
+        }
+    }, [lastGenConfig, selectedAgent]);
 
     useEffect(() => {
         localStorage.setItem('agent_sim_financial_config', JSON.stringify(financialConfig));
     }, [financialConfig]);
 
     useEffect(() => {
-        localStorage.setItem('agent_sim_financial_advice', JSON.stringify(generatedAdvice));
-    }, [generatedAdvice]);
+        if (!selectedAgent) return;
+        if (selectedAgent.name === 'FinancialCrew') {
+            if (generatedAdvice) {
+                localStorage.setItem(`agent_sim_financial_advice_${selectedAgent.name}`, JSON.stringify(generatedAdvice));
+            } else {
+                localStorage.removeItem(`agent_sim_financial_advice_${selectedAgent.name}`);
+            }
+        }
+    }, [generatedAdvice, selectedAgent]);
 
     useEffect(() => {
-        localStorage.setItem('agent_sim_financial_lastGenConfig', JSON.stringify(lastFinancialConfig));
-    }, [lastFinancialConfig]);
+        if (!selectedAgent) return;
+        if (selectedAgent.name === 'FinancialCrew') {
+            if (lastFinancialConfig) {
+                localStorage.setItem(`agent_sim_financial_lastGenConfig_${selectedAgent.name}`, JSON.stringify(lastFinancialConfig));
+            } else {
+                localStorage.removeItem(`agent_sim_financial_lastGenConfig_${selectedAgent.name}`);
+            }
+        }
+    }, [lastFinancialConfig, selectedAgent]);
 
     useEffect(() => {
         localStorage.setItem('agent_sim_wellness_config', JSON.stringify(wellnessConfig));
     }, [wellnessConfig]);
 
     useEffect(() => {
-        localStorage.setItem('agent_sim_wellness_support', JSON.stringify(generatedSupport));
-    }, [generatedSupport]);
+        if (!selectedAgent) return;
+        if (selectedAgent.name === 'WellnessBot') {
+            if (generatedSupport) {
+                localStorage.setItem(`agent_sim_wellness_support_${selectedAgent.name}`, JSON.stringify(generatedSupport));
+            } else {
+                localStorage.removeItem(`agent_sim_wellness_support_${selectedAgent.name}`);
+            }
+        }
+    }, [generatedSupport, selectedAgent]);
 
     useEffect(() => {
-        localStorage.setItem('agent_sim_wellness_lastGenConfig', JSON.stringify(lastWellnessConfig));
-    }, [lastWellnessConfig]);
-
-    useEffect(() => {
-        localStorage.setItem('agent_sim_chatHistory', JSON.stringify(chatHistory));
-    }, [chatHistory]);
-
-    useEffect(() => {
-        localStorage.setItem('agent_sim_isChatEnabled', isChatEnabled.toString());
-    }, [isChatEnabled]);
-
-    useEffect(() => {
-        if (conversationId) localStorage.setItem('agent_sim_conversationId', conversationId);
-        else localStorage.removeItem('agent_sim_conversationId');
-    }, [conversationId]);
+        if (!selectedAgent) return;
+        if (selectedAgent.name === 'WellnessBot') {
+            if (lastWellnessConfig) {
+                localStorage.setItem(`agent_sim_wellness_lastGenConfig_${selectedAgent.name}`, JSON.stringify(lastWellnessConfig));
+            } else {
+                localStorage.removeItem(`agent_sim_wellness_lastGenConfig_${selectedAgent.name}`);
+            }
+        }
+    }, [lastWellnessConfig, selectedAgent]);
 
     // --- Effects ---
     useEffect(() => {
