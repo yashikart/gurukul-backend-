@@ -148,27 +148,124 @@ const Navbar = () => {
       'ur': 'اردو'
     };
     setCurrentLang(langNames[langCode] || 'English');
-    
-    // Use Google Translate API to change language
-    if (window.google && window.google.translate) {
-      const select = document.querySelector('.goog-te-combo');
-      if (select) {
-        select.value = langCode;
-        const event = new Event('change', { bubbles: true });
-        select.dispatchEvent(event);
-      } else {
-        // If select doesn't exist yet, wait and retry
-        setTimeout(() => {
-          const select = document.querySelector('.goog-te-combo');
-          if (select) {
-            select.value = langCode;
-            const event = new Event('change', { bubbles: true });
-            select.dispatchEvent(event);
-          }
-        }, 200);
-      }
-    }
     setIsLanguageOpen(false);
+    
+    // Function to trigger Google Translate using multiple methods
+    const triggerTranslation = () => {
+      // Method 1: Try to find and use the select element directly
+      const selectors = [
+        '.goog-te-combo',
+        'select.goog-te-combo',
+        '#\\:0\\.targetLanguage',
+        'select[id*="targetLanguage"]',
+        'select[class*="goog-te"]'
+      ];
+      
+      for (const selector of selectors) {
+        try {
+          const select = document.querySelector(selector);
+          if (select && select.tagName === 'SELECT') {
+            // Set the value
+            if (select.value !== langCode) {
+              select.value = langCode;
+            }
+            
+            // Create and dispatch change event
+            const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+            select.dispatchEvent(changeEvent);
+            
+            // Also try input event
+            const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+            select.dispatchEvent(inputEvent);
+            
+            // Try onchange if it exists
+            if (typeof select.onchange === 'function') {
+              try {
+                select.onchange(changeEvent);
+              } catch (e) {
+                // Ignore errors
+              }
+            }
+            
+            return true;
+          }
+        } catch (e) {
+          // Continue to next selector
+        }
+      }
+      
+      // Method 2: Try to access Google Translate iframe
+      try {
+        const iframes = document.querySelectorAll('iframe');
+        for (const iframe of iframes) {
+          try {
+            if (iframe.src && iframe.src.includes('translate.google.com')) {
+              const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+              if (iframeDoc) {
+                const iframeSelect = iframeDoc.querySelector('select');
+                if (iframeSelect) {
+                  iframeSelect.value = langCode;
+                  const changeEvent = new Event('change', { bubbles: true });
+                  iframeSelect.dispatchEvent(changeEvent);
+                  return true;
+                }
+              }
+            }
+          } catch (e) {
+            // Cross-origin restrictions, continue
+          }
+        }
+      } catch (e) {
+        // Ignore iframe access errors
+      }
+      
+      // Method 3: Use cookie-based approach (Google Translate uses cookies)
+      if (langCode === 'en') {
+        // Remove translation cookie to show English
+        document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      } else {
+        // Set translation cookie
+        const expireDate = new Date();
+        expireDate.setFullYear(expireDate.getFullYear() + 1);
+        document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=/;`;
+      }
+      
+      // Method 4: Reload page with translation cookie (last resort)
+      if (langCode !== 'en') {
+        window.location.reload();
+        return true;
+      }
+      
+      return false;
+    };
+    
+    // Try to trigger translation immediately
+    if (!triggerTranslation()) {
+      // If not found, wait and retry
+      let attempts = 0;
+      const maxAttempts = 15;
+      
+      const retry = () => {
+        attempts++;
+        if (triggerTranslation()) {
+          return; // Success
+        }
+        if (attempts < maxAttempts) {
+          setTimeout(retry, 200);
+        } else {
+          // Final fallback: reload page with cookie
+          if (langCode !== 'en') {
+            const expireDate = new Date();
+            expireDate.setFullYear(expireDate.getFullYear() + 1);
+            document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=/;`;
+            window.location.reload();
+          }
+        }
+      };
+      
+      setTimeout(retry, 300);
+    }
   };
 
   const getCurrentLanguage = () => {
