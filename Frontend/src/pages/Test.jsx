@@ -54,13 +54,19 @@ const Test = () => {
             if (!response.ok) throw new Error("Failed to generate quiz");
             const data = await response.json();
 
+            // Validate data structure
+            if (!data || !data.questions || !Array.isArray(data.questions)) {
+                throw new Error("Invalid quiz data received");
+            }
+
             setQuizData(data);
             setAnswers({});
             setCurrentQuestionIndex(0);
             setMode('taking');
-        } catch (error) {
-            console.error(error);
+        } catch (err) {
+            console.error("Quiz generation error:", err);
             error("Error generating quiz. Please try again.", "Generation Error");
+            setLoading(false);
         } finally {
             setLoading(false);
         }
@@ -135,13 +141,13 @@ const Test = () => {
                             <button
                                 onClick={() => setIsSubjectOpen(!isSubjectOpen)}
                                 onBlur={() => setTimeout(() => setIsSubjectOpen(false), 200)}
-                                className={`w-full p-4 rounded-xl bg-white/5 border text-left flex items-center justify-between transition-all duration-300 ${isSubjectOpen ? 'border-orange-500/50 ring-2 ring-orange-500/20 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                                className={`w-full p-4 rounded-xl bg-white/5 border text-left flex items-center justify-between transition-all duration-300 notranslate ${isSubjectOpen ? 'border-orange-500/50 ring-2 ring-orange-500/20 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                             >
                                 <span className={subject ? "text-white" : "text-gray-500"}>{subject || "Select Subject"}</span>
                                 <FaChevronDown className={`text-xs text-gray-400 transition-transform duration-300 ${isSubjectOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isSubjectOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 max-h-60 overflow-y-auto custom-scrollbar">
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 max-h-60 overflow-y-auto custom-scrollbar notranslate">
                                     {subjects.map(item => (
                                         <div key={item} onClick={() => { setSubject(item); setIsSubjectOpen(false); }} className="px-5 py-3 text-gray-300 hover:bg-white/5 hover:text-orange-400 cursor-pointer flex justify-between">
                                             {item}
@@ -161,7 +167,7 @@ const Test = () => {
                             value={topic}
                             onChange={(e) => setTopic(e.target.value)}
                             placeholder="e.g. Thermodynamics, Algebra..."
-                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-colors"
+                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-colors notranslate"
                         />
                     </div>
 
@@ -172,13 +178,13 @@ const Test = () => {
                             <button
                                 onClick={() => setIsDifficultyOpen(!isDifficultyOpen)}
                                 onBlur={() => setTimeout(() => setIsDifficultyOpen(false), 200)}
-                                className={`w-full p-4 rounded-xl bg-white/5 border text-left flex items-center justify-between transition-all duration-300 ${isDifficultyOpen ? 'border-orange-500/50 ring-2 ring-orange-500/20 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
+                                className={`w-full p-4 rounded-xl bg-white/5 border text-left flex items-center justify-between transition-all duration-300 notranslate ${isDifficultyOpen ? 'border-orange-500/50 ring-2 ring-orange-500/20 bg-white/10' : 'border-white/10 hover:bg-white/10'}`}
                             >
                                 <span className="text-white capitalize">{difficulty}</span>
                                 <FaChevronDown className={`text-xs text-gray-400 transition-transform duration-300 ${isDifficultyOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isDifficultyOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 notranslate">
                                     {difficulties.map(item => (
                                         <div key={item} onClick={() => { setDifficulty(item); setIsDifficultyOpen(false); }} className="px-5 py-3 text-gray-300 hover:bg-white/5 hover:text-orange-400 cursor-pointer capitalize flex justify-between">
                                             {item}
@@ -191,7 +197,7 @@ const Test = () => {
                     </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end notranslate">
                     <button
                         onClick={handleGenerate}
                         disabled={loading || !subject || !topic}
@@ -206,15 +212,39 @@ const Test = () => {
     );
 
     const renderTaking = () => {
-        if (!quizData) return null;
+        if (!quizData || !quizData.questions || !Array.isArray(quizData.questions)) {
+            return (
+                <div className="w-full flex-grow flex items-center justify-center">
+                    <div className="text-center">
+                        <p className="text-red-400 mb-4">Error: Invalid quiz data</p>
+                        <button
+                            onClick={() => setMode('setup')}
+                            className="px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg"
+                        >
+                            Return to Setup
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        
+        if (currentQuestionIndex >= quizData.questions.length) {
+            setCurrentQuestionIndex(0);
+            return null;
+        }
+        
         const currentQ = quizData.questions[currentQuestionIndex];
+        if (!currentQ) {
+            return null;
+        }
+        
         const progress = ((currentQuestionIndex + 1) / quizData.total_questions) * 100;
         const isLast = currentQuestionIndex === quizData.total_questions - 1;
 
         return (
             <div className="w-full flex-grow flex flex-col gap-6 animate-fade-in-up">
                 {/* Header / Progress */}
-                <div className="flex items-center justify-between text-gray-400 text-sm">
+                <div className="flex items-center justify-between text-gray-400 text-sm notranslate">
                     <span>Question {currentQuestionIndex + 1} of {quizData.total_questions}</span>
                     <span>{quizData.topic} • {quizData.difficulty}</span>
                 </div>
@@ -229,13 +259,13 @@ const Test = () => {
                     </h3>
 
                     <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                        {Object.entries(currentQ.options).map(([key, text]) => (
+                        {currentQ.options && Object.entries(currentQ.options).map(([key, text]) => (
                             <div
                                 key={key}
                                 onClick={() => handleAnswerSelect(currentQ.question_id, key)}
-                                className={`p-4 rounded-xl border cursor-pointer flex items-center gap-4 transition-all duration-200 ${answers[currentQ.question_id] === key ? 'bg-orange-500/20 border-orange-500 text-white' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                                className={`p-4 rounded-xl border cursor-pointer flex items-center gap-4 transition-all duration-200 notranslate ${answers[currentQ.question_id] === key ? 'bg-orange-500/20 border-orange-500 text-white' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
                             >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center border text-sm font-bold ${answers[currentQ.question_id] === key ? 'bg-orange-500 border-orange-500 text-white' : 'border-white/20 text-gray-500'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center border text-sm font-bold notranslate ${answers[currentQ.question_id] === key ? 'bg-orange-500 border-orange-500 text-white' : 'border-white/20 text-gray-500'}`}>
                                     {key}
                                 </div>
                                 <span className="text-lg">{text}</span>
@@ -245,7 +275,7 @@ const Test = () => {
                 </div>
 
                 {/* Navigation */}
-                <div className="flex justify-between items-center mt-auto">
+                <div className="flex justify-between items-center mt-auto notranslate">
                     <button
                         onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
                         disabled={currentQuestionIndex === 0}
@@ -357,13 +387,13 @@ const Test = () => {
                 <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/10 relative flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-100px)]">
 
                     {/* Header only in setup mode or sticky mini header? Let's just keep the title simple */}
-                    <div className="mb-4 sm:mb-8 w-full flex justify-between items-center">
+                    <div className="mb-4 sm:mb-8 w-full flex justify-between items-center notranslate">
                         <div>
                             <h1 className="text-2xl sm:text-3xl font-bold font-heading text-white">Test Center</h1>
                             {mode === 'taking' && <p className="text-gray-500 text-xs sm:text-sm">Focus Mode Active</p>}
                         </div>
                         {mode !== 'setup' && (
-                            <button onClick={async () => { const result = await confirm("Quit quiz?", "Quit Session"); if (result) setMode('setup'); }} className="text-xs text-red-400 hover:text-red-300">Quit Session</button>
+                            <button onClick={async () => { const result = await confirm("Quit quiz?", "Quit Session"); if (result) setMode('setup'); }} className="text-xs text-red-400 hover:text-red-300 notranslate">Quit Session</button>
                         )}
                     </div>
 
