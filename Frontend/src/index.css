@@ -108,6 +108,7 @@ body {
   top: 0px !important;
 }
 
+/* Hide Google Translate element completely */
 #google_translate_element {
   position: absolute !important;
   width: 1px !important;
@@ -123,6 +124,58 @@ body {
 }
 
 .goog-te-gadget-simple {
+  display: none !important;
+}
+
+/* Hide Google Translate banner and popups */
+.goog-te-banner-frame {
+  display: none !important;
+}
+
+.goog-te-balloon-frame {
+  display: none !important;
+}
+
+.goog-te-spinner-pos {
+  display: none !important;
+}
+
+/* Hide text selection popup from Google Translate */
+.goog-tooltip {
+  display: none !important;
+}
+
+.goog-tooltip:hover {
+  display: none !important;
+}
+
+.goog-tooltip-content {
+  display: none !important;
+}
+
+/* Disable Google Translate text selection popup */
+body {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Hide any Google Translate floating elements */
+div[id*="google_translate"] {
+  display: none !important;
+}
+
+iframe[src*="translate.google.com"] {
+  display: none !important;
+}
+
+/* Prevent Google Translate from showing popups on text selection */
+.goog-te-menu-frame {
+  display: none !important;
+}
+
+.goog-te-menu-value {
   display: none !important;
 }
 

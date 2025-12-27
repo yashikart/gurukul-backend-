@@ -17,6 +17,35 @@
             layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
             autoDisplay: false
           }, 'google_translate_element');
+          
+          // Disable text selection popup
+          setTimeout(() => {
+            // Remove Google Translate banner
+            const banner = document.querySelector('.goog-te-banner-frame');
+            if (banner) {
+              banner.style.display = 'none';
+              banner.remove();
+            }
+            
+            // Disable text selection popup by removing event listeners
+            document.addEventListener('mouseup', function(e) {
+              // Prevent Google Translate popup on text selection
+              const tooltip = document.querySelector('.goog-tooltip');
+              if (tooltip) {
+                tooltip.style.display = 'none';
+                tooltip.remove();
+              }
+            }, true);
+            
+            // Remove any existing tooltips
+            setInterval(() => {
+              const tooltips = document.querySelectorAll('.goog-tooltip, .goog-te-balloon-frame');
+              tooltips.forEach(tooltip => {
+                tooltip.style.display = 'none';
+                tooltip.remove();
+              });
+            }, 100);
+          }, 1000);
         } else {
           console.warn('Google Translate API not available yet');
         }
@@ -24,6 +53,31 @@
         console.error('Error initializing Google Translate:', error);
       }
     };
+    
+    // Prevent Google Translate popups on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Remove banner immediately
+      const removeBanner = () => {
+        const banner = document.querySelector('.goog-te-banner-frame');
+        if (banner) {
+          banner.style.display = 'none';
+          banner.remove();
+        }
+      };
+      removeBanner();
+      setInterval(removeBanner, 500);
+      
+      // Prevent text selection popup
+      document.addEventListener('mouseup', function(e) {
+        setTimeout(() => {
+          const tooltip = document.querySelector('.goog-tooltip');
+          if (tooltip) {
+            tooltip.style.display = 'none';
+            tooltip.remove();
+          }
+        }, 10);
+      }, true);
+    });
   </script>
   <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" defer></script>
 </head>
