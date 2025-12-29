@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { FaFileUpload, FaCloudUploadAlt, FaMagic, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
@@ -8,9 +9,12 @@ import API_BASE_URL from '../config';
 const Summarizer = () => {
     const { addKarma } = useKarma();
     const { confirm } = useModal();
+    const navigate = useNavigate();
     const [selectedModel, setSelectedModel] = React.useState(() => localStorage.getItem('summarizer_selectedModel') || 'Uniguru');
     const [summaryType, setSummaryType] = React.useState(() => localStorage.getItem('summarizer_summaryType') || 'concise');
     const [isSummaryTypeOpen, setIsSummaryTypeOpen] = React.useState(false);
+    const [isQuestionTypeModalOpen, setIsQuestionTypeModalOpen] = React.useState(false);
+    const [generationStep, setGenerationStep] = React.useState('select'); // 'select', 'loading', 'success'
     const [file, setFile] = React.useState(null);
     const [loading, setLoading] = React.useState(false);
     const [result, setResult] = React.useState(() => {
@@ -113,12 +117,20 @@ const Summarizer = () => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('summary_type', summaryType);
+        formData.append('save_summary', false);
+        formData.append('summary_title', file.name); // Send filename as title logic
 
         // Determine endpoint based on file type
         let endpoint = `${API_BASE_URL}/summarize-doc`;
         if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
             endpoint = `${API_BASE_URL}/summarize-pdf`;
         }
+
+        console.log("-----------------------------------------");
+        console.log("🚀 SENDING REQUEST TO:", endpoint);
+        console.log("📂 FILE:", file.name, file.type);
+        console.log("📝 PARAMS:", { summaryType, save_summary: false, summary_title: '' });
+        console.log("-----------------------------------------");
 
         try {
             const response = await fetch(endpoint, {
@@ -152,6 +164,82 @@ const Summarizer = () => {
             setError(err.message || "An unexpected error occurred.");
             setLoading(false);
         }
+    };
+
+    const handleAddToFlashcards = async () => {
+        if (!result) return;
+
+        try {
+            // 1. Save Summary
+            const summaryPayload = {
+                title: result.summary_title || "Summary " + new Date().toLocaleDateString(),
+                content: result.overall_summary || result.summary,
+                date: new Date().toISOString()
+            };
+
+            await fetch(`${API_BASE_URL}/summaries/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(summaryPayload)
+            });
+
+            // 2. Generate Flashcards
+            await fetch(`${API_BASE_URL}/flashcards/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(summaryPayload)
+            });
+
+            // 3. Navigate
+            navigate('/flashcards');
+
+        } catch (error) {
+            console.error("Error creating flashcards:", error);
+            // alert("Failed to create flashcards."); // Optional: use modal error instead
+        }
+    };
+
+    const handleOpenQuestionModal = () => {
+        setGenerationStep('select');
+        setIsQuestionTypeModalOpen(true);
+    };
+
+    const handleGenerateQuestions = async (type) => {
+        if (!result) return;
+        setGenerationStep('loading');
+
+        try {
+            // 1. Save Summary
+            const summaryPayload = {
+                title: result.summary_title || "Summary " + new Date().toLocaleDateString(),
+                content: result.overall_summary || result.summary,
+                date: new Date().toISOString(),
+                question_type: type
+            };
+
+            await fetch(`${API_BASE_URL}/summaries/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(summaryPayload)
+            });
+
+            // 2. Generate Flashcards
+            await fetch(`${API_BASE_URL}/flashcards/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(summaryPayload)
+            });
+
+            setGenerationStep('success');
+        } catch (error) {
+            console.error("Error creating questions:", error);
+            setGenerationStep('select'); // Reset on error
+            alert("Failed to generate questions. Please try again.");
+        }
+    };
+
+    const handleDownloadPdf = () => {
+        window.open(`${API_BASE_URL}/flashcards/download_pdf`, '_blank');
     };
 
     // Chat Logic
@@ -232,7 +320,18 @@ const Summarizer = () => {
     const renderSummaryContent = (text) => {
         if (!text) return null;
 
-        return text.split('\n').map((line, index) => {
+        // Auto-detect format: If no explicit bullets found, force conversion to points
+        let lines = text.split('\n');
+        const hasBullets = lines.some(l => l.trim().startsWith('* ') || l.trim().startsWith('- ') || l.trim().startsWith('• '));
+
+        if (!hasBullets && text.length > 100) {
+            // Force split by sentences for "Point Wise" view
+            // Split by period followed by space, but keep the period
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            lines = sentences.map(s => `- ${s.trim()}`);
+        }
+
+        return lines.map((line, index) => {
             const trimmedLine = line.trim();
             if (!trimmedLine) return <br key={index} />;
 
@@ -263,7 +362,7 @@ const Summarizer = () => {
                 );
             }
 
-            // Lists
+            // Lists (or forced points)
             if (trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ') || trimmedLine.startsWith('• ')) {
                 return (
                     <div key={index} className="flex gap-3 mb-2 ml-4">
@@ -275,7 +374,7 @@ const Summarizer = () => {
                 );
             }
 
-            // Paragraphs
+            // Fail-safe Paragraph (should usually be caught by auto-convert above)
             return (
                 <p key={index} className="text-gray-200 text-lg leading-loose mb-4">
                     {parseInlineStyles(trimmedLine)}
@@ -321,7 +420,7 @@ const Summarizer = () => {
                             <div className="flex flex-col items-start gap-2">
                                 <label className="text-xs font-semibold text-accent/80 uppercase tracking-wider ml-1">AI Model</label>
                                 <div className="relative">
-                                    <div className="bg-white/10 border border-white/10 text-white py-3 px-6 rounded-xl text-center font-medium cursor-default min-w-[140px]">
+                                    <div className="bg-white/10 border border-white/10 text-white py-3 px-6 rounded-xl text-center font-medium min-w-[140px]">
                                         Uniguru
                                     </div>
                                 </div>
@@ -434,6 +533,13 @@ const Summarizer = () => {
                                 </div>
                             </button>
                         </div>
+
+                        {/* Explicit Mode Indicator */}
+                        {file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) && (
+                            <div className="mt-2 text-xs text-accent/80 font-mono animate-pulse">
+                                ● PDF Mode Active: Using Gemini Cloud Engine
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -454,6 +560,12 @@ const Summarizer = () => {
                                     >
                                         Upload New Document
                                     </button>
+                                    <button
+                                        onClick={handleOpenQuestionModal}
+                                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors border border-white/10"
+                                    >
+                                        Generate Questions
+                                    </button>
                                 </div>
                                 <div className="flex gap-4 text-xs text-gray-400">
                                     {/* Stats here if needed, keeping it minimal for space */}
@@ -463,7 +575,29 @@ const Summarizer = () => {
 
                             <div className="overflow-y-auto pr-2 custom-scrollbar">
                                 <div className="prose prose-invert max-w-none text-gray-200 leading-relaxed bg-black/20 p-6 rounded-xl border border-white/5 shadow-inner">
-                                    {renderSummaryContent(result.overall_summary || result.summary)}
+
+                                    {/* Overall Summary Section */}
+                                    <div className="mb-8">
+                                        <h3 className="text-xl font-bold text-accent mb-4 border-b border-white/10 pb-2">
+                                            Overall Summary
+                                        </h3>
+                                        {renderSummaryContent(result.overall_summary || result.summary)}
+                                    </div>
+
+                                    {/* Display Page-by-Page Summaries if available */}
+                                    {result.page_summaries && result.page_summaries.length > 0 && (
+                                        <div className="mt-8 border-t border-white/10 pt-6">
+                                            <h3 className="text-xl font-bold text-accent mb-4">Detailed Page Breakdown</h3>
+                                            {result.page_summaries.map((page, idx) => (
+                                                <div key={idx} className="mb-6 bg-black/20 p-4 rounded-lg border border-white/5">
+                                                    <h4 className="text-white font-semibold mb-2">Page {page.page_number}</h4>
+                                                    <div className="text-gray-300 text-sm leading-relaxed">
+                                                        {renderSummaryContent(page.summary)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -525,7 +659,105 @@ const Summarizer = () => {
                 )}
 
             </main>
-        </div>
+
+            {/* Question Type Selection Modal */}
+            {isQuestionTypeModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#1a1c16] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
+                        <button
+                            onClick={() => setIsQuestionTypeModalOpen(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+                        >
+                            ✕
+                        </button>
+
+                        <h3 className="text-2xl font-bold text-white mb-2 text-center">
+                            {generationStep === 'select' && "Select Practice Mode"}
+                            {generationStep === 'loading' && "Generating Questions..."}
+                            {generationStep === 'success' && "Questions Ready!"}
+                        </h3>
+                        <p className="text-gray-400 text-center mb-6 text-sm">
+                            {generationStep === 'select' && "Choose how you want to test your knowledge."}
+                            {generationStep === 'loading' && "Please wait while our AI crafts your questions."}
+                            {generationStep === 'success' && "Your custom practice questions have been generated."}
+                        </p>
+
+                        {generationStep === 'select' && (
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => handleGenerateQuestions('conceptual')}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/50 rounded-xl flex items-center gap-4 transition-all group"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">?</div>
+                                    <div className="text-left">
+                                        <h4 className="font-bold text-white">General Questions</h4>
+                                        <p className="text-xs text-gray-400">Conceptual Q&A based on the summary</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleGenerateQuestions('fill_in_blanks')}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/50 rounded-xl flex items-center gap-4 transition-all group"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">_</div>
+                                    <div className="text-left">
+                                        <h4 className="font-bold text-white">Fill in the Blanks</h4>
+                                        <p className="text-xs text-gray-400">Complete the missing key terms</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleGenerateQuestions('short_answer')}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/50 rounded-xl flex items-center gap-4 transition-all group"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">✎</div>
+                                    <div className="text-left">
+                                        <h4 className="font-bold text-white">One Line Answers</h4>
+                                        <p className="text-xs text-gray-400">Short, precise recall questions</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleGenerateQuestions('mcq')}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent/50 rounded-xl flex items-center gap-4 transition-all group"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">☑</div>
+                                    <div className="text-left">
+                                        <h4 className="font-bold text-white">Multiple Choice</h4>
+                                        <p className="text-xs text-gray-400">Test with 4 options per question</p>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+
+                        {generationStep === 'loading' && (
+                            <div className="flex justify-center py-8">
+                                <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                        )}
+
+                        {generationStep === 'success' && (
+                            <div className="space-y-4">
+                                <button
+                                    onClick={handleDownloadPdf}
+                                    className="w-full p-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-colors shadow-lg shadow-red-500/20 mb-4"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Download Questions PDF
+                                </button>
+
+                                <button
+                                    onClick={() => navigate('/flashcards')}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium text-white transition-colors"
+                                >
+                                    Go to Practice Mode
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div >
     );
 };
 

@@ -231,7 +231,7 @@ const Flashcards = () => {
                                             </div>
                                             {currentCard?.days_until_review !== undefined && (
                                                 <p className="text-sm text-gray-400 mt-4">
-                                                    {currentCard.days_until_review > 0 
+                                                    {currentCard.days_until_review > 0
                                                         ? `${currentCard.days_until_review} days overdue`
                                                         : 'Due for review'
                                                     }
@@ -324,7 +324,7 @@ const Flashcards = () => {
                             {/* Mastery Levels */}
                             <div className="space-y-3">
                                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Mastery Levels</h3>
-                                
+
                                 <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/30">
                                     <div className="flex justify-between items-center">
                                         <span className="text-blue-300 text-sm">Learning</span>

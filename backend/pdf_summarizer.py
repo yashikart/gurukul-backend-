@@ -1,138 +1,178 @@
 """
-Multi-Page PDF Summarizer using Google Gemini API
-Replaces Groq to avoid Rate Limiting and leverage large context window.
+Multi-Page PDF Summarizer using LED (Longformer Encoder-Decoder)
+Uses 'pszemraj/led-base-book-summary' for long-context summarization.
+Optimized for NVIDIA RTX 3060 (12GB VRAM) using Float16.
 """
 
 import os
-import google.generativeai as genai
-import json
-from typing import List, Dict, Optional
-import time
+from typing import List, Dict
+import torch
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
 class PDFSummarizer:
-    """Cloud-based PDF summarizer using Google Gemini API"""
+    """PDF summarizer using LED-Base-Book-Summary (Supports long context)"""
     
-    def __init__(self, model_name: str = "gemini-2.0-flash"):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        if not self.api_key:
-            print("[PDF Summarizer] WARNING: GEMINI_API_KEY not found in environment variables.")
+    def __init__(self, model_name: str = "pszemraj/led-base-book-summary"):
+        print("\n" + "!"*60)
+        print("!!! INITIALIZING LOCAL PDF SUMMARIZER (LED MODEL) !!!")
+        print("!!! This runs on your GPU/CPU. NO API KEY USED. !!!")
+        print("!"*60 + "\n")
+        
+        self.model_name = model_name
+        
+        # Check for GPU availability
+        if torch.cuda.is_available():
+            self.device = 0
+            self.dtype = torch.float16  # Use Float16 for 12GB VRAM efficiency
+            print(f"[PDF Summarizer] GPU Detected: {torch.cuda.get_device_name(0)}")
         else:
-            genai.configure(api_key=self.api_key)
+            self.device = -1
+            self.dtype = torch.float32
+            print("[PDF Summarizer] No GPU detected. Running on CPU (Very slow for LED).")
+
+        print(f"[PDF Summarizer] Initializing Long-Context model: {model_name}...")
+        try:
+            # 1. Load Tokenizer
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+            # 2. Load Model
+            # This model supports "safetensors", so it's secure by default.
             try:
-                self.model = genai.GenerativeModel(model_name)
-                # Test model validity with a dummy call
-                # self.model.generate_content("test") 
+                model = AutoModelForSeq2SeqLM.from_pretrained(
+                    model_name, 
+                    torch_dtype=self.dtype,
+                    weights_only=False # explicit for compatibility
+                ).to("cuda:0" if self.device == 0 else "cpu")
             except Exception as e:
-                print(f"[PDF Summarizer] Warning: Failed to load model '{model_name}': {e}. Falling back to 'gemini-flash-latest'...")
-                self.model = genai.GenerativeModel("gemini-flash-latest")
+                print(f"[PDF Summarizer] Primary load failed, retrying: {e}")
+                model = AutoModelForSeq2SeqLM.from_pretrained(
+                    model_name, 
+                    torch_dtype=self.dtype
+                ).to("cuda:0" if self.device == 0 else "cpu")
+
+            # 3. Create Pipeline
+            self.summarizer = pipeline(
+                "summarization", 
+                model=model,
+                tokenizer=tokenizer,
+                device=self.device
+            )
+            print("[PDF Summarizer] LED Model loaded successfully!")
+        except Exception as e:
+            print(f"[PDF Summarizer] Error loading model: {e}")
+            self.summarizer = None
+
+    def summarize_text(self, text: str, summary_type: str = "detailed") -> str:
+        """Summarize a large chunk of text using LED's 32k context window."""
+        if not text or not text.strip():
+            return ""
+            
+        # Define parameters based on summary type
+        # LED produces longer, more detailed summaries naturally
+        if summary_type == "concise":
+            max_len = 128
+            min_len = 32
+        elif summary_type == "detailed":
+            max_len = 512
+            min_len = 128
+        elif summary_type == "comprehensive":
+            max_len = 1024
+            min_len = 256
+        else:
+            max_len = 512
+            min_len = 64
+            
+        try:
+            # LED Context Window is 16k/32k tokens
+            # We'll use a safe large limit
+            max_input_chars = 30000 
+            
+            # Prepend instruction to encourage bullet points or structure
+            # Note: LED is trained on books, so it prefers paragraphs. 
+            # We will use post-processing to ensure bullet points if the model generates prose.
+            input_text = "Summarize the following content in detailed key points:\n\n" + text[:max_input_chars]
+            
+            # Generate summary
+            summary_output = self.summarizer(
+                input_text, 
+                max_length=max_len, 
+                min_length=min_len, 
+                do_sample=False, 
+                truncation=True,
+                num_beams=2,
+                repetition_penalty=3.0,
+                no_repeat_ngram_size=3,
+                encoder_no_repeat_ngram_size=3,
+                length_penalty=0.8
+            )
+            
+            raw_summary = summary_output[0]['summary_text']
+            
+            # Post-processing: If user wants points but model gave paragraph, try to split sentences
+            if summary_type in ['detailed', 'comprehensive'] and not raw_summary.strip().startswith("-"):
+                # Split by periods followed by space to create points
+                sentences = raw_summary.replace(". ", ".\n- ").split("\n")
+                # Ensure starts with dash
+                if not sentences[0].strip().startswith("-"):
+                    sentences[0] = "- " + sentences[0]
+                return "\n".join(sentences)
+                
+            return raw_summary
+        except Exception as e:
+            print(f"[PDF Summarizer] Error generating summary: {e}")
+            return f"Error: {str(e)}"
 
     def summarize_all_pages(self, pages: List[str], summary_type: str = "detailed", improve_grammar: bool = False) -> Dict:
         """
-        Summarize ALL pages in a single API call using Gemini's large context window.
-        Returns a dictionary matching the expected structure.
+        Summarize pages individually and create an overall summary.
         """
-        if not self.api_key:
-            return {
+        if not self.summarizer:
+             return {
                 "page_summaries": [],
-                "overall_summary": "Error: GEMINI_API_KEY not configured.",
+                "overall_summary": "Error: Model not initialized.",
                 "total_pages": len(pages),
                 "pages_summarized": 0,
-                "summary_type": summary_type
+                "summary_type": summary_type,
+                "provider": "local/led-large"
             }
 
-        print(f"[PDF Summarizer] Preparing to summarize {len(pages)} pages using Gemini...")
+        print(f"[PDF Summarizer] Summarizing {len(pages)} pages with LED (Type: {summary_type})...")
         
-        # DEBUG: List available models to fix 404 error
-        try:
-            print("[PDF Summarizer] DEBUG: Listing available models...")
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    print(f"[PDF Summarizer] Available Model: {m.name}")
-        except Exception as e:
-            print(f"[PDF Summarizer] DEBUG Error listing models: {e}")
+        formatted_page_summaries = []
+        all_summaries_text = []
 
-        # 1. Construct a single large prompt with all page content
-        full_text_content = ""
+        # Summarize each page
         for i, page_text in enumerate(pages, 1):
-            full_text_content += f"\n--- START OF PAGE {i} ---\n{page_text}\n--- END OF PAGE {i} ---\n"
-
-        # 2. Define the prompt for structured JSON output
-        prompt = f"""
-        You are an expert document summarizer. 
-        I will provide the text content of a PDF document, separated by page markers.
-        
-        Your task is to:
-        1. Create a detailed overall summary of the ENTIRE document.
-        2. Create a brief summary for EACH individual page.
-        
-        Output format: JSON object with keys "overall_summary" (string) and "page_summaries" (list of strings, in page order).
-        
-        Summary requirements:
-        - Overall summary should be comprehensive, capturing all key points, arguments, and conclusions.
-        - Page summaries should be concise (2-3 sentences max).
-        - Maintain the original meaning and context.
-        - Do not use markdown formatting in the JSON JSON string values.
-        
-        Document Content:
-        {full_text_content}
-        """
-
-        try:
-            # 3. Call Gemini API
-            # 3. Call Gemini API
-            print("[PDF Summarizer] Sending request to Gemini...")
-            try:
-                response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
-            except Exception as e:
-                # Dynamic fallback for "404 Model Not Found" errors during runtime
-                if "404" in str(e) or "not found" in str(e).lower():
-                    print("[PDF Summarizer] Primary model failed (404). Switching to fallback 'gemini-flash-latest' and retrying...")
-                    self.model = genai.GenerativeModel("gemini-flash-latest")
-                    response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
-                else:
-                    raise e
-            
-            # 4. Parse Response
-            try:
-                result = json.loads(response.text)
-                overall_summary = result.get("overall_summary", "Summary generation failed to return overall summary.")
-                raw_page_summaries = result.get("page_summaries", [])
-            except json.JSONDecodeError:
-                # Fallback if valid JSON wasn't returned
-                print("[PDF Summarizer] Failed to parse JSON response. Falling back to raw text.")
-                overall_summary = response.text
-                raw_page_summaries = []
-
-            # 5. Format output for existing backend structure
-            formatted_page_summaries = []
-            
-            # Map raw summaries back to pages (handle mismatches gracefully)
-            for i, page_text in enumerate(pages, 1):
-                raw_summary = raw_page_summaries[i-1] if i <= len(raw_page_summaries) else "Summary not generated for this page."
+            if not page_text:
+                continue
                 
-                formatted_page_summaries.append({
-                    "page_number": i,
-                    "summary": raw_summary,
-                    "original_length": len(page_text) if page_text else 0,
-                    "summary_length": len(raw_summary)
-                })
-
-            print("[PDF Summarizer] Gemini processing complete!")
+            summary = self.summarize_text(page_text, summary_type)
             
-            return {
-                "page_summaries": formatted_page_summaries,
-                "overall_summary": overall_summary,
-                "total_pages": len(pages),
-                "pages_summarized": len(formatted_page_summaries),
-                "summary_type": summary_type
-            }
+            # Clean up potential artifacts
+            summary = summary.replace(" .", ".").replace(" ,", ",")
+            
+            formatted_page_summaries.append({
+                "page_number": i,
+                "summary": summary,
+                "original_length": len(page_text),
+                "summary_length": len(summary)
+            })
+            all_summaries_text.append(summary)
 
-        except Exception as e:
-            print(f"[PDF Summarizer] Error calling Gemini: {str(e)}")
-            return {
-                "page_summaries": [],
-                "overall_summary": f"Error during summarization: {str(e)}",
-                "total_pages": len(pages),
-                "pages_summarized": 0,
-                "summary_type": summary_type
-            }
+        # Overall Summary
+        # For overall, we combine the page summaries. 
+        # Since LED has a huge context, we can likely fit ALL 5-10 pages of summaries easily.
+        combined_text = " ".join(all_summaries_text)
+        overall_summary = self.summarize_text(combined_text, "comprehensive" if summary_type == "comprehensive" else "detailed")
+
+        print("[PDF Summarizer] LED processing complete!")
+        
+        return {
+            "page_summaries": formatted_page_summaries,
+            "overall_summary": overall_summary,
+            "total_pages": len(pages),
+            "pages_summarized": len(formatted_page_summaries),
+            "summary_type": summary_type,
+            "provider": "local/led-large-32k",
+            "success": True
+        }

@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import uuid
 from collections import defaultdict
 import hashlib
+import google.generativeai as genai
 
 # Try to import optional libraries
 try:
@@ -44,9 +45,10 @@ except ImportError:
 try:
     from pdf_summarizer import PDFSummarizer
     PDF_SUMMARIZER_SUPPORT = True
-except ImportError:
+except ImportError as e:
     PDF_SUMMARIZER_SUPPORT = False
-    print("PDF Summarizer not available. Install: pip install transformers torch sentencepiece")
+    print(f"PDF Summarizer not available: {e}")
+    print("Install required: pip install transformers torch sentencepiece")
 
 # Import DOC Summarizer (from TextSummarizer folder - using transformers)
 try:
@@ -82,6 +84,16 @@ YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3/search"
 
 # Initialize FastAPI
 app = FastAPI(title=API_TITLE)
+
+@app.on_event("startup")
+async def startup_event():
+    print("\n" + "="*50)
+    print(f"API Started at http://{HOST}:{PORT}")
+    print(f"PDF Support (PyPDF2): {PDF_SUPPORT}")
+    print(f"PDF Summarizer Support (Local LED Transformer): {PDF_SUMMARIZER_SUPPORT}")
+    print(f"DOC Summarizer Support: {DOC_SUMMARIZER_SUPPORT}")
+    print(f"GEMINI_API_KEY Present: {'Yes' if GEMINI_API_KEY else 'No'}")
+    print("="*50 + "\n")
 
 # CORS
 app.add_middleware(
@@ -145,6 +157,9 @@ class SubjectExplorerResponse(BaseModel):
     youtube_recommendations: List[YouTubeVideo]
     success: bool
 
+
+
+
 class SummarizerRequest(BaseModel):
     text: Optional[str] = None
     provider: Optional[str] = "groq"  # groq, ollama, llama, textrank
@@ -187,6 +202,50 @@ class DOCSummarizerResponse(BaseModel):
     summary_type: str
     provider: str
     success: bool
+
+@app.post("/summarize-pdf", response_model=PDFSummarizerResponse)
+async def summarize_pdf(
+    file: UploadFile = File(...),
+    summary_type: str = Form("detailed"),  # detailed, concise, comprehensive
+    improve_grammar: bool = Form(False),
+    save_summary: bool = Form(False),
+    summary_title: Optional[str] = Form(None)
+):
+    """
+    Summarize an uploaded PDF file using local transformer model.
+    """
+    print(f"\n[API] Received /summarize-pdf request for file: {file.filename}")
+    print(f"[API] Type: {summary_type}, Save: {save_summary}")
+
+    if not PDF_SUMMARIZER_SUPPORT:
+        raise HTTPException(status_code=500, detail="PDF Summarizer not available on server.")
+    
+    # 1. Extract Text
+    try:
+        pages = await extract_pages_from_pdf(file)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to extract text from PDF: {str(e)}")
+        
+    if not pages:
+        raise HTTPException(status_code=400, detail="No text could be extracted from this PDF.")
+
+    # 2. Initialize Summarizer
+    try:
+        summarizer = PDFSummarizer()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to initialize summarizer model: {str(e)}")
+
+    # 3. Generate Summary
+    try:
+        result = summarizer.summarize_all_pages(pages, summary_type=summary_type, improve_grammar=improve_grammar)
+        
+        # Add success flag if not present
+        if "success" not in result:
+            result["success"] = True
+            
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
 
 # Chatbot Models
 class ChatMessage(BaseModel):
@@ -399,6 +458,222 @@ class WellnessSupportResponse(BaseModel):
     overall_assessment: str
     provider: str
     created_at: str
+
+# --- Flashcards & Summary Models ---
+class SavedSummary(BaseModel):
+    title: str
+    content: str
+    date: str
+
+class Flashcard(BaseModel):
+    question_id: str
+    question: str
+    answer: str
+    question_type: str = "conceptual"
+    days_until_review: int = 0
+    confidence: float = 0.0
+
+# In-memory storage
+saved_summaries_db = []
+flashcards_db = []
+
+# --- Summary Endpoints ---
+@app.post("/summaries/save")
+async def save_summary_endpoint(summary: SavedSummary):
+    """Save a summary to the database"""
+    print(f"[Summary] Saving summary: {summary.title}")
+    saved_summaries_db.append(summary.dict())
+    return {"message": "Summary saved successfully", "count": len(saved_summaries_db)}
+
+@app.get("/summaries")
+async def get_summaries():
+    """Get list of saved summaries"""
+    return saved_summaries_db
+
+# --- Flashcard Endpoints ---
+class GenerateFlashcardsRequest(BaseModel):
+    title: str
+    content: str
+    date: str
+    question_type: str = "conceptual" # mixed, fill_in_blanks, short_answer, mcq
+
+# ... (SavedSummary remains for save endpoint) ...
+
+from fpdf import FPDF
+import json
+
+@app.post("/flashcards/generate")
+async def generate_flashcards(request: GenerateFlashcardsRequest):
+    """Generate flashcards from summary using LLM"""
+    print(f"[Flashcards] Generating {request.question_type} from: {request.title}")
+    
+    # Construct prompt for Groq/Ollama
+    type_instruction = ""
+    if request.question_type == "fill_in_blanks":
+        type_instruction = "Create Fill-in-the-Blank style questions. Output Format: {'question': 'The capital of France is ______.', 'answer': 'Paris', 'type': 'fill_in_blanks'}"
+    elif request.question_type == "short_answer":
+        type_instruction = "Create Short Answer (One Line) questions."
+    elif request.question_type == "mcq":
+        type_instruction = "Create Multiple Choice Questions (MCQs). Format the question to include options like 'A) ... B) ...' and provide the correct option in answer."
+    else:
+        type_instruction = "Create Conceptual/Mixed questions."
+
+    prompt = f"""
+    Create 5 flashcards based on this summary:
+    "{request.content[:3000]}..."
+    
+    INSTRUCTION: {type_instruction}
+    
+    Format the output as a PURE JSON list (no markdown, no backticks).
+    Example:
+    [
+        {{"question": "Question 1 text...", "answer": "Answer 1...", "type": "{request.question_type}"}},
+        ...
+    ]
+    """
+    
+    new_cards = []
+    generated_text = ""
+    
+    try:
+        # 1. Try Groq
+        if GROQ_API_KEY:
+            try:
+                print("[Flashcards] Using Groq...")
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+                payload = {
+                    "model": GROQ_MODEL_NAME, 
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.5
+                }
+                resp = requests.post(GROQ_API_ENDPOINT, headers=headers, json=payload, timeout=20)
+                if resp.status_code == 200:
+                    generated_text = resp.json()["choices"][0]["message"]["content"]
+            except Exception as e:
+                print(f"[Flashcards] Groq failed: {e}")
+
+        # 2. Try Gemini if Groq failed
+        if not generated_text and GEMINI_API_KEY:
+            try:
+                print("[Flashcards] Using Gemini...")
+                genai.configure(api_key=GEMINI_API_KEY)
+                model = genai.GenerativeModel('gemini-pro')
+                response = model.generate_content(prompt)
+                generated_text = response.text
+            except Exception as e:
+                print(f"[Flashcards] Gemini failed: {e}")
+
+        # 3. Fallback to Ollama if Groq/Gemini failed
+            try:
+                resp = requests.post(f"{OLLAMA_BASE_URL}/api/generate", json={
+                    "model": OLLAMA_MODEL_PRIMARY,
+                    "prompt": prompt,
+                    "stream": False
+                }, timeout=30)
+                if resp.status_code == 200:
+                    generated_text = resp.json().get("response", "")
+            except Exception as e:
+                print(f"[Flashcards] Ollama failed: {e}")
+
+        # 4. Parse JSON
+        if generated_text:
+            # Clean markdown if present
+            clean_text = generated_text.replace("```json", "").replace("```", "").strip()
+            try:
+                data = json.loads(clean_text)
+                import uuid
+                for item in data:
+                    new_cards.append({
+                        "question_id": str(uuid.uuid4()),
+                        "question": item.get("question", "Unknown"),
+                        "answer": item.get("answer", "Unknown"),
+                        "question_type": item.get("type", request.question_type),
+                        "days_until_review": 0
+                    })
+            except json.JSONDecodeError:
+                print(f"[Flashcards] JSON Decode Failed. Raw: {clean_text}")
+                # Fallback to mock if parsing fails
+                
+        # 5. If AI failed completely, use Mock
+        if not new_cards:
+            print("[Flashcards] AI generation failed or returned invalid JSON. Using Mock Fallback.")
+            import uuid
+            for i in range(1, 6):
+                new_cards.append({
+                    "question_id": str(uuid.uuid4()),
+                    "question": f"Mock Question {i} ({request.question_type})",
+                    "answer": "Mock Answer",
+                    "question_type": request.question_type,
+                    "days_until_review": 0
+                })
+        
+        flashcards_db.extend(new_cards)
+        return {"message": f"Generated {len(new_cards)} cards", "cards": new_cards}
+        
+    except Exception as e:
+        print(f"[Flashcards] Critical Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/flashcards/download_pdf")
+async def download_flashcards_pdf():
+    """Generate and return PDF of all flashcards"""
+    if not flashcards_db:
+        raise HTTPException(status_code=404, detail="No flashcards found")
+        
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        
+        pdf.cell(200, 10, txt="Flashcard Questions", ln=1, align='C')
+        pdf.ln(10)
+        
+        for i, card in enumerate(flashcards_db, 1):
+            # Safe unicode handling
+            q = card['question'].encode('latin-1', 'replace').decode('latin-1')
+            a = card['answer'].encode('latin-1', 'replace').decode('latin-1')
+            
+            pdf.set_font("Arial", 'B', 12)
+            pdf.multi_cell(0, 10, f"Q{i}: {q}")
+            pdf.set_font("Arial", '', 11)
+            pdf.multi_cell(0, 10, f"A:  {a}")
+            pdf.ln(5)
+            
+        filename = "flashcards.pdf"
+        # In a real app, save to temp file. Here, return bytes directly.
+        # FPDF output() returns string in Py2, bytes in Py3 depending on args.
+        # output(dest='S') returns string/bytes.
+        # But fastapi Response needs bytes.
+        
+        # We will save to a temp file then stream it
+        import tempfile
+        from fastapi.responses import FileResponse
+        
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        pdf.output(tmp.name)
+        tmp.close()
+        
+        return FileResponse(tmp.name, filename="practice_questions.pdf", media_type='application/pdf')
+        
+    except Exception as e:
+        print(f"PDF Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate PDF")
+
+@app.get("/reviews/pending")
+async def get_pending_reviews():
+    """Get pending flashcards for frontend"""
+    return flashcards_db
+
+@app.get("/reviews/stats")
+async def get_review_stats():
+    """Get stats"""
+    return {
+        "total_questions": len(flashcards_db),
+        "pending_reviews": len(flashcards_db),
+        "learning": 0,
+        "reviewing": 0,
+        "mastered": 0
+    }
 
 # Helper function to create teacher-like prompt
 def create_teaching_prompt(subject: str, topic: str) -> str:
