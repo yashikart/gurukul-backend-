@@ -5,15 +5,63 @@ This runs automatically when the app starts on Render
 
 import os
 import requests
+import re
 from pathlib import Path
 import sys
 
-def download_file(url: str, filepath: Path, description: str = "file"):
-    """Download a file from URL"""
+def convert_google_drive_url(url: str) -> str:
+    """Convert Google Drive share URL to direct download URL"""
+    if "drive.google.com" in url:
+        # Extract file ID from various Google Drive URL formats
+        file_id = None
+        
+        # Format 1: https://drive.google.com/file/d/FILE_ID/view
+        if "/file/d/" in url:
+            file_id = url.split("/file/d/")[1].split("/")[0]
+        # Format 2: https://drive.google.com/open?id=FILE_ID
+        elif "id=" in url:
+            file_id = url.split("id=")[1].split("&")[0]
+        # Format 3: Already direct download format
+        elif "uc?export=download" in url:
+            return url
+        
+        if file_id:
+            # Convert to direct download URL
+            direct_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            print(f"[Download] Converted Google Drive URL to direct download format")
+            return direct_url
+    
+    return url
+
+def download_file(url: str, filepath: Path, description: str = "file", expected_min_size_mb: float = 1.0):
+    """Download a file from URL with validation"""
     try:
+        # Convert Google Drive URLs to direct download format
+        url = convert_google_drive_url(url)
+        
         print(f"[Download] Downloading {description} from {url}...")
-        response = requests.get(url, stream=True, timeout=300)
+        
+        # Use a session to handle Google Drive's virus scan warning
+        session = requests.Session()
+        response = session.get(url, stream=True, timeout=300, allow_redirects=True)
+        
+        # Handle Google Drive virus scan warning page
+        if "virus scan warning" in response.text.lower() or "download anyway" in response.text.lower():
+            # Extract the actual download link from the warning page
+            import re
+            confirm_link = re.search(r'href="(/uc\?export=download[^"]+)"', response.text)
+            if confirm_link:
+                url = "https://drive.google.com" + confirm_link.group(1)
+                response = session.get(url, stream=True, timeout=300, allow_redirects=True)
+        
         response.raise_for_status()
+        
+        # Check if we got HTML instead of a file (common with wrong URLs)
+        content_type = response.headers.get('content-type', '').lower()
+        if 'text/html' in content_type:
+            print(f"[Download] ⚠ WARNING: Received HTML instead of file. URL might be incorrect.")
+            print(f"[Download] Make sure you're using direct download URLs, not share links.")
+            return False
         
         total_size = int(response.headers.get('content-length', 0))
         downloaded = 0
@@ -25,14 +73,24 @@ def download_file(url: str, filepath: Path, description: str = "file"):
                     downloaded += len(chunk)
                     if total_size > 0:
                         percent = (downloaded / total_size) * 100
-                        if downloaded % (1024 * 1024) == 0:  # Print every MB
+                        if downloaded % (10 * 1024 * 1024) == 0:  # Print every 10 MB
                             print(f"[Download] {description}: {percent:.1f}% ({downloaded / (1024*1024):.1f} MB / {total_size / (1024*1024):.1f} MB)")
         
         file_size_mb = filepath.stat().st_size / (1024 * 1024)
+        
+        # Validate file size
+        if file_size_mb < expected_min_size_mb:
+            print(f"[Download] ✗ ERROR: Downloaded file is too small ({file_size_mb:.2f} MB). Expected at least {expected_min_size_mb:.2f} MB.")
+            print(f"[Download] This usually means the URL is incorrect or the file is corrupted.")
+            filepath.unlink()  # Delete corrupted file
+            return False
+        
         print(f"[Download] ✓ {description} downloaded successfully! ({file_size_mb:.2f} MB)")
         return True
     except Exception as e:
         print(f"[Download] ✗ Failed to download {description}: {str(e)}")
+        if filepath.exists():
+            filepath.unlink()  # Delete partial/corrupted file
         return False
 
 def ensure_models_exist():
@@ -62,10 +120,10 @@ def ensure_models_exist():
         success = True
         
         if not model_file.exists():
-            success = download_file(model_url, model_file, "model pickle") and success
+            success = download_file(model_url, model_file, "model pickle", expected_min_size_mb=100.0) and success
         
         if not tokenizer_file.exists():
-            success = download_file(tokenizer_url, tokenizer_file, "tokenizer pickle") and success
+            success = download_file(tokenizer_url, tokenizer_file, "tokenizer pickle", expected_min_size_mb=0.3) and success
         
         if success:
             print("[Models] ✓ All model files downloaded successfully!")
