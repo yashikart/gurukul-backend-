@@ -43,25 +43,71 @@ def download_file(url: str, filepath: Path, description: str = "file", expected_
         
         # Use a session to handle Google Drive's virus scan warning
         session = requests.Session()
-        response = session.get(url, stream=True, timeout=300, allow_redirects=True)
         
-        # Handle Google Drive virus scan warning page
-        if "virus scan warning" in response.text.lower() or "download anyway" in response.text.lower():
-            # Extract the actual download link from the warning page
-            import re
-            confirm_link = re.search(r'href="(/uc\?export=download[^"]+)"', response.text)
-            if confirm_link:
-                url = "https://drive.google.com" + confirm_link.group(1)
-                response = session.get(url, stream=True, timeout=300, allow_redirects=True)
-        
+        # First, make a non-streaming request to check if we get the warning page
+        response = session.get(url, stream=False, timeout=300, allow_redirects=True)
         response.raise_for_status()
         
-        # Check if we got HTML instead of a file (common with wrong URLs)
+        # Handle Google Drive virus scan warning page
         content_type = response.headers.get('content-type', '').lower()
         if 'text/html' in content_type:
-            print(f"[Download] ⚠ WARNING: Received HTML instead of file. URL might be incorrect.")
-            print(f"[Download] Make sure you're using direct download URLs, not share links.")
-            return False
+            # Check if it's the virus scan warning page
+            text_lower = response.text.lower()
+            if ("virus scan warning" in text_lower or 
+                "download anyway" in text_lower or 
+                "google drive can't scan" in text_lower or
+                "this file is too large" in text_lower):
+                
+                print(f"[Download] Detected Google Drive virus scan warning page. Extracting download link...")
+                
+                # Method 1: Look for the form action with download link
+                # The warning page has a form with action="/uc?export=download&id=..."
+                form_action_match = re.search(r'action="(/uc\?export=download[^"]+)"', response.text)
+                if form_action_match:
+                    download_url = "https://drive.google.com" + form_action_match.group(1)
+                    print(f"[Download] Found download link in form action")
+                else:
+                    # Method 2: Look for direct download link in href
+                    href_match = re.search(r'href="(/uc\?export=download[^"]+)"', response.text)
+                    if href_match:
+                        download_url = "https://drive.google.com" + href_match.group(1)
+                        print(f"[Download] Found download link in href")
+                    else:
+                        # Method 3: Extract from the page - look for the download button link
+                        # Sometimes it's in a data attribute or JavaScript
+                        js_match = re.search(r'/uc\?export=download[^"\'>\s]+', response.text)
+                        if js_match:
+                            download_url = "https://drive.google.com" + js_match.group(0)
+                            print(f"[Download] Found download link in page content")
+                        else:
+                            print(f"[Download] ✗ Could not extract download link from warning page")
+                            print(f"[Download] Trying alternative method: adding confirm parameter...")
+                            # Alternative: Add confirm parameter to bypass warning
+                            if "id=" in url:
+                                file_id = url.split("id=")[1].split("&")[0]
+                                download_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
+                            else:
+                                return False
+                
+                # Now download from the actual file URL with streaming
+                print(f"[Download] Downloading from actual file URL...")
+                response = session.get(download_url, stream=True, timeout=300, allow_redirects=True)
+                response.raise_for_status()
+                
+                # Verify we got a file, not HTML
+                content_type = response.headers.get('content-type', '').lower()
+                if 'text/html' in content_type:
+                    print(f"[Download] ✗ Still receiving HTML. File might be too large or link is incorrect.")
+                    return False
+            else:
+                # It's HTML but not the warning page - probably wrong URL
+                print(f"[Download] ⚠ WARNING: Received HTML instead of file. URL might be incorrect.")
+                print(f"[Download] Make sure you're using direct download URLs, not share links.")
+                return False
+        else:
+            # Not HTML, should be the file - make a streaming request
+            response = session.get(url, stream=True, timeout=300, allow_redirects=True)
+            response.raise_for_status()
         
         total_size = int(response.headers.get('content-length', 0))
         downloaded = 0
