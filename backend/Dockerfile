@@ -24,8 +24,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
+# Create models directory
+RUN mkdir -p models
+
 # Expose the port the app runs on
 EXPOSE 3000
 
-# Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
+# Command to run the application (download models first if URLs provided)
+CMD ["sh", "-c", "python download_models_on_startup.py && uvicorn main:app --host 0.0.0.0 --port 3000"]

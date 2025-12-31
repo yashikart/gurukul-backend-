@@ -87,6 +87,13 @@ app = FastAPI(title=API_TITLE)
 
 @app.on_event("startup")
 async def startup_event():
+    # Try to download models if they don't exist (for Render deployment)
+    try:
+        from download_models_on_startup import ensure_models_exist
+        ensure_models_exist()
+    except Exception as e:
+        print(f"[Startup] Model download check failed: {e}")
+    
     print("\n" + "="*50)
     print(f"API Started at http://{HOST}:{PORT}")
     print(f"PDF Support (PyPDF2): {PDF_SUPPORT}")
