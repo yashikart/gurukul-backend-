@@ -6,6 +6,7 @@ This runs automatically when the app starts on Render
 import os
 import requests
 import re
+import gdown
 from pathlib import Path
 import sys
 
@@ -34,80 +35,60 @@ def convert_google_drive_url(url: str) -> str:
     return url
 
 def download_file(url: str, filepath: Path, description: str = "file", expected_min_size_mb: float = 1.0):
-    """Download a file from URL with validation"""
+    """Download a file from URL with validation - uses gdown for Google Drive"""
     try:
-        # Convert Google Drive URLs to direct download format
-        url = convert_google_drive_url(url)
+        # Check if it's a Google Drive URL
+        if "drive.google.com" in url:
+            print(f"[Download] Detected Google Drive URL. Using gdown library to handle virus scan warning...")
+            
+            # Extract file ID from URL
+            file_id = None
+            if "/file/d/" in url:
+                file_id = url.split("/file/d/")[1].split("/")[0]
+            elif "id=" in url:
+                file_id = url.split("id=")[1].split("&")[0]
+            
+            if file_id:
+                # Use gdown which handles Google Drive's virus scan warning automatically
+                gdrive_url = f"https://drive.google.com/uc?id={file_id}"
+                print(f"[Download] Downloading {description} from Google Drive (ID: {file_id})...")
+                
+                try:
+                    gdown.download(gdrive_url, str(filepath), quiet=False, fuzzy=True)
+                    
+                    if not filepath.exists():
+                        print(f"[Download] ✗ File was not downloaded")
+                        return False
+                    
+                    file_size_mb = filepath.stat().st_size / (1024 * 1024)
+                    
+                    # Validate file size
+                    if file_size_mb < expected_min_size_mb:
+                        print(f"[Download] ✗ ERROR: Downloaded file is too small ({file_size_mb:.2f} MB). Expected at least {expected_min_size_mb:.2f} MB.")
+                        print(f"[Download] This usually means the URL is incorrect or the file is corrupted.")
+                        filepath.unlink()  # Delete corrupted file
+                        return False
+                    
+                    print(f"[Download] ✓ {description} downloaded successfully! ({file_size_mb:.2f} MB)")
+                    return True
+                except Exception as e:
+                    print(f"[Download] ✗ gdown failed: {str(e)}")
+                    print(f"[Download] Falling back to manual download method...")
+                    # Fall through to manual method
+            else:
+                print(f"[Download] ✗ Could not extract file ID from Google Drive URL")
+                return False
         
+        # Fallback: Manual download for non-Google Drive URLs
         print(f"[Download] Downloading {description} from {url}...")
-        
-        # Use a session to handle Google Drive's virus scan warning
-        session = requests.Session()
-        
-        # First, make a non-streaming request to check if we get the warning page
-        response = session.get(url, stream=False, timeout=300, allow_redirects=True)
+        response = requests.get(url, stream=True, timeout=300, allow_redirects=True)
         response.raise_for_status()
         
-        # Handle Google Drive virus scan warning page
+        # Check if we got HTML instead of a file
         content_type = response.headers.get('content-type', '').lower()
         if 'text/html' in content_type:
-            # Check if it's the virus scan warning page
-            text_lower = response.text.lower()
-            if ("virus scan warning" in text_lower or 
-                "download anyway" in text_lower or 
-                "google drive can't scan" in text_lower or
-                "this file is too large" in text_lower):
-                
-                print(f"[Download] Detected Google Drive virus scan warning page. Extracting download link...")
-                
-                # Method 1: Look for the form action with download link
-                # The warning page has a form with action="/uc?export=download&id=..."
-                form_action_match = re.search(r'action="(/uc\?export=download[^"]+)"', response.text)
-                if form_action_match:
-                    download_url = "https://drive.google.com" + form_action_match.group(1)
-                    print(f"[Download] Found download link in form action")
-                else:
-                    # Method 2: Look for direct download link in href
-                    href_match = re.search(r'href="(/uc\?export=download[^"]+)"', response.text)
-                    if href_match:
-                        download_url = "https://drive.google.com" + href_match.group(1)
-                        print(f"[Download] Found download link in href")
-                    else:
-                        # Method 3: Extract from the page - look for the download button link
-                        # Sometimes it's in a data attribute or JavaScript
-                        js_match = re.search(r'/uc\?export=download[^"\'>\s]+', response.text)
-                        if js_match:
-                            download_url = "https://drive.google.com" + js_match.group(0)
-                            print(f"[Download] Found download link in page content")
-                        else:
-                            print(f"[Download] ✗ Could not extract download link from warning page")
-                            print(f"[Download] Trying alternative method: adding confirm parameter...")
-                            # Alternative: Add confirm parameter to bypass warning
-                            if "id=" in url:
-                                file_id = url.split("id=")[1].split("&")[0]
-                                download_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
-                            else:
-                                return False
-                
-                # Now download from the actual file URL with streaming
-                print(f"[Download] Downloading from actual file URL...")
-                response = session.get(download_url, stream=True, timeout=300, allow_redirects=True)
-                response.raise_for_status()
-                
-                # Verify we got a file, not HTML
-                content_type = response.headers.get('content-type', '').lower()
-                if 'text/html' in content_type:
-                    print(f"[Download] ✗ Still receiving HTML. File might be too large or link is incorrect.")
-                    return False
-            else:
-                # It's HTML but not the warning page - probably wrong URL
-                print(f"[Download] ⚠ WARNING: Received HTML instead of file. URL might be incorrect.")
-                print(f"[Download] Make sure you're using direct download URLs, not share links.")
-                return False
-        else:
-            # Not HTML, should be the file - make a streaming request
-            response = session.get(url, stream=True, timeout=300, allow_redirects=True)
-            response.raise_for_status()
+            print(f"[Download] ⚠ WARNING: Received HTML instead of file. URL might be incorrect.")
+            return False
         
         total_size = int(response.headers.get('content-length', 0))
         downloaded = 0
@@ -127,7 +108,6 @@ def download_file(url: str, filepath: Path, description: str = "file", expected_
         # Validate file size
         if file_size_mb < expected_min_size_mb:
             print(f"[Download] ✗ ERROR: Downloaded file is too small ({file_size_mb:.2f} MB). Expected at least {expected_min_size_mb:.2f} MB.")
-            print(f"[Download] This usually means the URL is incorrect or the file is corrupted.")
             filepath.unlink()  # Delete corrupted file
             return False
         
