@@ -39,4 +39,7 @@ wheels/
 .DS_Store
 Thumbs.db
 
+# Model pickle files (too large for GitHub, upload directly to Render)
+backend/models/*.pkl.gz
+backend/models/*.pkl
 

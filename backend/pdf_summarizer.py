@@ -1,47 +1,67 @@
 """
 Multi-Page PDF Summarizer using LED (Longformer Encoder-Decoder)
 Uses 'pszemraj/led-base-book-summary' for long-context summarization.
-Optimized for NVIDIA RTX 3060 (12GB VRAM) using Float16.
+Supports loading from pickle files (quantized) for deployment.
 """
 
 import os
+import pickle
+import gzip
 from typing import List, Dict
 import torch
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+from pathlib import Path
 
 class PDFSummarizer:
     """PDF summarizer using LED-Base-Book-Summary (Supports long context)"""
     
-    def __init__(self, model_name: str = "pszemraj/led-base-book-summary"):
+    def __init__(self, model_name: str = "pszemraj/led-base-book-summary", use_pickle: bool = True):
         print("\n" + "!"*60)
         print("!!! INITIALIZING LOCAL PDF SUMMARIZER (LED MODEL) !!!")
         print("!!! This runs on your GPU/CPU. NO API KEY USED. !!!")
         print("!"*60 + "\n")
         
         self.model_name = model_name
+        self.use_pickle = use_pickle
         
         # Check for GPU availability
         if torch.cuda.is_available():
             self.device = 0
-            self.dtype = torch.float16  # Use Float16 for 12GB VRAM efficiency
+            self.dtype = torch.float16
             print(f"[PDF Summarizer] GPU Detected: {torch.cuda.get_device_name(0)}")
         else:
             self.device = -1
             self.dtype = torch.float32
-            print("[PDF Summarizer] No GPU detected. Running on CPU (Very slow for LED).")
+            print("[PDF Summarizer] No GPU detected. Running on CPU.")
 
-        print(f"[PDF Summarizer] Initializing Long-Context model: {model_name}...")
+        # Try loading from pickle first
+        if self.use_pickle:
+            pickle_path = Path(__file__).parent / "models" / "led_model_quantized.pkl.gz"
+            if pickle_path.exists():
+                print(f"[PDF Summarizer] Loading from pickle file: {pickle_path}")
+                try:
+                    self._load_from_pickle(pickle_path)
+                    print("[PDF Summarizer] ✓ Model loaded from pickle successfully!")
+                    return
+                except Exception as e:
+                    print(f"[PDF Summarizer] Failed to load from pickle: {e}")
+                    print("[PDF Summarizer] Falling back to HuggingFace download...")
+            else:
+                print(f"[PDF Summarizer] Pickle file not found: {pickle_path}")
+                print("[PDF Summarizer] Falling back to HuggingFace download...")
+
+        # Fallback: Load from HuggingFace
+        print(f"[PDF Summarizer] Loading model from HuggingFace: {model_name}...")
         try:
             # 1. Load Tokenizer
             tokenizer = AutoTokenizer.from_pretrained(model_name)
 
             # 2. Load Model
-            # This model supports "safetensors", so it's secure by default.
             try:
                 model = AutoModelForSeq2SeqLM.from_pretrained(
                     model_name, 
                     torch_dtype=self.dtype,
-                    weights_only=False # explicit for compatibility
+                    weights_only=False
                 ).to("cuda:0" if self.device == 0 else "cpu")
             except Exception as e:
                 print(f"[PDF Summarizer] Primary load failed, retrying: {e}")
@@ -61,6 +81,30 @@ class PDFSummarizer:
         except Exception as e:
             print(f"[PDF Summarizer] Error loading model: {e}")
             self.summarizer = None
+    
+    def _load_from_pickle(self, pickle_path: Path):
+        """Load model and tokenizer from compressed pickle file"""
+        print("[PDF Summarizer] Decompressing and loading pickle file...")
+        
+        with gzip.open(pickle_path, 'rb') as f:
+            model_data = pickle.load(f)
+        
+        model = model_data['model']
+        tokenizer = model_data['tokenizer']
+        
+        # Move model to appropriate device
+        if self.device == 0 and torch.cuda.is_available():
+            model = model.cuda()
+        else:
+            model = model.cpu()
+        
+        # Create pipeline
+        self.summarizer = pipeline(
+            "summarization",
+            model=model,
+            tokenizer=tokenizer,
+            device=self.device
+        )
 
     def summarize_text(self, text: str, summary_type: str = "detailed") -> str:
         """Summarize a large chunk of text using LED's 32k context window."""
