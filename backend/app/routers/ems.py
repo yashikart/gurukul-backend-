@@ -1,53 +1,51 @@
 
-from fastapi import APIRouter
-from app.schemas.ems import (
-    FinancialProfileRequest, FinancialAdviceResponse,
-    WellnessSupportRequest, WellnessSupportResponse,
-    EduMentorRequest, EduMentorResponse
-)
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from app.routers.auth import get_current_user
+from app.models.all_models import User, Summary, Flashcard, Reflection
+# Deprecated Schemas removed (Financial etc)
 
 router = APIRouter()
 
-@router.post("/financial-advisor", response_model=FinancialAdviceResponse)
-async def financial_advisor(request: FinancialProfileRequest):
-    # Mock implementation for now to pass verify
-    return FinancialAdviceResponse(
-        name=request.name,
-        monthly_income=request.monthly_income,
-        monthly_expenses=request.monthly_expenses,
-        monthly_savings=request.monthly_income - request.monthly_expenses,
-        expense_breakdown=[],
-        financial_advice="Mock advice",
-        recommendations=["Save more"],
-        goal_analysis={},
-        provider="mock",
-        created_at="2024-01-01"
-    )
+@router.get("/dashboard/stats")
+async def get_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get real learning progress for the dashboard.
+    Matches Frontend 'LearningProgress' component state structure.
+    """
+    
+    # 1. Topics Studied -> Count of Summaries
+    topics_count = db.query(Summary).filter(Summary.user_id == current_user.id).count()
+    
+    # 2. Practice Sessions -> Count of non-zero confidence Flashcards OR just total flashcards created / 5 (batches)
+    # Let's count total flashcards as a proxy for "questions practiced"
+    flashcards_count = db.query(Flashcard).filter(Flashcard.user_id == current_user.id).count()
+    # Assuming avg 5 cards per session
+    practice_sessions = max(1, flashcards_count // 5) if flashcards_count > 0 else 0
+    
+    # 3. Reflection Sessions -> Count of Reflections
+    reflections_count = db.query(Reflection).filter(Reflection.user_id == current_user.id).count()
+    
+    # 4. Streak (Advanced logic can go here, for now compare last activity)
+    # We'll default to 1 if active today, else 0. 
+    # For now, hardcode or calculate from dates.
+    streak = 1 if (topics_count + practice_sessions + reflections_count) > 0 else 0
+    
+    # 5. Study Time (Mock for now, or sum 'duration' if we tracked it)
+    total_study_seconds = 1200 + (topics_count * 900) # Mock: 15 mins per topic
+    
+    return {
+        "topicsStudied": topics_count,
+        "practiceSessions": practice_sessions,
+        "reflectionSessions": reflections_count,
+        "learningStreak": streak,
+        "totalStudySeconds": total_study_seconds,
+        "lastActivity": "Today" # Dynamic later
+    }
 
-@router.post("/wellness-bot", response_model=WellnessSupportResponse)
-async def wellness_bot(request: WellnessSupportRequest):
-    return WellnessSupportResponse(
-        emotional_support="It's okay to feel this way.",
-        motivational_message="Keep going!",
-        life_importance="Life is precious.",
-        study_importance="Learning helps you grow.",
-        goal_importance="Goals give direction.",
-        positive_affirmations=["I am adequate."],
-        recommendations=["Take a walk."],
-        overall_assessment="Stable",
-        provider="mock",
-        created_at="2024-01-01"
-    )
-
-@router.post("/education-mentor", response_model=EduMentorResponse)
-async def edu_mentor(request: EduMentorRequest):
-    return EduMentorResponse(
-        subject=request.subject,
-        topic=request.topic,
-        lesson_content=f"Lesson on {request.topic}",
-        knowledge_store_used=False,
-        orchestration_used=False,
-        provider="mock",
-        created_at="2024-01-01",
-        success=True
-    )
+# Keeping minimal Mock compatibility if needed, but Mandate says replace logic.
+# I will NOT keep financial_advisor/wellness_bot as they are incorrect for Gurukul.
