@@ -5,12 +5,16 @@ import { FaUser, FaGlobe, FaBell, FaShieldAlt, FaSignOutAlt, FaTrash } from 'rea
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabaseClient';
 import { useModal } from '../contexts/ModalContext';
+import { setLanguage, getCurrentLanguage } from '../utils/languageSupport';
+import { getCurrentRole, setUserRole, getRoleDisplayName, ROLES, getDashboardPath } from '../utils/roles';
+import { useNavigate } from 'react-router-dom';
 
 const Settings = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const { confirm, prompt, alert } = useModal();
     const [activeSection, setActiveSection] = useState('profile');
+    const [userRole, setUserRoleState] = useState(() => getCurrentRole());
     
     // Profile state with localStorage persistence
     const [fullName, setFullName] = useState(() => {
@@ -27,9 +31,11 @@ const Settings = () => {
     });
     
     // Preferences state with localStorage persistence
-    const [language, setLanguage] = useState(() => {
-        const saved = localStorage.getItem('user_language');
-        return saved || 'English';
+    const [language, setLanguageState] = useState(() => {
+        const saved = getCurrentLanguage();
+        // Map language codes to display names
+        const langMap = { 'en': 'English', 'ar': 'Arabic', 'he': 'Hebrew', 'ur': 'Urdu', 'fa': 'Persian' };
+        return langMap[saved] || 'English';
     });
     const [reduceMotion, setReduceMotion] = useState(() => {
         const saved = localStorage.getItem('user_reduceMotion');
@@ -57,7 +63,10 @@ const Settings = () => {
 
     // Persist preferences
     useEffect(() => {
-        localStorage.setItem('user_language', language);
+        // Map display names to language codes
+        const langCodeMap = { 'English': 'en', 'Arabic': 'ar', 'Hebrew': 'he', 'Urdu': 'ur', 'Persian': 'fa' };
+        const langCode = langCodeMap[language] || 'en';
+        setLanguage(langCode);
     }, [language]);
 
     useEffect(() => {
@@ -194,7 +203,7 @@ const Settings = () => {
                                 </div>
                                 <select
                                     value={language}
-                                    onChange={(e) => setLanguage(e.target.value)}
+                                    onChange={(e) => setLanguageState(e.target.value)}
                                     className="bg-white/5 border border-white/10 text-white rounded-lg p-2 outline-none focus:border-orange-500"
                                 >
                                     <option value="English">English</option>
@@ -214,6 +223,32 @@ const Settings = () => {
                                 >
                                     <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${reduceMotion ? 'translate-x-6' : 'translate-x-0'}`}></div>
                                 </div>
+                            </div>
+
+                            <div className="bg-black/60 p-4 rounded-xl border border-white/10">
+                                <div className="mb-3">
+                                    <h3 className="text-white font-medium mb-1">User Role</h3>
+                                    <p className="text-gray-400 text-sm">Switch between different role views (for testing)</p>
+                                </div>
+                                <select
+                                    value={userRole}
+                                    onChange={(e) => {
+                                        const newRole = e.target.value;
+                                        setUserRoleState(newRole);
+                                        setUserRole(newRole);
+                                        // Redirect to appropriate dashboard
+                                        navigate(getDashboardPath(newRole));
+                                    }}
+                                    className="w-full bg-white/5 border border-white/10 text-white rounded-lg p-2 outline-none focus:border-orange-500"
+                                >
+                                    <option value={ROLES.STUDENT}>{getRoleDisplayName(ROLES.STUDENT)}</option>
+                                    <option value={ROLES.TEACHER}>{getRoleDisplayName(ROLES.TEACHER)}</option>
+                                    <option value={ROLES.PARENT}>{getRoleDisplayName(ROLES.PARENT)}</option>
+                                    <option value={ROLES.ADMIN}>{getRoleDisplayName(ROLES.ADMIN)}</option>
+                                </select>
+                                <p className="text-xs text-gray-500 mt-2 italic">
+                                    Current: {getRoleDisplayName(userRole)}
+                                </p>
                             </div>
                         </div>
                     </div>

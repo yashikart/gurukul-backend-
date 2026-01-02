@@ -40,6 +40,16 @@ wheels/
 Thumbs.db
 
 # Model pickle files (too large for GitHub, upload directly to Render)
-backend/models/*.pkl.gz
-backend/models/*.pkl
+# Model files
+models/*.pkl.gz
+models/*.pkl
+models/*.lzma
+models/*.bz2
+models/*.gzip
+models/*.bin
+models/*.h5
+
+# Database
+*.db
+*.sqlite3
 

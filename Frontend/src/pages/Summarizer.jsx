@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import { FaFileUpload, FaCloudUploadAlt, FaMagic, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
+import { handleApiError } from '../utils/apiClient';
 import API_BASE_URL from '../config';
 
 const Summarizer = () => {
@@ -160,8 +161,8 @@ const Summarizer = () => {
         } catch (err) {
             clearInterval(progressTimer);
             setProgress(0);
-            console.error("Summarization error:", err);
-            setError(err.message || "An unexpected error occurred.");
+            const errorInfo = handleApiError(err, { operation: 'summarize document' });
+            setError(errorInfo.message);
             setLoading(false);
         }
     };
@@ -177,25 +178,27 @@ const Summarizer = () => {
                 date: new Date().toISOString()
             };
 
-            await fetch(`${API_BASE_URL}/summaries/save`, {
+            const saveResponse = await fetch(`${API_BASE_URL}/summaries/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(summaryPayload)
             });
+            if (!saveResponse.ok) throw new Error('Failed to save summary');
 
             // 2. Generate Flashcards
-            await fetch(`${API_BASE_URL}/flashcards/generate`, {
+            const flashcardResponse = await fetch(`${API_BASE_URL}/flashcards/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(summaryPayload)
             });
+            if (!flashcardResponse.ok) throw new Error('Failed to generate flashcards');
 
             // 3. Navigate
             navigate('/flashcards');
 
-        } catch (error) {
-            console.error("Error creating flashcards:", error);
-            // alert("Failed to create flashcards."); // Optional: use modal error instead
+        } catch (err) {
+            const errorInfo = handleApiError(err, { operation: 'create flashcards' });
+            setError(errorInfo.message);
         }
     };
 

@@ -1728,82 +1728,9 @@ async def summarize_pdf(
         
         print(f"[PDF Summarizer] Processing {len(pages)} pages with {summary_type} summarization...")
         
-        # Try to use local PDF summarizer, fallback to API if it fails (memory issues, etc.)
-        try:
-            pdf_summarizer = PDFSummarizer()
-            if pdf_summarizer.summarizer is None:
-                raise Exception("PDF Summarizer model not initialized")
-            result = pdf_summarizer.summarize_all_pages(pages, summary_type=summary_type, improve_grammar=False)
-        except Exception as e:
-            print(f"[PDF Summarizer] Local model failed: {str(e)}")
-            print(f"[PDF Summarizer] Falling back to API-based summarization (Groq/Gemini)...")
-            
-            # Fallback: Use API-based summarization
-            page_summaries = []
-            all_summaries_text = []
-            
-            # Summarize each page using API
-            for i, page_text in enumerate(pages, 1):
-                if not page_text or len(page_text.strip()) < 50:
-                    continue
-                
-                try:
-                    # Try Groq first, then Gemini
-                    if GROQ_API_KEY:
-                        summary = await summarize_with_groq(page_text, summary_type)
-                    elif GEMINI_API_KEY:
-                        # Use Gemini for summarization
-                        from doc_summarizer import DOCSummarizer
-                        doc_sum = DOCSummarizer()
-                        sections_result = doc_sum.summarize_all_sections([page_text], summary_type=summary_type)
-                        summary = sections_result.get("overall_summary", "")
-                    else:
-                        raise Exception("No API keys available for fallback")
-                    
-                    page_summaries.append({
-                        "page_number": i,
-                        "summary": summary,
-                        "original_length": len(page_text),
-                        "summary_length": len(summary)
-                    })
-                    all_summaries_text.append(summary)
-                except Exception as page_error:
-                    print(f"[PDF Summarizer] Error summarizing page {i}: {str(page_error)}")
-                    page_summaries.append({
-                        "page_number": i,
-                        "summary": f"Error: Could not summarize this page",
-                        "original_length": len(page_text),
-                        "summary_length": 0
-                    })
-            
-            # Create overall summary
-            if all_summaries_text:
-                combined_text = " ".join(all_summaries_text)
-                try:
-                    if GROQ_API_KEY:
-                        overall_summary = await summarize_with_groq(combined_text, "detailed")
-                    elif GEMINI_API_KEY:
-                        from doc_summarizer import DOCSummarizer
-                        doc_sum = DOCSummarizer()
-                        overall_result = doc_sum.summarize_all_sections([combined_text], summary_type="detailed")
-                        overall_summary = overall_result.get("overall_summary", "")
-                    else:
-                        overall_summary = "\n".join(all_summaries_text)
-                except Exception as e:
-                    print(f"[PDF Summarizer] Error creating overall summary: {str(e)}")
-                    overall_summary = "\n".join(all_summaries_text)
-            else:
-                overall_summary = "No summaries generated."
-            
-            result = {
-                "page_summaries": page_summaries,
-                "overall_summary": overall_summary,
-                "total_pages": len(pages),
-                "pages_summarized": len(page_summaries),
-                "summary_type": summary_type,
-                "provider": "api_fallback",
-                "success": True
-            }
+        # Use comprehensive PDF summarizer
+        pdf_summarizer = PDFSummarizer()
+        result = pdf_summarizer.summarize_all_pages(pages, summary_type=summary_type, improve_grammar=False)
         
         # Improve grammar of all page summaries (DISABLED to prevent 429 Rate Limits)
         # print("[PDF Summarizer] Improving grammar of page summaries...")

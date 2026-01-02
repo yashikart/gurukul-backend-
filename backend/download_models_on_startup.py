@@ -54,22 +54,13 @@ def download_file(url: str, filepath: Path, description: str = "file", expected_
                 print(f"[Download] Downloading {description} from Google Drive (ID: {file_id})...")
                 
                 try:
-                    print(f"[Download] Using gdown to download (handles virus scan warning automatically)...")
-                    # gdown.download returns the output path or None
-                    output = gdown.download(gdrive_url, output=str(filepath), quiet=False, fuzzy=True)
+                    gdown.download(gdrive_url, str(filepath), quiet=False, fuzzy=True)
                     
-                    # Check if file was actually downloaded
-                    if output and Path(output).exists():
-                        filepath = Path(output)  # gdown might rename the file
-                    elif filepath.exists():
-                        pass  # File exists at expected path
-                    else:
-                        print(f"[Download] ✗ gdown returned but file was not downloaded")
-                        print(f"[Download] Output: {output}")
+                    if not filepath.exists():
+                        print(f"[Download] ✗ File was not downloaded")
                         return False
                     
                     file_size_mb = filepath.stat().st_size / (1024 * 1024)
-                    print(f"[Download] Downloaded file size: {file_size_mb:.2f} MB")
                     
                     # Validate file size
                     if file_size_mb < expected_min_size_mb:
@@ -80,14 +71,8 @@ def download_file(url: str, filepath: Path, description: str = "file", expected_
                     
                     print(f"[Download] ✓ {description} downloaded successfully! ({file_size_mb:.2f} MB)")
                     return True
-                except ImportError:
-                    print(f"[Download] ✗ gdown not installed. Install with: pip install gdown")
-                    print(f"[Download] Falling back to manual download method...")
-                    # Fall through to manual method
                 except Exception as e:
                     print(f"[Download] ✗ gdown failed: {str(e)}")
-                    import traceback
-                    print(f"[Download] Traceback: {traceback.format_exc()}")
                     print(f"[Download] Falling back to manual download method...")
                     # Fall through to manual method
             else:

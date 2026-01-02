@@ -1,6 +1,8 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar';
 import { StudyTimeWidget, KarmaWidget, AchievementsWidget, GoalWidget } from '../components/DashboardWidgets';
+import LearningFlow from '../components/LearningFlow';
+import LearningProgress from '../components/LearningProgress';
 
 const Dashboard = ({
     studyTimeSeconds,
@@ -26,6 +28,11 @@ const Dashboard = ({
                     </p>
                 </div>
 
+                {/* Learning Flow - Guided Journey */}
+                <div className="mb-6 sm:mb-8">
+                    <LearningFlow currentStep="improve" />
+                </div>
+
                 {/* Improved Grid Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                     {/* Column 1 & 2 */}
@@ -49,6 +56,7 @@ const Dashboard = ({
 
                     {/* Column 3 */}
                     <div className="flex flex-col gap-4 sm:gap-6">
+                        <LearningProgress />
                         <AchievementsWidget />
                     </div>
                 </div>

@@ -5,7 +5,7 @@ import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
 
 import { containsProfanity } from '../utils/profanityDetector';
-import API_BASE_URL from '../config';
+import { apiPost, apiGet, handleApiError } from '../utils/apiClient';
 
 const Chatbot = () => {
     const { addKarma } = useKarma();
@@ -109,7 +109,7 @@ const Chatbot = () => {
         // Check for profanity
         if (containsProfanity(message)) {
             addKarma(-20, 'Inappropriate language detected ⚠️');
-            alert('Please keep the conversation respectful.', 'Warning');
+            alert('Let\'s keep our conversation respectful and focused on learning. Thank you for understanding.', 'Kind Reminder');
             return;
         }
 
@@ -126,24 +126,12 @@ const Chatbot = () => {
         }
 
         try {
-            // Map selected model to backend provider if needed, or send as is
-            // Backend likely handles 'auto' or specific names.
-            // For now, we'll send 'auto' or the selected name if backend supports it.
-
-            const response = await fetch(`${API_BASE_URL}/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: userMsg.content,
-                    conversation_id: conversationId,
-                    provider: 'auto', // Or map selectedModel: Grok, Uniguru etc.
-                    use_rag: true
-                })
+            const data = await apiPost('/chat', {
+                message: userMsg.content,
+                conversation_id: conversationId,
+                provider: 'auto',
+                use_rag: true
             });
-
-            if (!response.ok) throw new Error('Failed to get response');
-
-            const data = await response.json();
 
             if (data.conversation_id) {
                 setConversationId(data.conversation_id);
@@ -155,9 +143,14 @@ const Chatbot = () => {
 
             const botMsg = { role: 'assistant', content: data.response };
             setChatHistory(prev => [...prev, botMsg]);
-        } catch (error) {
-            console.error("Chat Error:", error);
-            setChatHistory(prev => [...prev, { role: 'assistant', content: "I apologize, but I encountered an error connectng to the wisdom source. Please try again." }]);
+        } catch (err) {
+            const errorInfo = handleApiError(err, { operation: 'chat' });
+            setChatHistory(prev => [...prev, { 
+                role: 'assistant', 
+                content: errorInfo.isNetworkError 
+                    ? "I apologize, but I'm unable to connect to the wisdom source right now. Please check your connection and try again." 
+                    : "I apologize, but I encountered an error. Please try again." 
+            }]);
         } finally {
             setLoading(false);
         }
@@ -183,9 +176,7 @@ const Chatbot = () => {
         setLoading(true);
         setShowHistory(false);
         try {
-            const response = await fetch(`${API_BASE_URL}/chat/history/${id}`);
-            if (!response.ok) throw new Error("Failed to load history");
-            const data = await response.json();
+            const data = await apiGet(`/chat/history/${id}`);
 
             // Transform backend messages to UI format
             // Backend sends: role, content
@@ -193,9 +184,9 @@ const Chatbot = () => {
                 setChatHistory(data.messages.map(m => ({ role: m.role, content: m.content })));
                 setConversationId(id);
             }
-        } catch (error) {
-            console.error(error);
-            error("Could not load this chat history.", "Error");
+        } catch (err) {
+            const errorInfo = handleApiError(err, { operation: 'load chat history' });
+            error(errorInfo.message, errorInfo.title);
         } finally {
             setLoading(false);
         }

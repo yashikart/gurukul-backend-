@@ -1,5 +1,6 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar';
+import LearningFlow from '../components/LearningFlow';
 import { FaCalculator, FaAtom, FaFlask, FaDna, FaLaptopCode, FaLandmark, FaGlobeAmericas, FaBook, FaChartLine } from 'react-icons/fa';
 
 const Lectures = () => {
@@ -23,7 +24,12 @@ const Lectures = () => {
         <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex gap-3 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                {/* Learning Flow - Guided Journey */}
+                <div className="mb-4">
+                    <LearningFlow currentStep="learn" />
+                </div>
+
                 <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-100px)]">
 
                     {/* Header */}

@@ -1,11 +1,17 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import PrivateRoute from './components/PrivateRoute';
+import ErrorBoundary from './components/ErrorBoundary';
+import NotFound from './pages/NotFound';
+import RoleGuard from './components/RoleGuard';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import ParentDashboard from './pages/parent/ParentDashboard';
 import Subjects from './pages/Subjects';
 import Summarizer from './pages/Summarizer';
 import Chatbot from './pages/Chatbot';
@@ -133,50 +139,90 @@ const App = () => {
   };
 
   return (
-    <KarmaProvider>
-      <AuthProvider>
-        <Router>
-          <div className="app-background">
-            <img src={bgImage} alt="Gurukul Background" />
-            <div className="overlay"></div>
-          </div>
+    <ErrorBoundary>
+      <KarmaProvider>
+        <AuthProvider>
+          <Router>
+            <div className="app-background">
+              <img src={bgImage} alt="Gurukul Background" />
+              <div className="overlay"></div>
+            </div>
 
-          <ModalProvider>
-            <SidebarProvider>
-              <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
-                <Navbar />
+            <ModalProvider>
+              <SidebarProvider>
+                <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
+                  <Navbar />
 
-              <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/signin" element={<SignIn />} />
-                  <Route path="/signup" element={<SignUp />} />
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <PrivateRoute>
-                        <Dashboard
-                          studyTimeSeconds={studyTimeSeconds}
-                          targetGoalSeconds={targetGoalSeconds}
-                          timeLeft={timeLeft}
-                          isActive={isActive}
-                          onStartGoal={handleStartGoal}
-                          onStopGoal={handleStopGoal}
-                        />
-                      </PrivateRoute>
-                    }
-                  />
-                  <Route path="/subjects" element={<PrivateRoute><Subjects /></PrivateRoute>} />
-                  <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
-                  <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
-                  <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
-                  <Route path="/flashcards" element={<PrivateRoute><Flashcards /></PrivateRoute>} />
-                  <Route path="/agent-simulator" element={<PrivateRoute><AgentSimulator /></PrivateRoute>} />
-                  <Route path="/avatar" element={<PrivateRoute><Avatar /></PrivateRoute>} />
-                  <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-                  <Route path="/lectures" element={<PrivateRoute><Lectures /></PrivateRoute>} />
-                </Routes>
-              </main>
+                <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
+                  <ErrorBoundary>
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/signin" element={<SignIn />} />
+                      <Route path="/signup" element={<SignUp />} />
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <PrivateRoute>
+                            <RoleGuard allowedRoles={['student']}>
+                              <Dashboard
+                                studyTimeSeconds={studyTimeSeconds}
+                                targetGoalSeconds={targetGoalSeconds}
+                                timeLeft={timeLeft}
+                                isActive={isActive}
+                                onStartGoal={handleStartGoal}
+                                onStopGoal={handleStopGoal}
+                              />
+                            </RoleGuard>
+                          </PrivateRoute>
+                        }
+                      />
+                      <Route path="/subjects" element={<PrivateRoute><Subjects /></PrivateRoute>} />
+                      <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
+                      <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
+                      <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
+                      <Route path="/flashcards" element={<PrivateRoute><Flashcards /></PrivateRoute>} />
+                      <Route path="/agent-simulator" element={<PrivateRoute><AgentSimulator /></PrivateRoute>} />
+                      <Route path="/avatar" element={<PrivateRoute><Avatar /></PrivateRoute>} />
+                      <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                      <Route path="/lectures" element={<PrivateRoute><Lectures /></PrivateRoute>} />
+                      
+                      {/* EMS + Governance Routes */}
+                      <Route 
+                        path="/admin/dashboard" 
+                        element={
+                          <PrivateRoute>
+                            <RoleGuard allowedRoles={['admin']}>
+                              <AdminDashboard />
+                            </RoleGuard>
+                          </PrivateRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/teacher/dashboard" 
+                        element={
+                          <PrivateRoute>
+                            <RoleGuard allowedRoles={['teacher']}>
+                              <TeacherDashboard />
+                            </RoleGuard>
+                          </PrivateRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/parent/dashboard" 
+                        element={
+                          <PrivateRoute>
+                            <RoleGuard allowedRoles={['parent']}>
+                              <ParentDashboard />
+                            </RoleGuard>
+                          </PrivateRoute>
+                        } 
+                      />
+                      
+                      {/* 404 Route - Catch all unmatched routes */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </ErrorBoundary>
+                </main>
 
               {/* Draggable Avatar - appears on all pages when image is uploaded */}
               <DraggableAvatar />
@@ -189,10 +235,11 @@ const App = () => {
               </footer>
               </div>
             </SidebarProvider>
-          </ModalProvider>
-        </Router>
-      </AuthProvider>
-    </KarmaProvider>
+              </ModalProvider>
+          </Router>
+        </AuthProvider>
+      </KarmaProvider>
+    </ErrorBoundary>
   );
 };
 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import LearningFlow from '../components/LearningFlow';
 import { FaFlipboard, FaCheckCircle, FaTimesCircle, FaChartBar, FaBook, FaSpinner, FaArrowRight, FaArrowLeft, FaRedo } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
-import API_BASE_URL from '../config';
+import { apiGet, apiPost, handleApiError } from '../utils/apiClient';
+import { trackReflectionSession } from '../utils/progressTracker';
 
 const Flashcards = () => {
     const { addKarma } = useKarma();
@@ -20,15 +22,13 @@ const Flashcards = () => {
     const loadPendingReviews = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/reviews/pending`);
-            if (!response.ok) throw new Error('Failed to load reviews');
-            const data = await response.json();
+            const data = await apiGet('/reviews/pending');
             setCards(data);
             setCurrentIndex(0);
             setIsFlipped(false);
         } catch (err) {
-            console.error('Error loading reviews:', err);
-            error('Failed to load flashcards. Please try again.', 'Error');
+            const errorInfo = handleApiError(err, { operation: 'load flashcards' });
+            error(errorInfo.message, errorInfo.title);
         } finally {
             setLoading(false);
         }
@@ -37,11 +37,10 @@ const Flashcards = () => {
     // Load stats
     const loadStats = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/reviews/stats`);
-            if (!response.ok) throw new Error('Failed to load stats');
-            const data = await response.json();
+            const data = await apiGet('/reviews/stats');
             setStats(data);
         } catch (err) {
+            // Silently fail for stats - not critical
             console.error('Error loading stats:', err);
         }
     };
@@ -62,18 +61,11 @@ const Flashcards = () => {
 
         setSubmitting(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/reviews/submit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    question_id: currentCard.question_id,
-                    is_correct: isCorrect,
-                    confidence: isCorrect ? 0.8 : 0.3
-                })
+            const result = await apiPost('/reviews/submit', {
+                question_id: currentCard.question_id,
+                is_correct: isCorrect,
+                confidence: isCorrect ? 0.8 : 0.3
             });
-
-            if (!response.ok) throw new Error('Failed to submit review');
-            const result = await response.json();
 
             // Award karma
             if (isCorrect) {
@@ -90,7 +82,13 @@ const Flashcards = () => {
             // Remove current card from list
             const newCards = cards.filter((_, index) => index !== currentIndex);
             setCards(newCards);
-            setReviewedCount(prev => prev + 1);
+            const newReviewedCount = reviewedCount + 1;
+            setReviewedCount(newReviewedCount);
+
+            // Track reflection session when all cards are reviewed
+            if (newCards.length === 0) {
+                trackReflectionSession();
+            }
 
             // Update stats
             loadStats();
@@ -107,8 +105,8 @@ const Flashcards = () => {
                 setCurrentIndex(0);
             }
         } catch (err) {
-            console.error('Error submitting review:', err);
-            error('Failed to submit review. Please try again.', 'Error');
+            const errorInfo = handleApiError(err, { operation: 'submit review' });
+            error(errorInfo.message, errorInfo.title);
         } finally {
             setSubmitting(false);
         }
@@ -153,7 +151,12 @@ const Flashcards = () => {
         <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex flex-col lg:flex-row gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                {/* Learning Flow - Guided Journey */}
+                <div className="mb-4">
+                    <LearningFlow currentStep="reflect" />
+                </div>
+                <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
                 {/* Main Flashcard Area */}
                 <div className="flex-grow flex flex-col items-center justify-center glass-panel no-hover p-6 sm:p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden min-h-[500px]">
                     {/* Background Glow */}
@@ -375,6 +378,7 @@ const Flashcards = () => {
                             <p className="text-gray-500 text-sm">Loading stats...</p>
                         </div>
                     )}
+                </div>
                 </div>
             </main>
         </div>

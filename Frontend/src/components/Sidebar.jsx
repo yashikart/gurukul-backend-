@@ -16,9 +16,16 @@ import {
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getCurrentRole, getDashboardPath } from '../utils/roles';
 
-const menuItems = [
-    { icon: FaThLarge, label: "Dashboard", path: "/dashboard" },
+const Sidebar = () => {
+    const { isSidebarOpen, closeSidebar } = useSidebar();
+    const { user, logout } = useAuth();
+    const currentRole = getCurrentRole();
+    const dashboardPath = getDashboardPath(currentRole);
+
+    const menuItems = [
+        { icon: FaThLarge, label: "Dashboard", path: dashboardPath },
     { icon: FaBookOpen, label: "Subjects", path: "/subjects" },
     { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" },
     { icon: FaComments, label: "Chatbot", path: "/chatbot" },

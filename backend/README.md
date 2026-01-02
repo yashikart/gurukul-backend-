@@ -1,4 +1,20 @@
-# Gurukul Backend API
+# Gurukul Backend API (Refactored v2)
+## How to Run
+```powershell
+# Windows
+./run_dev.ps1
+# OR
+python -m app.main
+```
+
+## Architecture
+- `app/main.py`: Entry point
+- `app/routers/`: API endpoints
+- `app/models/`: Database models
+- `run_dev.ps1`: Startup script
+
+# Old README Content
+
 
 A FastAPI backend application running on a single port.
 

@@ -1,10 +1,13 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar';
+import LearningFlow from '../components/LearningFlow';
+import LearningSuggestions from '../components/LearningSuggestions';
 import { FaBook, FaLightbulb, FaBookOpen } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
 import { containsProfanity } from '../utils/profanityDetector';
-import API_BASE_URL from '../config';
+import { apiPost, handleApiError } from '../utils/apiClient';
+import { trackTopicStudied } from '../utils/progressTracker';
 
 const Subjects = () => {
     const { addKarma } = useKarma();
@@ -47,7 +50,7 @@ const Subjects = () => {
 
     const handleGenerate = async () => {
         if (!subject || !topic) {
-            alert('Please enter both subject and topic', 'Validation Error');
+            alert('To begin learning, please select both a subject and a topic. We\'re here to guide you.', 'Ready to Learn?');
             return;
         }
 
@@ -56,30 +59,24 @@ const Subjects = () => {
         setChatHistory([]); // Reset chat for new topic
 
         try {
-            const response = await fetch(`${API_BASE_URL}/subject-explorer`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    subject,
-                    topic,
-                    provider: 'groq' // Default provider
-                }),
+            const data = await apiPost('/subject-explorer', {
+                subject,
+                topic,
+                provider: 'groq' // Default provider
             });
 
-            const data = await response.json();
             if (data.success) {
                 setResult(data);
                 setHasReceivedChatKarma(false);
                 addKarma(20, 'Content generated! 📚');
-                // Pre-seed chat history? No, let's keep it clean.
+                // Track learning progress
+                trackTopicStudied(subject, topic);
             } else {
                 error('Failed to generate content: ' + (data.detail || 'Unknown error'), 'Generation Error');
             }
-        } catch (error) {
-            console.error('Error:', error);
-            error('Failed to connect to server. Is backend running?', 'Connection Error');
+        } catch (err) {
+            const errorInfo = handleApiError(err, { operation: 'generate content' });
+            error(errorInfo.message, errorInfo.title);
         } finally {
             setLoading(false);
         }
@@ -91,7 +88,7 @@ const Subjects = () => {
         // Check for profanity
         if (containsProfanity(chatInput)) {
             addKarma(-20, 'Inappropriate language detected ⚠️');
-            alert('Please keep the conversation respectful.', 'Warning');
+            alert('Let\'s keep our conversation respectful and focused on learning. Thank you for understanding.', 'Kind Reminder');
             return;
         }
 
@@ -110,27 +107,25 @@ const Subjects = () => {
             // Construct context-aware prompt
             const contextMessage = `Context from generated lesson on ${result.topic} (${result.subject}):\n${result.notes}\n\nUser Question: ${userMessage}`;
 
-            const response = await fetch(`${API_BASE_URL}/chat`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: contextMessage,
-                    provider: 'groq',
-                    use_rag: false // We are providing context directly
-                }),
+            const data = await apiPost('/chat', {
+                message: contextMessage,
+                provider: 'groq',
+                use_rag: false // We are providing context directly
             });
 
-            const data = await response.json();
             if (data.success) {
                 setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
             } else {
                 setChatHistory(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error responding to that.' }]);
             }
-        } catch (error) {
-            console.error('Chat Error:', error);
-            setChatHistory(prev => [...prev, { role: 'assistant', content: 'Network error. Please try again.' }]);
+        } catch (err) {
+            const errorInfo = handleApiError(err, { operation: 'chat' });
+            setChatHistory(prev => [...prev, { 
+                role: 'assistant', 
+                content: errorInfo.isNetworkError 
+                    ? 'Unable to connect. Please check your connection and try again.' 
+                    : 'Sorry, I encountered an error. Please try again.' 
+            }]);
         } finally {
             setChatLoading(false);
         }
@@ -313,6 +308,10 @@ const Subjects = () => {
 
             {/* Main Content Area */}
             <main className="flex-grow flex flex-col gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                {/* Learning Flow - Guided Journey */}
+                <div className="mb-4">
+                    <LearningFlow currentStep="enter" />
+                </div>
 
                 {/* Center Panel - Subject Explorer Form */}
                 {!loading && !result && (
@@ -410,6 +409,9 @@ const Subjects = () => {
                             <div className="prose prose-invert max-w-none text-gray-200 leading-relaxed mb-6 sm:mb-8 p-4 sm:p-6 md:p-8 bg-black/20 rounded-2xl border border-white/5 shadow-inner text-sm sm:text-base">
                                 {renderContent(result.notes)}
                             </div>
+
+                            {/* Learning Suggestions - Natural Next Steps */}
+                            <LearningSuggestions subject={result.subject} topic={result.topic} onSubjectPage={true} />
 
                             {/* Divider */}
                             <div className="h-px bg-white/10 my-8"></div>

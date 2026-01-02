@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaPaperPlane, FaRobot } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
-import API_BASE_URL from '../config';
+import { apiPost, handleApiError } from '../utils/apiClient';
 
 const AvatarChatbot = ({ position, onClose }) => {
     const [messages, setMessages] = useState([{
@@ -54,28 +54,23 @@ const AvatarChatbot = ({ position, onClose }) => {
         setIsLoading(true);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: `Context: You are a helpful website assistant for Gurukul, an educational platform. Help users navigate the website, understand features, and answer questions about how to use the platform. Be concise and friendly. User question: ${input}`,
-                    provider: 'auto',
-                    use_rag: false
-                })
+            const data = await apiPost('/chat', {
+                message: `Context: You are a helpful website assistant for Gurukul, an educational platform. Help users navigate the website, understand features, and answer questions about how to use the platform. Be concise and friendly. User question: ${input}`,
+                provider: 'auto',
+                use_rag: false
             });
 
-            if (!response.ok) throw new Error('Chat failed');
-
-            const data = await response.json();
             setMessages(prev => [...prev, {
                 role: 'assistant',
                 content: data.response
             }]);
-        } catch (error) {
-            console.error('Chat error:', error);
+        } catch (err) {
+            const errorInfo = handleApiError(err, { operation: 'website assistant chat' });
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: 'Sorry, I encountered an error. Please try again.'
+                content: errorInfo.isNetworkError 
+                    ? 'Unable to connect right now. Please check your connection.' 
+                    : 'Sorry, I encountered an error. Please try again.'
             }]);
         } finally {
             setIsLoading(false);

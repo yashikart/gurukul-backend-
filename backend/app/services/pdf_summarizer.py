@@ -36,7 +36,16 @@ class PDFSummarizer:
 
         # Try loading from pickle first
         if self.use_pickle:
-            pickle_path = Path(__file__).parent / "models" / "led_model_quantized.pkl.gz"
+            # Models are in backend/models (2 dirs up from services/pdf_summarizer.py -> app -> backend)
+            # Actually __file__ is app/services/pdf_summarizer.py. Parent is app/services.
+            # We need to go up to backend root? 
+            # Original: backend/models.
+            # New structure: backend/app/services. 
+            # So ../../models from here?
+            # Path(__file__).parent is .../app/services
+            # .parent.parent is .../app
+            # .parent.parent.parent is .../backend
+            pickle_path = Path(__file__).parent.parent.parent / "models" / "led_model_quantized.pkl.gz"
             if pickle_path.exists():
                 print(f"[PDF Summarizer] Loading from pickle file: {pickle_path}")
                 try:
@@ -220,3 +229,39 @@ class PDFSummarizer:
             "provider": "local/led-large-32k",
             "success": True
         }
+
+import io
+from fastapi import UploadFile
+import PyPDF2
+
+async def extract_pages_from_pdf(file: UploadFile) -> List[str]:
+    # Extract text from uploaded PDF file, page by page.
+    pages_text = []
+    
+    try:
+        # Read file content
+        content = await file.read()
+        pdf_file = io.BytesIO(content)
+        
+        # Reset cursor
+        await file.seek(0)
+        
+        reader = PyPDF2.PdfReader(pdf_file)
+        num_pages = len(reader.pages)
+        
+        print(f'[PDF Extract] PDF has {num_pages} pages.')
+        
+        for i in range(num_pages):
+            page = reader.pages[i]
+            text = page.extract_text()
+            if text:
+                pages_text.append(text)
+            else:
+                pages_text.append('') # Keep index alignment
+                
+        return pages_text
+        
+    except Exception as e:
+        print(f'[PDF Extract] Error extracting text: {e}')
+        raise e
+

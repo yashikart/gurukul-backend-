@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import LearningFlow from '../components/LearningFlow';
 import { FaBrain, FaClock, FaQuestionCircle, FaBolt, FaPlay, FaChevronDown, FaCheckCircle, FaTimesCircle, FaArrowRight, FaArrowLeft, FaRedo } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
-import API_BASE_URL from '../config';
+import { apiPost, handleApiError } from '../utils/apiClient';
+import { trackPracticeSession } from '../utils/progressTracker';
 
 const Test = () => {
     const { addKarma } = useKarma();
@@ -85,25 +87,18 @@ const Test = () => {
 
     const handleGenerate = async () => {
         if (!subject || !topic) {
-            alert("Please select a subject and topic.", "Validation Error");
+            alert("To create a practice quiz, please select both a subject and topic. This helps us tailor the questions for you.", "Ready to Practice?");
             return;
         }
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/quiz/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subject,
-                    topic,
-                    difficulty,
-                    provider: 'auto'
-                })
+            const data = await apiPost('/quiz/generate', {
+                subject,
+                topic,
+                difficulty,
+                provider: 'auto'
             });
-
-            if (!response.ok) throw new Error("Failed to generate quiz");
-            const data = await response.json();
 
             // Validate data structure
             if (!data || !data.questions || !Array.isArray(data.questions)) {
@@ -120,9 +115,8 @@ const Test = () => {
                 forceRetranslation();
             }, 1000);
         } catch (err) {
-            console.error("Quiz generation error:", err);
-            error("Error generating quiz. Please try again.", "Generation Error");
-            setLoading(false);
+            const errorInfo = handleApiError(err, { operation: 'generate quiz' });
+            error(errorInfo.message, errorInfo.title);
         } finally {
             setLoading(false);
         }
@@ -136,24 +130,20 @@ const Test = () => {
     };
 
     const handleSubmit = async () => {
-        const result = await confirm("Are you sure you want to submit your quiz?", "Submit Quiz");
+        const result = await confirm("Ready to see how you did? You can always practice again if you'd like.", "Submit Your Answers");
         if (!result) return;
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/quiz/submit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    quiz_id: quizData.quiz_id,
-                    answers: answers // { q_id: "A", ... }
-                })
+            const result = await apiPost('/quiz/submit', {
+                quiz_id: quizData.quiz_id,
+                answers: answers // { q_id: "A", ... }
             });
 
-            if (!response.ok) throw new Error("Failed to submit quiz");
-            const result = await response.json();
-
             setQuizResult(result);
+
+            // Track learning progress
+            trackPracticeSession();
 
             // Award karma based on score
             const percentage = (result.score / result.total_questions) * 100;
@@ -164,9 +154,9 @@ const Test = () => {
             }
 
             setMode('results');
-        } catch (error) {
-            console.error(error);
-            error("Error submitting quiz.", "Submission Error");
+        } catch (err) {
+            const errorInfo = handleApiError(err, { operation: 'submit quiz' });
+            error(errorInfo.message, errorInfo.title);
         } finally {
             setLoading(false);
         }
@@ -450,7 +440,11 @@ const Test = () => {
         <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6">
             <Sidebar />
 
-            <main className="flex-grow flex gap-3 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <main className="flex-grow flex flex-col gap-4 sm:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                {/* Learning Flow - Guided Journey */}
+                <div className="mb-4">
+                    <LearningFlow currentStep="practice" />
+                </div>
                 <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/10 relative flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-100px)]">
 
                     {/* Header only in setup mode or sticky mini header? Let's just keep the title simple */}
