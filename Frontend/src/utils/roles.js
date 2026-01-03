@@ -62,7 +62,7 @@ export const getDashboardPath = (role) => {
         [ROLES.STUDENT]: '/dashboard',
         [ROLES.TEACHER]: '/teacher/dashboard',
         [ROLES.PARENT]: '/parent/dashboard',
-        [ROLES.ADMIN]: '/admin/dashboard'
+        [ROLES.ADMIN]: '/admin_dashboard'
     };
     return paths[role] || '/dashboard';
 };

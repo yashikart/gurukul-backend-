@@ -22,53 +22,56 @@ Topic: {topic}
 
 Now, provide the educational notes:"""
 
-async def call_groq_api(subject: str, topic: str) -> str:
-    if not settings.GROQ_API_KEY:
-        raise HTTPException(status_code=500, detail="Groq API key not configured")
+async def generate_text(system_prompt: str, user_prompt: str, temperature: float = 0.7) -> str:
+    """
+    Generic LLM interface to call standard inference (Groq or Ollama)
+    """
+    # 1. Try Groq
+    if settings.GROQ_API_KEY:
+        try:
+            return await _call_groq_generic(system_prompt, user_prompt, temperature)
+        except Exception as e:
+            print(f"[LLM] Groq Failed: {e}. Falling back to Ollama...")
     
-    prompt = create_teaching_prompt(subject, topic)
-    
-    headers = {
-        "Authorization": f"Bearer {settings.GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": settings.GROQ_MODEL_NAME,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are an expert teacher who explains concepts clearly and simply."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "temperature": 0.7,
-        "max_tokens": 2000
-    }
-    
-    try:
+    # 2. Try Ollama
+    return await _call_ollama_generic(system_prompt, user_prompt, temperature)
+
+async def _call_groq_generic(system_prompt: str, user_prompt: str, temperature: float) -> str:
+        headers = {
+            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": settings.GROQ_MODEL_NAME,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": temperature,
+            "max_tokens": 2048
+        }
+        
         response = requests.post(settings.GROQ_API_ENDPOINT, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         data = response.json()
         return data["choices"][0]["message"]["content"]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Groq API error: {str(e)}")
 
-async def call_ollama_api(subject: str, topic: str) -> str:
-    prompt = create_teaching_prompt(subject, topic)
-    
+async def _call_ollama_generic(system_prompt: str, user_prompt: str, temperature: float) -> str:
     url = f"{settings.OLLAMA_BASE_URL}/api/generate"
+    
+    # Ollama "system" message handling varies, but we can prepend it or use the 'system' field if supported.
+    # For simple generate endpoint, 'system' parameter is supported in newer versions.
+    # Safe fallback: Prepend to prompt.
     
     payload = {
         "model": settings.OLLAMA_MODEL_PRIMARY,
-        "prompt": prompt,
+        "system": system_prompt, # Prompt for system behavior
+        "prompt": user_prompt,
         "stream": False,
         "options": {
-            "temperature": 0.7,
-            "num_predict": 2000
+            "temperature": temperature,
+            "num_predict": 2048
         }
     }
     
@@ -77,7 +80,14 @@ async def call_ollama_api(subject: str, topic: str) -> str:
         response.raise_for_status()
         data = response.json()
         return data.get("response", "Error generating response from Ollama")
-    except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=503, detail="Ollama service not available. Make sure Ollama is running on localhost:11434")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ollama API error: {str(e)}")
+         raise HTTPException(status_code=500, detail=f"LLM Generation Failed (Groq & Ollama): {str(e)}")
+
+# Legacy Wrappers for Existing Calls (to keep backward compatibility)
+async def call_groq_api(subject: str, topic: str) -> str:
+    prompt = create_teaching_prompt(subject, topic)
+    return await _call_groq_generic("You are an expert teacher who explains concepts clearly and simply.", prompt, 0.7)
+
+async def call_ollama_api(subject: str, topic: str) -> str:
+    prompt = create_teaching_prompt(subject, topic)
+    return await _call_ollama_generic("You are an expert teacher who explains concepts clearly and simply.", prompt, 0.7)

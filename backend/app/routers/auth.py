@@ -5,7 +5,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.all_models import User
+from app.models.all_models import User, Tenant
 from typing import Optional
 
 router = APIRouter()
@@ -58,10 +58,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
             # Mandate says "Tenant Integrity". 
             # We should probably create a basic user record if they authenticate validly with Supabase.
             print(f"User {email} not found in DB. Auto-provisioning...")
+            
+            # Find default Tenant
+            default_tenant = db.query(Tenant).filter(Tenant.name == "Gurukul Main").first()
+            tenant_id = default_tenant.id if default_tenant else None
+            
             user = User(
                 email=email, 
-                role="STUDENT", # Default
-                full_name=payload.get("user_metadata", {}).get("full_name", email.split("@")[0])
+                role=payload.get("user_metadata", {}).get("role", "STUDENT").upper(), # Use metadata role or default
+                full_name=payload.get("user_metadata", {}).get("full_name", email.split("@")[0]),
+                tenant_id=tenant_id
             )
             db.add(user)
             db.commit()

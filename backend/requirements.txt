@@ -19,3 +19,8 @@ gdown>=4.7.0
 
 python-multipart
 numpy<2
+passlib[bcrypt]
+bcrypt
+email-validator
+
+

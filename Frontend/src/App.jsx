@@ -153,89 +153,90 @@ const App = () => {
                 <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
                   <Navbar />
 
-                <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
-                  <ErrorBoundary>
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/signin" element={<SignIn />} />
-                      <Route path="/signup" element={<SignUp />} />
-                      <Route
-                        path="/dashboard"
-                        element={
-                          <PrivateRoute>
-                            <RoleGuard allowedRoles={['student']}>
-                              <Dashboard
-                                studyTimeSeconds={studyTimeSeconds}
-                                targetGoalSeconds={targetGoalSeconds}
-                                timeLeft={timeLeft}
-                                isActive={isActive}
-                                onStartGoal={handleStartGoal}
-                                onStopGoal={handleStopGoal}
-                              />
-                            </RoleGuard>
-                          </PrivateRoute>
-                        }
-                      />
-                      <Route path="/subjects" element={<PrivateRoute><Subjects /></PrivateRoute>} />
-                      <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
-                      <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
-                      <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
-                      <Route path="/flashcards" element={<PrivateRoute><Flashcards /></PrivateRoute>} />
-                      <Route path="/agent-simulator" element={<PrivateRoute><AgentSimulator /></PrivateRoute>} />
-                      <Route path="/avatar" element={<PrivateRoute><Avatar /></PrivateRoute>} />
-                      <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-                      <Route path="/lectures" element={<PrivateRoute><Lectures /></PrivateRoute>} />
-                      
-                      {/* EMS + Governance Routes */}
-                      <Route 
-                        path="/admin/dashboard" 
-                        element={
-                          <PrivateRoute>
-                            <RoleGuard allowedRoles={['admin']}>
-                              <AdminDashboard />
-                            </RoleGuard>
-                          </PrivateRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/teacher/dashboard" 
-                        element={
-                          <PrivateRoute>
-                            <RoleGuard allowedRoles={['teacher']}>
-                              <TeacherDashboard />
-                            </RoleGuard>
-                          </PrivateRoute>
-                        } 
-                      />
-                      <Route 
-                        path="/parent/dashboard" 
-                        element={
-                          <PrivateRoute>
-                            <RoleGuard allowedRoles={['parent']}>
-                              <ParentDashboard />
-                            </RoleGuard>
-                          </PrivateRoute>
-                        } 
-                      />
-                      
-                      {/* 404 Route - Catch all unmatched routes */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </ErrorBoundary>
-                </main>
+                  <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
+                    <ErrorBoundary>
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/signin" element={<SignIn />} />
+                        <Route path="/signup" element={<SignUp />} />
+                        <Route
+                          path="/dashboard"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['student']}>
+                                <Dashboard
+                                  studyTimeSeconds={studyTimeSeconds}
+                                  targetGoalSeconds={targetGoalSeconds}
+                                  timeLeft={timeLeft}
+                                  isActive={isActive}
+                                  onStartGoal={handleStartGoal}
+                                  onStopGoal={handleStopGoal}
+                                />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
+                        <Route path="/subjects" element={<PrivateRoute><Subjects /></PrivateRoute>} />
+                        <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
+                        <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
+                        <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
+                        <Route path="/flashcards" element={<PrivateRoute><Flashcards /></PrivateRoute>} />
+                        <Route path="/agent-simulator" element={<PrivateRoute><AgentSimulator /></PrivateRoute>} />
+                        <Route path="/agent-simulator/:agentName" element={<PrivateRoute><AgentSimulator /></PrivateRoute>} />
+                        <Route path="/avatar" element={<PrivateRoute><Avatar /></PrivateRoute>} />
+                        <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                        <Route path="/lectures" element={<PrivateRoute><Lectures /></PrivateRoute>} />
 
-              {/* Draggable Avatar - appears on all pages when image is uploaded */}
-              <DraggableAvatar />
+                        {/* EMS + Governance Routes */}
+                        <Route
+                          path="/admin_dashboard"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['admin']}>
+                                <AdminDashboard />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
+                        <Route
+                          path="/teacher/dashboard"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['teacher']}>
+                                <TeacherDashboard />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
+                        <Route
+                          path="/parent/dashboard"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['parent']}>
+                                <ParentDashboard />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
 
-              {/* Karma Notifications */}
-              <KarmaNotification />
+                        {/* 404 Route - Catch all unmatched routes */}
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </ErrorBoundary>
+                  </main>
 
-              <footer className="text-center py-4 sm:py-6 text-xs sm:text-sm text-gray-500 relative z-10 px-4">
-                <p>© 2024 Gurukul. All rights reserved.</p>
-              </footer>
-              </div>
-            </SidebarProvider>
-              </ModalProvider>
+                  {/* Draggable Avatar - appears on all pages when image is uploaded */}
+                  <DraggableAvatar />
+
+                  {/* Karma Notifications */}
+                  <KarmaNotification />
+
+                  <footer className="text-center py-4 sm:py-6 text-xs sm:text-sm text-gray-500 relative z-10 px-4">
+                    <p>© 2024 Gurukul. All rights reserved.</p>
+                  </footer>
+                </div>
+              </SidebarProvider>
+            </ModalProvider>
           </Router>
         </AuthProvider>
       </KarmaProvider>

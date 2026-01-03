@@ -2,10 +2,11 @@ import React from 'react';
 import Sidebar from '../../components/Sidebar';
 import { FaUsers, FaChartLine, FaCog, FaShieldAlt, FaServer, FaExclamationTriangle } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
+import UserManagement from './UserManagement';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
-    
+
     // Mock data - would come from backend in production
     const stats = {
         totalUsers: 1250,
@@ -101,7 +102,12 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Quick Actions */}
+                {/* User Management Section */}
+                <div className="mb-6">
+                    <UserManagement />
+                </div>
+
+                {/* Quick Actions (Remaining) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -109,9 +115,6 @@ const AdminDashboard = () => {
                             Platform Management
                         </h3>
                         <div className="space-y-2">
-                            <button className="w-full text-left p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-sm text-gray-300">
-                                User Management
-                            </button>
                             <button className="w-full text-left p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-sm text-gray-300">
                                 Content Moderation
                             </button>

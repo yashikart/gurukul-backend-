@@ -23,23 +23,21 @@ const Sidebar = () => {
     const { user, logout } = useAuth();
     const currentRole = getCurrentRole();
     const dashboardPath = getDashboardPath(currentRole);
+    const navigate = useNavigate();
 
     const menuItems = [
         { icon: FaThLarge, label: "Dashboard", path: dashboardPath },
-    { icon: FaBookOpen, label: "Subjects", path: "/subjects" },
-    { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" },
-    { icon: FaComments, label: "Chatbot", path: "/chatbot" },
-    { icon: FaClipboardList, label: "Test", path: "/test" },
-    { icon: FaFlipboard, label: "Flashcards", path: "/flashcards" },
-    { icon: FaVideo, label: "Lectures", path: "/lectures" },
-    { icon: FaRobot, label: "Agent Simulator", path: "/agent-simulator" },
-    { icon: FaUserAstronaut, label: "Avatar", path: "/avatar" },
-];
+        { icon: FaBookOpen, label: "Subjects", path: "/subjects" },
+        { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" },
+        { icon: FaComments, label: "Chatbot", path: "/chatbot" },
+        { icon: FaClipboardList, label: "Test", path: "/test" },
+        { icon: FaFlipboard, label: "Flashcards", path: "/flashcards" },
+        { icon: FaVideo, label: "Lectures", path: "/lectures" },
+        { icon: FaRobot, label: "Agent Simulator", path: "/agent-simulator" },
+        { icon: FaUserAstronaut, label: "Avatar", path: "/avatar" },
+    ];
 
-const Sidebar = () => {
-    const { isSidebarOpen, closeSidebar } = useSidebar();
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
+
 
     const handleLogout = async () => {
         try {

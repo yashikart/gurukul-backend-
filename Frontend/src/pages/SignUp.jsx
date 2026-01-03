@@ -7,6 +7,7 @@ const SignUp = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [role, setRole] = useState('STUDENT');
     const [error, setError] = useState(null);
     const [message, setMessage] = useState('');
     const { signup } = useAuth();
@@ -17,9 +18,7 @@ const SignUp = () => {
         setError(null);
         setMessage('');
         try {
-            // Note: Supabase basic signup doesn't inherently store 'name' unless using metadata options.
-            // For now we just sign up with email/password.
-            await signup(email, password);
+            await signup(email, password, role, name);
             setMessage('Account created successfully! Please check your email for verification.');
             // navigate('/signin'); // Optional auto-redirect
         } catch (err) {
@@ -78,6 +77,19 @@ const SignUp = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 ml-1">Account Role</label>
+                            <select
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent/50 focus:bg-white/10 transition-all appearance-none"
+                                value={role}
+                                onChange={(e) => setRole(e.target.value)}
+                            >
+                                <option value="STUDENT" className="bg-gray-900">Student</option>
+                                <option value="TEACHER" className="bg-gray-900">Teacher</option>
+                                <option value="PARENT" className="bg-gray-900">Parent</option>
+                            </select>
                         </div>
 
                         <button type="submit" className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-500 hover:to-amber-600 text-white font-bold tracking-wide shadow-lg transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2">

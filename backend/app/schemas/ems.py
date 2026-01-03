@@ -1,68 +1,46 @@
-from pydantic import BaseModel
-from typing import Optional, List, Dict
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from datetime import datetime
 
-# --- EduMentor Models ---
-class EduMentorRequest(BaseModel):
-    subject: str
-    topic: str
-    include_wikipedia: Optional[bool] = False
-    use_knowledge_store: Optional[bool] = False
-    use_orchestration: Optional[bool] = False
-    provider: Optional[str] = "auto"
+class TenantCreate(BaseModel):
+    name: str # School Name
+    type: str = "INSTITUTION" # INSTITUTION or FAMILY
 
-class EduMentorResponse(BaseModel):
-    subject: str
-    topic: str
-    lesson_content: str
-    wikipedia_sources: Optional[List[Dict]] = None
-    knowledge_store_used: bool
-    orchestration_used: bool
-    provider: str
-    created_at: str
-    success: bool
+class TenantResponse(TenantCreate):
+    id: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
 
-# --- Financial Agent Models ---
-class ExpenseCategory(BaseModel):
-    name: str
-    amount: float
+class CohortCreate(BaseModel):
+    name: str # e.g. "Grade 10-A"
+    tenant_id: str
 
-class FinancialProfileRequest(BaseModel):
-    name: str
-    monthly_income: float
-    monthly_expenses: float
-    expense_categories: List[ExpenseCategory]
-    financial_goal: str
-    financial_type: str  # Conservative, Moderate, Aggressive
-    risk_level: str  # Low, Moderate, High
+class CohortResponse(CohortCreate):
+    id: str
+    created_at: datetime
 
-class FinancialAdviceResponse(BaseModel):
-    name: str
-    monthly_income: float
-    monthly_expenses: float
-    monthly_savings: float
-    expense_breakdown: List[Dict]
-    financial_advice: str
-    recommendations: List[str]
-    goal_analysis: Dict
-    provider: str
-    created_at: str
+    class Config:
+        from_attributes = True
 
-# --- Wellness Bot Models ---
-class WellnessSupportRequest(BaseModel):
-    emotional_wellness_score: int
-    financial_wellness_score: int
-    current_mood_score: int
-    stress_level: int
-    concerns: Optional[str] = None
+class UserCreateAdmin(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    role: str # ADMIN, TEACHER, STUDENT, PARENT
+    tenant_id: str
+    cohort_id: Optional[str] = None # For Students
 
-class WellnessSupportResponse(BaseModel):
-    emotional_support: str
-    motivational_message: str
-    life_importance: str
-    study_importance: str
-    goal_importance: str
-    positive_affirmations: List[str]
-    recommendations: List[str]
-    overall_assessment: str
-    provider: str
-    created_at: str
+class UserResponse(BaseModel):
+    id: str
+    email: EmailStr
+    full_name: Optional[str]
+    role: str
+    tenant_id: Optional[str]
+    cohort_id: Optional[str]
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

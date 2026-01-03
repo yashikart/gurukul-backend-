@@ -7,7 +7,7 @@ import { supabase } from '../supabaseClient';
 import { useModal } from '../contexts/ModalContext';
 import { setLanguage, getCurrentLanguage } from '../utils/languageSupport';
 import { getCurrentRole, setUserRole, getRoleDisplayName, ROLES, getDashboardPath } from '../utils/roles';
-import { useNavigate } from 'react-router-dom';
+
 
 const Settings = () => {
     const { user, logout } = useAuth();
@@ -15,7 +15,7 @@ const Settings = () => {
     const { confirm, prompt, alert } = useModal();
     const [activeSection, setActiveSection] = useState('profile');
     const [userRole, setUserRoleState] = useState(() => getCurrentRole());
-    
+
     // Profile state with localStorage persistence
     const [fullName, setFullName] = useState(() => {
         const saved = localStorage.getItem('user_fullName');
@@ -29,7 +29,7 @@ const Settings = () => {
         const saved = localStorage.getItem('user_bio');
         return saved || 'Navigating the seas of knowledge.';
     });
-    
+
     // Preferences state with localStorage persistence
     const [language, setLanguageState] = useState(() => {
         const saved = getCurrentLanguage();
@@ -41,7 +41,7 @@ const Settings = () => {
         const saved = localStorage.getItem('user_reduceMotion');
         return saved === 'true';
     });
-    
+
     // Notifications state with localStorage persistence
     const [emailNotifications, setEmailNotifications] = useState(() => {
         const saved = localStorage.getItem('user_emailNotifications');
@@ -110,19 +110,19 @@ const Settings = () => {
             'Delete Account',
             'Type DELETE to confirm'
         );
-        
+
         if (userInput === 'DELETE') {
             try {
                 // Note: Direct account deletion from client requires admin API or backend endpoint
                 // For now, we'll clear all local data and sign out
                 // In production, you should call a backend API endpoint to handle account deletion
-                
+
                 // Clear all localStorage data
                 localStorage.clear();
-                
+
                 // Sign out the user
                 await logout();
-                
+
                 await alert('Your local data has been cleared. Please contact support to permanently delete your account from our servers.', 'Account Deletion');
                 navigate('/signin');
             } catch (error) {
@@ -150,7 +150,7 @@ const Settings = () => {
                             <div>
                                 <h3 className="text-xl font-bold text-white">{fullName || 'User'}</h3>
                                 <p className="text-gray-400">Explorer & Student</p>
-                                <button 
+                                <button
                                     onClick={handleChangeAvatar}
                                     className="mt-2 text-sm text-orange-400 hover:text-orange-300 font-medium transition-colors"
                                 >
@@ -162,26 +162,26 @@ const Settings = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-orange-200 text-xs font-bold uppercase tracking-wider">Full Name</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
-                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors" 
+                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-orange-200 text-xs font-bold uppercase tracking-wider">Email Address</label>
-                                <input 
-                                    type="email" 
+                                <input
+                                    type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors" 
+                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors"
                                 />
                             </div>
                             <div className="col-span-1 md:col-span-2 space-y-2">
                                 <label className="text-orange-200 text-xs font-bold uppercase tracking-wider">Bio</label>
-                                <textarea 
-                                    rows="4" 
+                                <textarea
+                                    rows="4"
                                     value={bio}
                                     onChange={(e) => setBio(e.target.value)}
                                     className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors resize-none"
@@ -277,14 +277,14 @@ const Settings = () => {
                         <h2 className="text-2xl font-bold text-white mb-6">Security & Account</h2>
 
                         <div className="space-y-4">
-                            <button 
+                            <button
                                 onClick={handleSignOut}
                                 className="w-full flex items-center justify-between p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all group cursor-pointer"
                             >
                                 <span className="text-red-400 font-medium group-hover:text-red-300">Sign Out</span>
                                 <FaSignOutAlt className="text-red-400 group-hover:text-red-300" />
                             </button>
-                            <button 
+                            <button
                                 onClick={handleDeleteAccount}
                                 className="w-full flex items-center justify-between p-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all group cursor-pointer"
                             >

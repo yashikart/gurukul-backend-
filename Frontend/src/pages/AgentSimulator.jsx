@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { FaRobot, FaCog, FaCommentAlt, FaBook, FaDollarSign, FaHeartbeat, FaCircle, FaPaperPlane, FaSpinner, FaCheckCircle, FaTrashAlt, FaGlobeAmericas, FaUser, FaChevronDown } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
@@ -47,20 +48,47 @@ const AGENTS = [
 ];
 
 const AgentSimulator = () => {
+    const { agentName } = useParams();
+    const navigate = useNavigate();
     const { addKarma } = useKarma();
     const { alert, confirm, error } = useModal();
     // --- State ---
     const [selectedAgent, setSelectedAgent] = useState(() => {
+        // Priority to URL param
+        if (agentName) {
+            const found = AGENTS.find(a => a.name.toLowerCase() === agentName.toLowerCase());
+            if (found) return found;
+        }
         const saved = localStorage.getItem('agent_sim_selectedAgent');
         if (!saved) return AGENTS[0];
         try {
             const parsed = JSON.parse(saved);
-            // Re-hydrate with the actual component from AGENTS list
             return AGENTS.find(a => a.id === parsed.id) || AGENTS[0];
         } catch (e) {
             return AGENTS[0];
         }
     });
+
+    // Sync URL with selection changes
+    useEffect(() => {
+        if (selectedAgent && selectedAgent.name !== agentName) {
+            // Update URL without full reload if possible, or just accept the discrepancy until user shares link
+            // For now, let's just respect URL if present on mount. 
+            // If user clicks sidebar, they go to /agent-simulator?
+            // If user selects in UI, we might want to update URL?
+            // Let's just listen to URL changes for now.
+        }
+    }, [selectedAgent]);
+
+    // Listen to URL param changes
+    useEffect(() => {
+        if (agentName) {
+            const found = AGENTS.find(a => a.name.toLowerCase() === agentName.toLowerCase());
+            if (found && found.id !== selectedAgent?.id) {
+                setSelectedAgent(found);
+            }
+        }
+    }, [agentName]);
 
     // EduMentor Specific State
     const [config, setConfig] = useState(() => {
@@ -126,9 +154,9 @@ const AgentSimulator = () => {
     // Sync all agent-specific data when switching agents
     useEffect(() => {
         if (!selectedAgent) return;
-        
+
         const agentName = selectedAgent.name;
-        
+
         // Sync chat history
         const chatKey = `agent_sim_chatHistory_${agentName}`;
         const savedChat = localStorage.getItem(chatKey);
@@ -157,31 +185,31 @@ const AgentSimulator = () => {
             const lessonKey = `agent_sim_edumentor_lesson_${agentName}`;
             const savedLesson = localStorage.getItem(lessonKey);
             setGeneratedLesson(savedLesson ? JSON.parse(savedLesson) : null);
-            
+
             const lastConfigKey = `agent_sim_edumentor_lastGenConfig_${agentName}`;
             const savedLastConfig = localStorage.getItem(lastConfigKey);
             setLastGenConfig(savedLastConfig ? JSON.parse(savedLastConfig) : null);
-            
+
             setIsChatEnabled(!!savedLesson);
         } else if (agentName === 'FinancialCrew') {
             const adviceKey = `agent_sim_financial_advice_${agentName}`;
             const savedAdvice = localStorage.getItem(adviceKey);
             setGeneratedAdvice(savedAdvice ? JSON.parse(savedAdvice) : null);
-            
+
             const lastConfigKey = `agent_sim_financial_lastGenConfig_${agentName}`;
             const savedLastConfig = localStorage.getItem(lastConfigKey);
             setLastFinancialConfig(savedLastConfig ? JSON.parse(savedLastConfig) : null);
-            
+
             setIsChatEnabled(!!savedAdvice);
         } else if (agentName === 'WellnessBot') {
             const supportKey = `agent_sim_wellness_support_${agentName}`;
             const savedSupport = localStorage.getItem(supportKey);
             setGeneratedSupport(savedSupport ? JSON.parse(savedSupport) : null);
-            
+
             const lastConfigKey = `agent_sim_wellness_lastGenConfig_${agentName}`;
             const savedLastConfig = localStorage.getItem(lastConfigKey);
             setLastWellnessConfig(savedLastConfig ? JSON.parse(savedLastConfig) : null);
-            
+
             setIsChatEnabled(!!savedSupport);
         } else {
             // For non-config agents, chat is always enabled
@@ -203,13 +231,13 @@ const AgentSimulator = () => {
     const handleResetAgent = async (e) => {
         e?.stopPropagation();
         e?.preventDefault();
-        
+
         if (!selectedAgent) return;
         const result = await confirm(`Reset ${selectedAgent.name} session? This will clear all chat history and generated content for this agent.`, 'Reset Session');
         if (!result) return;
 
         const name = selectedAgent.name;
-        
+
         // Clear state
         if (name === 'EduMentor') {
             setGeneratedLesson(null);
@@ -373,7 +401,7 @@ const AgentSimulator = () => {
         setIsChatEnabled(false); // Lock chat during generation
 
         try {
-            const response = await fetch(`${API_BASE_URL}/agent/edumentor/generate`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/agent/edumentor/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
@@ -455,7 +483,7 @@ ${generatedSupport.overall_assessment}
 User Question: ${userMsg.content}`;
             }
 
-            const response = await fetch(`${API_BASE_URL}/chat`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -523,7 +551,7 @@ User Question: ${userMsg.content}`;
                 sum + (parseFloat(exp.amount) || 0), 0
             );
 
-            const response = await fetch(`${API_BASE_URL}/agent/financial/advice`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/agent/financial/advice`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -571,7 +599,7 @@ User Question: ${userMsg.content}`;
         setIsChatEnabled(false);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/agent/wellness/support`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/agent/wellness/support`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(wellnessConfig)
