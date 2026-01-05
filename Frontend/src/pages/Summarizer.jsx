@@ -4,7 +4,8 @@ import Sidebar from '../components/Sidebar';
 import { FaFileUpload, FaCloudUploadAlt, FaMagic, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
-import { handleApiError } from '../utils/apiClient';
+import { handleApiError, apiPost } from '../utils/apiClient';
+import { supabase } from '../supabaseClient';
 import API_BASE_URL from '../config';
 
 const Summarizer = () => {
@@ -122,9 +123,9 @@ const Summarizer = () => {
         formData.append('summary_title', file.name); // Send filename as title logic
 
         // Determine endpoint based on file type
-        let endpoint = `${API_BASE_URL}/summarize-doc`;
+        let endpoint = `${API_BASE_URL}/api/v1/ai/summarize-doc`;
         if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-            endpoint = `${API_BASE_URL}/summarize-pdf`;
+            endpoint = `${API_BASE_URL}/api/v1/ai/summarize-pdf`;
         }
 
         console.log("-----------------------------------------");
@@ -134,8 +135,16 @@ const Summarizer = () => {
         console.log("-----------------------------------------");
 
         try {
+            // Get Auth Token
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = {};
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+
             const response = await fetch(endpoint, {
                 method: 'POST',
+                headers: headers,
                 body: formData,
             });
 
@@ -178,20 +187,12 @@ const Summarizer = () => {
                 date: new Date().toISOString()
             };
 
-            const saveResponse = await fetch(`${API_BASE_URL}/summaries/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(summaryPayload)
-            });
-            if (!saveResponse.ok) throw new Error('Failed to save summary');
+
+
+            await apiPost('/api/v1/learning/summaries/save', summaryPayload);
 
             // 2. Generate Flashcards
-            const flashcardResponse = await fetch(`${API_BASE_URL}/flashcards/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(summaryPayload)
-            });
-            if (!flashcardResponse.ok) throw new Error('Failed to generate flashcards');
+            await apiPost('/api/v1/flashcards/generate', summaryPayload);
 
             // 3. Navigate
             navigate('/flashcards');
@@ -220,18 +221,10 @@ const Summarizer = () => {
                 question_type: type
             };
 
-            await fetch(`${API_BASE_URL}/summaries/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(summaryPayload)
-            });
+            await apiPost('/api/v1/learning/summaries/save', summaryPayload);
 
             // 2. Generate Flashcards
-            await fetch(`${API_BASE_URL}/flashcards/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(summaryPayload)
-            });
+            await apiPost('/api/v1/flashcards/generate', summaryPayload);
 
             setGenerationStep('success');
         } catch (error) {
@@ -242,7 +235,7 @@ const Summarizer = () => {
     };
 
     const handleDownloadPdf = () => {
-        window.open(`${API_BASE_URL}/flashcards/download_pdf`, '_blank');
+        window.open(`${API_BASE_URL}/api/v1/flashcards/download_pdf`, '_blank');
     };
 
     // Chat Logic
@@ -266,20 +259,18 @@ const Summarizer = () => {
                 prompt = `Context: The user has uploaded a document named "${file?.name || 'Document'}". contents summary:\n${summaryText}\n\nUser Question: ${chatInput}`;
             }
 
-            const response = await fetch(`${API_BASE_URL}/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: prompt,
-                    conversation_id: `summ-${Date.now()}`, // Simple session-based ID
-                    provider: 'auto' // Use auto provider
-                })
+            const response = await apiPost('/api/v1/chat', {
+                message: prompt,
+                conversation_id: `summ-${Date.now()}`, // Simple session-based ID
+                provider: 'auto' // Use auto provider
             });
 
-            if (!response.ok) throw new Error('Failed to get response');
+            // const data = response; // apiPost returns the data directly
 
-            const data = await response.json();
-            const botMessage = { role: 'assistant', content: data.response };
+            // if (!response.ok) ... // apiPost throws on error, so response acts as success data usually?
+            // Actually, apiClient throws on 4xx/5xx so if we are here, it is success data
+
+            const botMessage = { role: 'assistant', content: response.response };
             setChatHistory(prev => [...prev, botMessage]);
 
         } catch (error) {
@@ -540,7 +531,7 @@ const Summarizer = () => {
                         {/* Explicit Mode Indicator */}
                         {file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) && (
                             <div className="mt-2 text-xs text-accent/80 font-mono animate-pulse">
-                                ● PDF Mode Active: Using Gemini Cloud Engine
+                                ● PDF Mode Active: Using Uniguru Local Model (LED-Transformer)
                             </div>
                         )}
                     </div>

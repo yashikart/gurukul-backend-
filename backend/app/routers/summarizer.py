@@ -22,6 +22,16 @@ from app.services.pdf_summarizer import PDFSummarizer, extract_pages_from_pdf
 
 router = APIRouter()
 
+# Global instance for caching the model
+_pdf_summarizer_instance = None
+
+def get_pdf_summarizer():
+    global _pdf_summarizer_instance
+    if _pdf_summarizer_instance is None:
+        print("[Router] Initializing Global PDFSummarizer instance...")
+        _pdf_summarizer_instance = PDFSummarizer()
+    return _pdf_summarizer_instance
+
 @router.post("/summarize-pdf", response_model=PDFSummarizerResponse)
 async def summarize_pdf(
     file: UploadFile = File(...),
@@ -52,9 +62,8 @@ async def summarize_pdf(
 
     # 2. Initialize Summarizer
     try:
-        # We instantiate per request or globally? Original main.py instantiated it inside?
-        # "summarizer = PDFSummarizer()"
-        summarizer = PDFSummarizer()
+        # Use cached global instance
+        summarizer = get_pdf_summarizer()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to initialize summarizer model: {str(e)}")
 

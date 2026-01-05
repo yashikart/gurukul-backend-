@@ -1,8 +1,13 @@
 
 from fastapi import APIRouter, HTTPException
 from app.schemas.summary import (
-    SubjectExplorerRequest, SubjectExplorerResponse
+    SubjectExplorerRequest, SubjectExplorerResponse, SaveSummaryRequest
 )
+from app.models.all_models import Summary as DBSummary, User
+from app.core.database import get_db
+from app.routers.auth import get_current_user
+from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Depends
 from app.services.llm import call_groq_api, call_ollama_api
 from app.services.youtube import get_youtube_recommendations
 
@@ -44,3 +49,24 @@ async def subject_explorer(request: SubjectExplorerRequest):
         youtube_recommendations=youtube_videos,
         success=True
     )
+
+@router.post("/summaries/save")
+async def save_learning_summary(
+    summary_in: SaveSummaryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Save a summary for flashcard generation or review"""
+    # Create DB entry
+    new_summary = DBSummary(
+        user_id=current_user.id,
+        title=summary_in.title,
+        content=summary_in.content,
+        source=summary_in.source or "manual",
+        source_type=summary_in.source_type or "text"
+    )
+    db.add(new_summary)
+    db.commit()
+    db.refresh(new_summary)
+    
+    return {"message": "Summary saved successfully", "id": new_summary.id}

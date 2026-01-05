@@ -59,7 +59,7 @@ const Subjects = () => {
         setChatHistory([]); // Reset chat for new topic
 
         try {
-            const data = await apiPost('/subject-explorer', {
+            const data = await apiPost('/api/v1/learning/explore', {
                 subject,
                 topic,
                 provider: 'groq' // Default provider
@@ -107,7 +107,7 @@ const Subjects = () => {
             // Construct context-aware prompt
             const contextMessage = `Context from generated lesson on ${result.topic} (${result.subject}):\n${result.notes}\n\nUser Question: ${userMessage}`;
 
-            const data = await apiPost('/chat', {
+            const data = await apiPost('/api/v1/chat', {
                 message: contextMessage,
                 provider: 'groq',
                 use_rag: false // We are providing context directly
@@ -120,11 +120,11 @@ const Subjects = () => {
             }
         } catch (err) {
             const errorInfo = handleApiError(err, { operation: 'chat' });
-            setChatHistory(prev => [...prev, { 
-                role: 'assistant', 
-                content: errorInfo.isNetworkError 
-                    ? 'Unable to connect. Please check your connection and try again.' 
-                    : 'Sorry, I encountered an error. Please try again.' 
+            setChatHistory(prev => [...prev, {
+                role: 'assistant',
+                content: errorInfo.isNetworkError
+                    ? 'Unable to connect. Please check your connection and try again.'
+                    : 'Sorry, I encountered an error. Please try again.'
             }]);
         } finally {
             setChatLoading(false);

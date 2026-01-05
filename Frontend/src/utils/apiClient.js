@@ -24,7 +24,7 @@ class ApiError extends Error {
  */
 export const apiRequest = async (endpoint, options = {}, retries = 1) => {
     const url = `${API_BASE_URL}${endpoint}`;
-    
+
     // Default options
     const defaultOptions = {
         headers: {
@@ -41,17 +41,27 @@ export const apiRequest = async (endpoint, options = {}, retries = 1) => {
         },
     };
 
+    // Inject Supabase Token if available
+    try {
+        const { data: { session } } = await import('../supabaseClient').then(m => m.supabase.auth.getSession());
+        if (session?.access_token) {
+            fetchOptions.headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+    } catch (e) {
+        console.warn('Failed to get auth session for API request', e);
+    }
+
     let lastError;
-    
+
     // Retry logic
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
             const response = await fetch(url, fetchOptions);
-            
+
             // Handle non-JSON responses
             const contentType = response.headers.get('content-type');
             let data;
-            
+
             if (contentType && contentType.includes('application/json')) {
                 try {
                     data = await response.json();
@@ -87,10 +97,10 @@ export const apiRequest = async (endpoint, options = {}, retries = 1) => {
             }
 
             return data;
-            
+
         } catch (error) {
             lastError = error;
-            
+
             // Don't retry on client errors or if it's the last attempt
             if (
                 (error instanceof ApiError && error.status >= 400 && error.status < 500) ||
@@ -98,7 +108,7 @@ export const apiRequest = async (endpoint, options = {}, retries = 1) => {
             ) {
                 break;
             }
-            
+
             // Wait before retrying (exponential backoff)
             await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         }
@@ -169,7 +179,7 @@ export const apiDelete = (endpoint, options = {}, retries = 1) => {
  */
 export const handleApiError = (error, context = {}) => {
     console.error('API Error:', error, context);
-    
+
     if (error instanceof ApiError) {
         // Network errors
         if (error.status === 0 || error.data?.networkError) {
@@ -180,7 +190,7 @@ export const handleApiError = (error, context = {}) => {
                 isNetworkError: true,
             };
         }
-        
+
         // Client errors (4xx)
         if (error.status >= 400 && error.status < 500) {
             if (error.status === 401) {
@@ -191,7 +201,7 @@ export const handleApiError = (error, context = {}) => {
                     requiresAuth: true,
                 };
             }
-            
+
             if (error.status === 403) {
                 return {
                     message: 'This action isn\'t available right now. If you believe this is an error, please contact support.',
@@ -199,7 +209,7 @@ export const handleApiError = (error, context = {}) => {
                     canRetry: false,
                 };
             }
-            
+
             if (error.status === 404) {
                 return {
                     message: 'We couldn\'t find what you\'re looking for. It may have been moved or removed.',
@@ -207,7 +217,7 @@ export const handleApiError = (error, context = {}) => {
                     canRetry: false,
                 };
             }
-            
+
             if (error.status === 422) {
                 return {
                     message: error.message || 'Please review your input and try again. We\'re here to help if you need guidance.',
@@ -215,14 +225,14 @@ export const handleApiError = (error, context = {}) => {
                     canRetry: false,
                 };
             }
-            
+
             return {
                 message: error.message || 'Something didn\'t work as expected. Please try again, or take a moment and come back.',
                 title: 'Request Issue',
                 canRetry: false,
             };
         }
-        
+
         // Server errors (5xx)
         if (error.status >= 500) {
             return {
@@ -233,7 +243,7 @@ export const handleApiError = (error, context = {}) => {
             };
         }
     }
-    
+
     // Generic error
     return {
         message: error.message || 'Something unexpected happened. Please try again when you\'re ready. Your learning journey continues.',

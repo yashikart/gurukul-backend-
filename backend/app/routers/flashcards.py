@@ -154,8 +154,12 @@ async def generate_flashcards(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/download_pdf")
-async def download_flashcards_pdf():
+async def download_flashcards_pdf(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Generate and return PDF of all flashcards"""
+    flashcards_db = db.query(DBFlashcard).filter(DBFlashcard.user_id == current_user.id).all()
     if not flashcards_db:
         raise HTTPException(status_code=404, detail="No flashcards found")
         
@@ -201,10 +205,14 @@ async def get_pending_reviews(
     return cards
 
 @router.get("/reviews/stats")
-async def get_review_stats():
+async def get_review_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    count = db.query(DBFlashcard).filter(DBFlashcard.user_id == current_user.id).count()
     return {
-        "total_questions": len(flashcards_db),
-        "pending_reviews": len(flashcards_db),
+        "total_questions": count,
+        "pending_reviews": count,
         "learning": 0,
         "reviewing": 0,
         "mastered": 0

@@ -31,4 +31,4 @@ RUN mkdir -p models
 EXPOSE 3000
 
 # Command to run the application (download models first if URLs provided)
-CMD ["sh", "-c", "python download_models_on_startup.py && uvicorn main:app --host 0.0.0.0 --port 3000"]
+CMD ["sh", "-c", "python download_models_on_startup.py && uvicorn app.main:app --host 0.0.0.0 --port 3000"]
