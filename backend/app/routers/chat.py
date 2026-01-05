@@ -22,10 +22,30 @@ async def chat_endpoint(request: ChatRequest):
     """
     conversation_id = request.conversation_id or str(uuid.uuid4())
     
-    # Mock Response or Basic Echo for now to restore functionality
-    # Ideally this calls the LLM service.
-    
-    response_text = f"I received your message: '{request.message}'. (Chat module restored)."
+    try:
+        from groq import Groq
+        import os
+        
+        client = Groq(api_key=settings.GROQ_API_KEY)
+        
+        completion = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": "You are Gurukul, an AI coding tutor and educational guide."},
+                {"role": "user", "content": request.message}
+            ],
+            temperature=0.7,
+            max_tokens=1024,
+            top_p=1,
+            stream=False,
+            stop=None,
+        )
+        
+        response_text = completion.choices[0].message.content
+        
+    except Exception as e:
+        print(f"Groq Error: {e}")
+        response_text = f"I'm sorry, I'm having trouble connecting to my brain right now. (Error: {str(e)})"
     
     return {
         "response": response_text,
