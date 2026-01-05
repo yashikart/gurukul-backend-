@@ -126,7 +126,7 @@ const Chatbot = () => {
         }
 
         try {
-            const data = await apiPost('/chat', {
+            const data = await apiPost('/api/v1/chat', {
                 message: userMsg.content,
                 conversation_id: conversationId,
                 provider: 'auto',
@@ -145,11 +145,11 @@ const Chatbot = () => {
             setChatHistory(prev => [...prev, botMsg]);
         } catch (err) {
             const errorInfo = handleApiError(err, { operation: 'chat' });
-            setChatHistory(prev => [...prev, { 
-                role: 'assistant', 
-                content: errorInfo.isNetworkError 
-                    ? "I apologize, but I'm unable to connect to the wisdom source right now. Please check your connection and try again." 
-                    : "I apologize, but I encountered an error. Please try again." 
+            setChatHistory(prev => [...prev, {
+                role: 'assistant',
+                content: errorInfo.isNetworkError
+                    ? "I apologize, but I'm unable to connect to the wisdom source right now. Please check your connection and try again."
+                    : "I apologize, but I encountered an error. Please try again."
             }]);
         } finally {
             setLoading(false);
@@ -176,7 +176,7 @@ const Chatbot = () => {
         setLoading(true);
         setShowHistory(false);
         try {
-            const data = await apiGet(`/chat/history/${id}`);
+            const data = await apiGet(`/api/v1/chat/history/${id}`);
 
             // Transform backend messages to UI format
             // Backend sends: role, content
@@ -195,13 +195,13 @@ const Chatbot = () => {
     const handleDeleteCurrent = async (e) => {
         e?.stopPropagation();
         e?.preventDefault();
-        
+
         if (!conversationId) {
             alert("No active chat to delete. Start a conversation first.", "No Active Chat");
             setShowDeleteMenu(false);
             return;
         }
-        
+
         const result = await confirm("Delete this conversation permanently?", "Delete Chat");
         if (!result) {
             setShowDeleteMenu(false);
@@ -209,8 +209,8 @@ const Chatbot = () => {
         }
 
         try {
-            const response = await fetch(`${API_BASE_URL}/chat/history/${conversationId}`, { method: 'DELETE' });
-            
+            const response = await fetch(`${API_BASE_URL}/api/v1/chat/history/${conversationId}`, { method: 'DELETE' });
+
             if (!response.ok) {
                 throw new Error('Failed to delete conversation');
             }
@@ -232,7 +232,7 @@ const Chatbot = () => {
     const handleDeleteAll = async (e) => {
         e?.stopPropagation();
         e?.preventDefault();
-        
+
         const result = await confirm("Are you sure you want to clear your ENTIRE chat history list? This cannot be undone.", "Clear All History");
         if (!result) {
             setShowDeleteMenu(false);
@@ -250,7 +250,7 @@ const Chatbot = () => {
         if (!knowledgeText.trim()) return;
         setKnowledgeLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/rag/knowledge`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/chat/knowledge`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -365,7 +365,7 @@ const Chatbot = () => {
                                 </button>
                                 {/* Delete Dropdown */}
                                 {showDeleteMenu && (
-                                    <div 
+                                    <div
                                         className="absolute right-0 top-full mt-2 w-48 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
                                         onClick={(e) => e.stopPropagation()}
                                     >
