@@ -7,6 +7,7 @@ import requests
 import tempfile
 from fpdf import FPDF
 from typing import List, Optional
+from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.database import get_db
