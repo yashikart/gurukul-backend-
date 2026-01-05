@@ -204,16 +204,52 @@ async def get_pending_reviews(
     cards = db.query(DBFlashcard).filter(DBFlashcard.user_id == current_user.id).all()
     return cards
 
+class ReviewAttempt(BaseModel):
+    card_id: str
+    difficulty: str # easy, medium, hard
+
+@router.post("/reviews")
+async def submit_review(
+    attempt: ReviewAttempt,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    card = db.query(DBFlashcard).filter(
+        DBFlashcard.id == attempt.card_id, 
+        DBFlashcard.user_id == current_user.id
+    ).first()
+    
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+        
+    # Simple Spaced Repetition Logic (Leitner System simplified)
+    if attempt.difficulty == "easy":
+        card.days_until_review = 7
+        card.confidence = min(1.0, (card.confidence or 0) + 0.2)
+    elif attempt.difficulty == "medium":
+        card.days_until_review = 3
+        card.confidence = min(1.0, (card.confidence or 0) + 0.1)
+    else: # hard
+        card.days_until_review = 1
+        card.confidence = max(0.0, (card.confidence or 0) - 0.2)
+        
+    db.commit()
+    return {"message": "Review logged", "next_review_days": card.days_until_review}
+
 @router.get("/reviews/stats")
 async def get_review_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    count = db.query(DBFlashcard).filter(DBFlashcard.user_id == current_user.id).count()
+    total = db.query(DBFlashcard).filter(DBFlashcard.user_id == current_user.id).count()
+    # Mock logic for categorization until we have real SRS fields fully populated
+    mastered = db.query(DBFlashcard).filter(DBFlashcard.user_id == current_user.id, DBFlashcard.days_until_review > 5).count()
+    learning = db.query(DBFlashcard).filter(DBFlashcard.user_id == current_user.id, DBFlashcard.days_until_review <= 5).count()
+    
     return {
-        "total_questions": count,
-        "pending_reviews": count,
-        "learning": 0,
+        "total_questions": total,
+        "pending_reviews": learning, # For now assuming learning ones are due
+        "learning": learning,
         "reviewing": 0,
-        "mastered": 0
+        "mastered": mastered
     }

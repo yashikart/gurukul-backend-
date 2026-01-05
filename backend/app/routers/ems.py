@@ -136,6 +136,7 @@ async def get_student_progress(
     }
 
 # --- Dashboard Hooks (Restored for Frontend Compatibility) ---
+# --- Dashboard Hooks (Restored for Frontend Compatibility) ---
 @router.get("/dashboard/stats")
 async def get_my_dashboard_stats(
     db: Session = Depends(get_db),
@@ -143,3 +144,37 @@ async def get_my_dashboard_stats(
 ):
     """Get MY progress (Student View)"""
     return await get_student_progress(current_user.id, db, current_user)
+
+@router.get("/admin/stats")
+async def get_admin_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get System Stats for Admin Dashboard"""
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only Admins can view system stats")
+        
+    # Scope to tenant if tenant_id is set, else global?
+    # Assuming Admin sees stats for their Tenant.
+    
+    base_query = db.query(User)
+    if current_user.tenant_id:
+        base_query = base_query.filter(User.tenant_id == current_user.tenant_id)
+        
+    total_users = base_query.count()
+    active_users = base_query.filter(User.is_active == True).count()
+    total_teachers = base_query.filter(User.role == "TEACHER").count()
+    total_students = base_query.filter(User.role == "STUDENT").count()
+    total_parents = base_query.filter(User.role == "PARENT").count()
+    
+    return {
+        "totalUsers": total_users,
+        "activeUsers": active_users,
+        "totalTeachers": total_teachers,
+        "totalStudents": total_students,
+        "totalParents": total_parents,
+        "systemHealth": "Healthy",
+        "apiStatus": "Operational"
+    }
+
+

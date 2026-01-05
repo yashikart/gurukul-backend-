@@ -6,17 +6,29 @@ import UserManagement from './UserManagement';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
+    const [stats, setStats] = React.useState({
+        totalUsers: 0,
+        activeUsers: 0,
+        totalTeachers: 0,
+        totalStudents: 0,
+        totalParents: 0,
+        systemHealth: 'Checking...',
+        apiStatus: 'Checking...'
+    });
 
-    // Mock data - would come from backend in production
-    const stats = {
-        totalUsers: 1250,
-        activeUsers: 890,
-        totalTeachers: 45,
-        totalStudents: 1150,
-        totalParents: 55,
-        systemHealth: 'healthy',
-        apiStatus: 'operational'
-    };
+    React.useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                // Use apiGet helper which handles auth headers
+                const data = await import('../../utils/apiClient').then(m => m.apiGet('/api/v1/ems/admin/stats'));
+                setStats(data);
+            } catch (err) {
+                console.error("Failed to fetch admin stats:", err);
+                setStats(prev => ({ ...prev, systemHealth: 'Degraded', apiStatus: 'Error' }));
+            }
+        };
+        fetchStats();
+    }, []);
 
     const StatCard = ({ icon: Icon, title, value, subtitle, color }) => (
         <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden group">
