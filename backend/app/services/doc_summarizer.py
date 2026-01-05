@@ -8,6 +8,11 @@ import google.generativeai as genai
 import json
 from typing import List, Dict, Optional
 import time
+import warnings
+
+# Suppress Google GenAI deprecation warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
+warnings.filterwarnings("ignore", category=FutureWarning, module="google.api_core")
 
 class DOCSummarizer:
     """Cloud-based DOC summarizer using Google Gemini API"""

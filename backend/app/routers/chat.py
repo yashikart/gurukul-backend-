@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import Optional
 import uuid
 
+from app.core.config import settings
+
 router = APIRouter()
 
 class ChatRequest(BaseModel):
