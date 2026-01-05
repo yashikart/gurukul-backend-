@@ -55,8 +55,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         # 2. Fallback: Unverified Decode (Force skip signature check)
         if payload is None:
             try:
-                # Explicitly skip signature verification
-                payload = jwt.decode(token, None, options={"verify_signature": False, "verify_audience": False})
+                # Explicitly skip signature verification and audience checks using get_unverified_claims
+                payload = jwt.get_unverified_claims(token)
                 print("[Auth] Successfully decoded token (Unverified).")
             except Exception as e:
                 print(f"[Auth] Failed to decode token unverified: {e}")
