@@ -37,7 +37,7 @@ class User(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)  # Nullable for OAuth users
     full_name = Column(String, nullable=True)
     role = Column(String, nullable=False) # ADMIN, TEACHER, PARENT, STUDENT
     tenant_id = Column(String, ForeignKey("tenants.id"), nullable=True)
