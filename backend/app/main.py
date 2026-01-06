@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 
 # Import Routers
-from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents
+from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz
 
 # Initialize FastAPI
 app = FastAPI(title=settings.API_TITLE)
@@ -44,6 +44,7 @@ app.include_router(summarizer.router, prefix="/api/v1/ai", tags=["AI Utilities"]
 app.include_router(ems.router, prefix="/api/v1/ems", tags=["Admin (EMS)"])
 app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul"])
 app.include_router(agents.router, prefix="/api/v1/agent", tags=["Agents"])
+app.include_router(quiz.router, prefix="/api/v1/quiz", tags=["Quiz"])
 
 # Root Health Check
 @app.get("/")

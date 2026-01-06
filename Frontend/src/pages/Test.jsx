@@ -37,9 +37,9 @@ const Test = () => {
         try {
             const select = document.querySelector('.goog-te-combo');
             if (!select || !select.value || select.value === 'en') return;
-            
+
             const currentLang = select.value;
-            
+
             // Method 1: Trigger multiple change events to force re-processing
             for (let i = 0; i < 5; i++) {
                 setTimeout(() => {
@@ -51,7 +51,7 @@ const Test = () => {
                     }
                 }, i * 200);
             }
-            
+
             // Method 2: Temporarily toggle language to force full re-translation
             setTimeout(() => {
                 try {
@@ -60,13 +60,13 @@ const Test = () => {
                     select.value = 'en';
                     const event1 = new Event('change', { bubbles: true });
                     select.dispatchEvent(event1);
-                    
+
                     // Switch back to target language
                     setTimeout(() => {
                         select.value = originalValue;
                         const event2 = new Event('change', { bubbles: true });
                         select.dispatchEvent(event2);
-                        
+
                         // Additional trigger after switching back
                         setTimeout(() => {
                             const event3 = new Event('change', { bubbles: true });
@@ -77,7 +77,7 @@ const Test = () => {
                     // Ignore
                 }
             }, 1000);
-            
+
         } catch (e) {
             console.warn('Translation retry failed:', e);
         }
@@ -93,7 +93,7 @@ const Test = () => {
 
         setLoading(true);
         try {
-            const data = await apiPost('/quiz/generate', {
+            const data = await apiPost('/api/v1/quiz/generate', {
                 subject,
                 topic,
                 difficulty,
@@ -109,7 +109,7 @@ const Test = () => {
             setAnswers({});
             setCurrentQuestionIndex(0);
             setMode('taking');
-            
+
             // Force Google Translate to re-translate dynamically added content
             setTimeout(() => {
                 forceRetranslation();
@@ -135,7 +135,7 @@ const Test = () => {
 
         setLoading(true);
         try {
-            const result = await apiPost('/quiz/submit', {
+            const result = await apiPost('/api/v1/quiz/submit', {
                 quiz_id: quizData.quiz_id,
                 answers: answers // { q_id: "A", ... }
             });
@@ -283,17 +283,17 @@ const Test = () => {
                 </div>
             );
         }
-        
+
         if (currentQuestionIndex >= quizData.questions.length) {
             setCurrentQuestionIndex(0);
             return null;
         }
-        
+
         const currentQ = quizData.questions[currentQuestionIndex];
         if (!currentQ) {
             return null;
         }
-        
+
         const progress = ((currentQuestionIndex + 1) / quizData.total_questions) * 100;
         const isLast = currentQuestionIndex === quizData.total_questions - 1;
 
