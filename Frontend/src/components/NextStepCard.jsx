@@ -16,7 +16,7 @@ const NextStepCard = ({ currentStep = 'enter' }) => {
             description: 'Begin with your chosen subject',
             path: '/lectures',
             icon: FaBookOpen,
-            color: 'from-purple-500 to-pink-500',
+            color: 'from-purple-600/70 to-indigo-600/70', // Calm purple
             actionText: 'Go to Lectures'
         },
         'learn': {
@@ -24,7 +24,7 @@ const NextStepCard = ({ currentStep = 'enter' }) => {
             description: 'Test your knowledge with a quiz',
             path: '/test',
             icon: FaClipboardCheck,
-            color: 'from-green-500 to-teal-500',
+            color: 'from-emerald-600/70 to-teal-600/70', // Calm green
             actionText: 'Take a Quiz'
         },
         'practice': {
@@ -32,7 +32,7 @@ const NextStepCard = ({ currentStep = 'enter' }) => {
             description: 'Reinforce your learning',
             path: '/flashcards',
             icon: FaLightbulb,
-            color: 'from-orange-500 to-amber-500',
+            color: 'from-amber-600/70 to-yellow-600/70', // Calm amber
             actionText: 'Review Flashcards'
         },
         'reflect': {
@@ -40,7 +40,7 @@ const NextStepCard = ({ currentStep = 'enter' }) => {
             description: 'See how far you\'ve come',
             path: '/dashboard',
             icon: FaChartLine,
-            color: 'from-indigo-500 to-blue-500',
+            color: 'from-slate-600/70 to-gray-600/70', // Calm gray
             actionText: 'View Progress'
         },
         'improve': {
@@ -48,7 +48,7 @@ const NextStepCard = ({ currentStep = 'enter' }) => {
             description: 'Choose your next topic',
             path: '/subjects',
             icon: FaBookOpen,
-            color: 'from-blue-500 to-cyan-500',
+            color: 'from-blue-600/70 to-cyan-600/70', // Calm blue
             actionText: 'Explore Subjects'
         }
     };

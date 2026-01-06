@@ -7,7 +7,8 @@ export default {
     theme: {
         extend: {
             colors: {
-                accent: '#E8B975',
+                accent: '#6B9080', // Calm sage green
+                'accent-secondary': '#4A90A4', // Soft ocean blue
             },
             fontFamily: {
                 heading: ['Playfair Display', 'serif'],

@@ -22,14 +22,18 @@
   --font-primary: 'Outfit', sans-serif;
   --font-heading: 'Playfair Display', serif;
 
-  --color-text-main: #FDFcF5;
-  --color-text-muted: #E0E0E0;
-  --color-accent: #E8B975;
-  /* Soft Gold */
-
-  --bg-glass: rgba(0, 0, 0, 0.4);
-  --bg-glass-hover: rgba(0, 0, 0, 0.6);
-  --border-glass: rgba(255, 255, 255, 0.05);
+  /* Calm Color Palette - Purposeful Learning */
+  --color-text-main: #E8EAF0;  /* Soft white, less harsh */
+  --color-text-muted: #B0B8C8; /* Muted gray */
+  --color-accent: #6B9080;     /* Calm sage green - growth & learning */
+  --color-accent-secondary: #4A90A4; /* Soft ocean blue - calm & focus */
+  
+  /* Calm Backgrounds */
+  --bg-primary: #1A1F2E;       /* Deep navy, less harsh than black */
+  --bg-secondary: #252B3B;     /* Soft charcoal */
+  --bg-glass: rgba(255, 255, 255, 0.05);  /* Subtle glass effect */
+  --bg-glass-hover: rgba(255, 255, 255, 0.08);
+  --border-glass: rgba(255, 255, 255, 0.08);
   --shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 

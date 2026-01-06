@@ -17,7 +17,7 @@ const LearningFlow = ({ currentStep = null }) => {
             description: 'Choose your subject and topic',
             icon: FaBookOpen,
             path: '/subjects',
-            color: 'from-blue-500 to-cyan-500'
+            color: 'from-blue-600/70 to-cyan-600/70' // Softer blue
         },
         {
             id: 'learn',
@@ -25,7 +25,7 @@ const LearningFlow = ({ currentStep = null }) => {
             description: 'Study lessons and watch videos',
             icon: FaBookOpen,
             path: '/lectures',
-            color: 'from-purple-500 to-pink-500'
+            color: 'from-purple-600/70 to-indigo-600/70' // Softer purple
         },
         {
             id: 'practice',
@@ -33,7 +33,7 @@ const LearningFlow = ({ currentStep = null }) => {
             description: 'Test your knowledge with quizzes',
             icon: FaClipboardCheck,
             path: '/test',
-            color: 'from-green-500 to-teal-500'
+            color: 'from-emerald-600/70 to-teal-600/70' // Softer green
         },
         {
             id: 'reflect',
@@ -41,7 +41,7 @@ const LearningFlow = ({ currentStep = null }) => {
             description: 'Review with flashcards',
             icon: FaLightbulb,
             path: '/flashcards',
-            color: 'from-orange-500 to-amber-500'
+            color: 'from-amber-600/70 to-yellow-600/70' // Softer amber
         },
         {
             id: 'improve',
@@ -49,7 +49,7 @@ const LearningFlow = ({ currentStep = null }) => {
             description: 'Track progress and continue',
             icon: FaChartLine,
             path: '/dashboard',
-            color: 'from-indigo-500 to-blue-500'
+            color: 'from-slate-600/70 to-gray-600/70' // Calm gray
         }
     ];
 
@@ -70,7 +70,7 @@ const LearningFlow = ({ currentStep = null }) => {
 
             <div className="relative">
                 {/* Connection Line (Desktop) */}
-                <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 via-green-500 via-orange-500 to-indigo-500 opacity-20 -translate-y-1/2"></div>
+                <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-blue-600/30 via-purple-600/30 via-emerald-600/30 via-amber-600/30 to-slate-600/30 opacity-20 -translate-y-1/2"></div>
 
                 {/* Steps */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 relative z-10">
@@ -87,8 +87,8 @@ const LearningFlow = ({ currentStep = null }) => {
                                     group relative p-4 sm:p-6 rounded-2xl 
                                     bg-black/40 backdrop-blur-sm border-2 
                                     transition-all duration-300
-                                    ${isActive 
-                                        ? 'border-accent shadow-lg shadow-accent/30 scale-105' 
+                                    ${isActive
+                                        ? 'border-accent shadow-lg shadow-accent/30 scale-105'
                                         : 'border-white/10 hover:border-white/30 hover:scale-102'
                                     }
                                     ${isCompleted ? 'opacity-60' : 'opacity-100'}
@@ -108,7 +108,7 @@ const LearningFlow = ({ currentStep = null }) => {
                                     `}>
                                         <Icon className="text-white text-lg sm:text-xl" />
                                     </div>
-                                    
+
                                     <div>
                                         <h3 className="text-white font-bold text-sm sm:text-base mb-1">
                                             {step.label}
@@ -122,8 +122,8 @@ const LearningFlow = ({ currentStep = null }) => {
                                     <div className={`
                                         absolute -top-2 -right-2 w-6 h-6 rounded-full
                                         flex items-center justify-center text-xs font-bold
-                                        ${isActive || isCompleted 
-                                            ? 'bg-accent text-black' 
+                                        ${isActive || isCompleted
+                                            ? 'bg-accent text-black'
                                             : 'bg-white/20 text-gray-400'
                                         }
                                     `}>
