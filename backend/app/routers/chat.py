@@ -31,7 +31,7 @@ async def chat_endpoint(request: ChatRequest):
         client = Groq(api_key=settings.GROQ_API_KEY)
         
         completion = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are Gurukul, an AI coding tutor and educational guide."},
                 {"role": "user", "content": request.message}
