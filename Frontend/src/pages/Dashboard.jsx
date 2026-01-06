@@ -4,6 +4,7 @@ import { StudyTimeWidget, KarmaWidget, AchievementsWidget, GoalWidget } from '..
 import LearningFlow from '../components/LearningFlow';
 import LearningProgress from '../components/LearningProgress';
 import ReflectionModal from '../components/ReflectionModal';
+import NextStepCard from '../components/NextStepCard';
 import { apiGet, handleApiError } from '../utils/apiClient';
 import { FaHeart } from 'react-icons/fa';
 
@@ -85,6 +86,9 @@ const Dashboard = ({
                         <span>Daily Reflection</span>
                     </button>
                 </div>
+
+                {/* Next Step Recommendation */}
+                <NextStepCard currentStep={journeyStep} />
 
                 {/* Learning Flow - Guided Journey */}
                 <div className="mb-6 sm:mb-8">
