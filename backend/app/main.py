@@ -27,6 +27,16 @@ async def startup_event():
     print(f"Env: {os.getenv('ENV', 'dev')}")
     print(f"{'='*50}\n")
     
+    # Initialize database tables
+    try:
+        from app.core.database import engine, Base
+        from app.models import all_models
+        print("[Startup] Creating database tables...")
+        Base.metadata.create_all(bind=engine)
+        print("[Startup] ✓ Database tables created successfully!")
+    except Exception as e:
+        print(f"[Startup] Database initialization failed: {e}")
+    
     # Try to ensure models exist (Shim to keep original behavior)
     try:
         # Assuming download_models_on_startup.py is in the root (cwd)
