@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.all_models import User, Tenant, Profile, Summary, Flashcard, Reflection, StudentProgress
-from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse
+from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse, UpdateProfile
 from typing import Optional
 
 router = APIRouter()
@@ -217,6 +217,30 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
 async def read_users_me(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return current_user
+
+@router.put("/update-profile", response_model=UserResponse)
+async def update_profile(
+    profile_data: UpdateProfile,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's profile information"""
+    try:
+        # Update full_name if provided
+        if profile_data.full_name is not None:
+            current_user.full_name = profile_data.full_name
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        return current_user
+    except Exception as e:
+        db.rollback()
+        print(f"[Auth] Error updating profile: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update profile. Please try again."
+        )
 
 @router.delete("/delete-account")
 async def delete_account(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

@@ -14,10 +14,10 @@ const Settings = () => {
     const { confirm, prompt, alert } = useModal();
     const [activeSection, setActiveSection] = useState('profile');
 
-    // Profile state with localStorage persistence
+    // Profile state - load from user object (from database) first, then localStorage as fallback
     const [fullName, setFullName] = useState(() => {
-        const saved = localStorage.getItem('user_fullName');
-        return saved || (user?.email ? user.email.split('@')[0] : 'Vasco da Gama');
+        // Priority: user.full_name from database > localStorage > email prefix
+        return user?.full_name || localStorage.getItem('user_fullName') || (user?.email ? user.email.split('@')[0] : '');
     });
     const [email] = useState(() => {
         const saved = localStorage.getItem('user_email');
@@ -41,10 +41,48 @@ const Settings = () => {
     });
 
 
-    // Persist profile changes
+    // Load full name from user object when available
     useEffect(() => {
-        localStorage.setItem('user_fullName', fullName);
-    }, [fullName]);
+        if (user?.full_name) {
+            setFullName(user.full_name);
+            localStorage.setItem('user_fullName', user.full_name);
+        }
+    }, [user]);
+
+    // Save profile changes to database (debounced)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (fullName && fullName !== (user?.full_name || '')) {
+                const token = localStorage.getItem('auth_token');
+                if (token) {
+                    fetch(`${API_BASE_URL}/api/v1/auth/update-profile`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            full_name: fullName,
+                        }),
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        }
+                        throw new Error('Failed to update profile');
+                    })
+                    .then(updatedUser => {
+                        localStorage.setItem('user_fullName', updatedUser.full_name || '');
+                    })
+                    .catch(error => {
+                        console.error('Error saving profile:', error);
+                    });
+                }
+            }
+        }, 1000); // Wait 1 second after user stops typing
+
+        return () => clearTimeout(timer);
+    }, [fullName, user]);
 
 
     useEffect(() => {
@@ -70,12 +108,48 @@ const Settings = () => {
     }, [reduceMotion]);
 
 
-    // Update email from auth context if available
+    // Load full name from user object when it changes (from database)
     useEffect(() => {
-        if (user?.email && !localStorage.getItem('user_email')) {
-            setEmail(user.email);
+        if (user?.full_name) {
+            setFullName(user.full_name);
+            localStorage.setItem('user_fullName', user.full_name);
         }
     }, [user]);
+
+    // Save profile changes to database (debounced - saves 1 second after user stops typing)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (fullName && fullName !== (user?.full_name || '')) {
+                const token = localStorage.getItem('auth_token');
+                if (token) {
+                    fetch(`${API_BASE_URL}/api/v1/auth/update-profile`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            full_name: fullName,
+                        }),
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        }
+                        throw new Error('Failed to update profile');
+                    })
+                    .then(updatedUser => {
+                        localStorage.setItem('user_fullName', updatedUser.full_name || '');
+                    })
+                    .catch(error => {
+                        console.error('Error saving profile:', error);
+                    });
+                }
+            }
+        }, 1000); // Wait 1 second after user stops typing
+
+        return () => clearTimeout(timer);
+    }, [fullName, user]);
 
     const handleSignOut = async () => {
         const result = await confirm('Are you sure you want to sign out?', 'Sign Out');

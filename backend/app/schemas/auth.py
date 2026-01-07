@@ -26,3 +26,7 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UpdateProfile(BaseModel):
+    full_name: Optional[str] = None
+    bio: Optional[str] = None  # For future use if you add bio to User model
+
