@@ -5,6 +5,7 @@ import { FaUser, FaGlobe, FaShieldAlt, FaSignOutAlt, FaTrash } from 'react-icons
 import { useAuth } from '../contexts/AuthContext';
 import { useModal } from '../contexts/ModalContext';
 import { setLanguage, getCurrentLanguage } from '../utils/languageSupport';
+import API_BASE_URL from '../config';
 
 
 const Settings = () => {
@@ -91,16 +92,33 @@ const Settings = () => {
 
     const handleDeleteAccount = async () => {
         const userInput = await prompt(
-            'Are you absolutely sure you want to delete your account? This action is IRREVERSIBLE and will delete all your data. Type "DELETE" to confirm.',
+            'Are you absolutely sure you want to delete your account? This action is IRREVERSIBLE and will delete all your data from our servers. Type "DELETE" to confirm.',
             'Delete Account',
             'Type DELETE to confirm'
         );
 
         if (userInput === 'DELETE') {
             try {
-                // Note: Direct account deletion from client requires admin API or backend endpoint
-                // For now, we'll clear all local data and sign out
-                // In production, you should call a backend API endpoint to handle account deletion
+                // Get auth token
+                const token = localStorage.getItem('auth_token');
+                if (!token) {
+                    alert('You must be signed in to delete your account.', 'Error');
+                    return;
+                }
+
+                // Call backend API to delete account
+                const response = await fetch(`${API_BASE_URL}/api/v1/auth/delete-account`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to delete account');
+                }
 
                 // Clear all localStorage data
                 localStorage.clear();
@@ -108,11 +126,11 @@ const Settings = () => {
                 // Sign out the user
                 await logout();
 
-                await alert('Your local data has been cleared. Please contact support to permanently delete your account from our servers.', 'Account Deletion');
+                await alert('Your account and all associated data have been permanently deleted from our servers.', 'Account Deleted');
                 navigate('/signin');
             } catch (error) {
                 console.error('Failed to delete account:', error);
-                alert('Failed to delete account. Please contact support for assistance.', 'Error');
+                alert(`Failed to delete account: ${error.message}. Please try again or contact support.`, 'Error');
             }
         }
     };

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.all_models import User, Tenant
+from app.models.all_models import User, Tenant, Profile, Summary, Flashcard, Reflection, StudentProgress
 from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse
 from typing import Optional
 
@@ -217,3 +217,51 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
 async def read_users_me(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return current_user
+
+@router.delete("/delete-account")
+async def delete_account(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete the current user's account and all associated data"""
+    try:
+        user_id = current_user.id
+        
+        # Delete all related records
+        # 1. Delete Profile
+        profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+        if profile:
+            db.delete(profile)
+        
+        # 2. Delete Summaries
+        summaries = db.query(Summary).filter(Summary.user_id == user_id).all()
+        for summary in summaries:
+            db.delete(summary)
+        
+        # 3. Delete Flashcards
+        flashcards = db.query(Flashcard).filter(Flashcard.user_id == user_id).all()
+        for flashcard in flashcards:
+            db.delete(flashcard)
+        
+        # 4. Delete Reflections
+        reflections = db.query(Reflection).filter(Reflection.user_id == user_id).all()
+        for reflection in reflections:
+            db.delete(reflection)
+        
+        # 5. Delete StudentProgress
+        student_progress = db.query(StudentProgress).filter(StudentProgress.user_id == user_id).all()
+        for progress in student_progress:
+            db.delete(progress)
+        
+        # 6. Finally, delete the user
+        db.delete(current_user)
+        db.commit()
+        
+        return {
+            "message": "Account and all associated data have been permanently deleted",
+            "success": True
+        }
+    except Exception as e:
+        db.rollback()
+        print(f"[Auth] Error deleting account: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete account. Please try again or contact support."
+        )
