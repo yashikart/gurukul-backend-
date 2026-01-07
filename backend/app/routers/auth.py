@@ -4,7 +4,6 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.all_models import User, Tenant
@@ -16,15 +15,40 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Using bcrypt directly to avoid passlib compatibility issues
+import bcrypt
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        # Encode password to bytes if it's a string
+        if isinstance(plain_password, str):
+            plain_password = plain_password.encode('utf-8')
+        if isinstance(hashed_password, str):
+            hashed_password = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(plain_password, hashed_password)
+    except Exception as e:
+        print(f"[Auth] Password verification error: {e}")
+        return False
 
 def get_password_hash(password: str) -> str:
-    """Hash a password"""
-    return pwd_context.hash(password)
+    """Hash a password using bcrypt"""
+    # Bcrypt has a 72-byte limit, so we need to handle long passwords
+    if isinstance(password, str):
+        password_bytes = password.encode('utf-8')
+    else:
+        password_bytes = password
+    
+    # Truncate to 72 bytes if necessary (bcrypt limit)
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+    
+    # Generate salt and hash
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    
+    # Return as string for database storage
+    return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create a JWT access token"""
@@ -93,6 +117,18 @@ def require_role(role: str):
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """Register a new user"""
+    # Validate password length (bcrypt has 72-byte limit, but we'll enforce reasonable limits)
+    if len(user_data.password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters long"
+        )
+    if len(user_data.password) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be less than 100 characters long"
+        )
+    
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
