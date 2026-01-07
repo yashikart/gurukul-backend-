@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaTrash, FaUserShield, FaChalkboardTeacher, FaUserGraduate, FaUserFriends, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaEdit, FaUserShield, FaChalkboardTeacher, FaUserGraduate, FaUserFriends, FaSearch, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import API_BASE_URL from '../../config';
 import { useAuth } from '../../contexts/AuthContext';
 import { useModal } from '../../contexts/ModalContext';
+import { apiGet, apiPost, apiPut, apiDelete, handleApiError } from '../../utils/apiClient';
 
 const UserManagement = () => {
     const { user: currentUser } = useAuth(); // Rename to avoid conflict
@@ -14,6 +15,7 @@ const UserManagement = () => {
 
     // Form State
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingUserId, setEditingUserId] = useState(null);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -31,7 +33,7 @@ const UserManagement = () => {
 
     const fetchAdminProfile = async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('auth_token');
             const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -49,21 +51,11 @@ const UserManagement = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/v1/ems/users`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setUsers(data);
-            } else {
-                console.error("Failed to fetch users");
-            }
+            const data = await apiGet('/api/v1/ems/users');
+            setUsers(data);
         } catch (error) {
-            console.error("Error fetching users:", error);
+            const errorInfo = handleApiError(error, { operation: 'fetch users' });
+            await alert(errorInfo.message, errorInfo.title);
         } finally {
             setLoading(false);
         }
@@ -72,47 +64,95 @@ const UserManagement = () => {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
-            // Assuming current admin's tenant ID is available or backend handles it.
-            // But API expects tenant_id. Let's try to get it from current user or fetch it first.
-            // For MVP, if backend enforces tenant_id in schema, we need it. 
-            // In a real app, Admin creates user in THEIR tenant unless SuperAdmin.
-            // Let's assume backend `create_user_within_tenant` requires `tenant_id`.
-            // Ideally backend should default to current_user.tenant_id if payload is missing it?
-            // Checking ems.py... Schema `UserCreateAdmin` has `tenant_id`.
-            // We need to fetch the admin's profile first to get tenant_id? Or just decode the token?
-            // Hack: We will fetch the user list first, grab the first tenant_id we see and use that :D 
-            // Better: User object in AuthContext likely has it.
-
-            // Use fetched admin profile tenant_id, or fallback to first user, or worst case dummy
+            // Get tenant_id from admin profile or first user
             let tenantId = adminProfile?.tenant_id;
             if (!tenantId && users.length > 0) tenantId = users[0].tenant_id;
-
-            console.log("Creating user with Tenant ID:", tenantId); // Debug
-
-            const payload = { ...formData, tenant_id: tenantId };
-
-            const response = await fetch(`${API_BASE_URL}/api/v1/ems/users`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                await alert('User created successfully!', 'Success');
-                setIsFormOpen(false);
-                setFormData({ email: '', password: '', full_name: '', role: 'STUDENT', tenant_id: '' });
-                fetchUsers();
-            } else {
-                const err = await response.json();
-                await alert(`Failed to create user: ${err.detail}`, 'Error');
+            if (!tenantId) {
+                // Get default tenant or create one
+                const defaultTenant = await apiGet('/api/v1/ems/tenants').catch(() => null);
+                if (defaultTenant && defaultTenant.length > 0) {
+                    tenantId = defaultTenant[0].id;
+                }
             }
+
+            const payload = { ...formData, tenant_id: tenantId || '' };
+
+            await apiPost('/api/v1/ems/users', payload);
+            await alert('User created successfully!', 'Success');
+            setIsFormOpen(false);
+            setFormData({ email: '', password: '', full_name: '', role: 'STUDENT', tenant_id: '' });
+            fetchUsers();
         } catch (error) {
-            console.error("Error creating user:", error);
-            await alert('An error occurred.', 'Error');
+            const errorInfo = handleApiError(error, { operation: 'create user' });
+            await alert(errorInfo.message, errorInfo.title);
+        }
+    };
+
+    const handleEditUser = (user) => {
+        setFormData({
+            email: user.email,
+            full_name: user.full_name || '',
+            role: user.role,
+            password: '', // Don't pre-fill password
+            tenant_id: user.tenant_id || ''
+        });
+        setIsFormOpen(true);
+        setEditingUserId(user.id);
+    };
+
+    const handleUpdateUser = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingUserId) {
+                // Update existing user
+                await apiPut(`/api/v1/ems/users/${editingUserId}`, {
+                    email: formData.email,
+                    full_name: formData.full_name,
+                    role: formData.role
+                });
+                await alert('User updated successfully!', 'Success');
+            } else {
+                // Create new user
+                await handleCreateUser(e);
+                return;
+            }
+            setIsFormOpen(false);
+            setEditingUserId(null);
+            setFormData({ email: '', password: '', full_name: '', role: 'STUDENT', tenant_id: '' });
+            fetchUsers();
+        } catch (error) {
+            const errorInfo = handleApiError(error, { operation: 'update user' });
+            await alert(errorInfo.message, errorInfo.title);
+        }
+    };
+
+    const handleDeleteUser = async (userId, userName) => {
+        const result = await confirm(
+            `Are you sure you want to delete ${userName || 'this user'}? This action cannot be undone.`,
+            'Delete User'
+        );
+        if (!result) return;
+
+        try {
+            await apiDelete(`/api/v1/ems/users/${userId}`);
+            await alert('User deleted successfully!', 'Success');
+            fetchUsers();
+        } catch (error) {
+            const errorInfo = handleApiError(error, { operation: 'delete user' });
+            await alert(errorInfo.message, errorInfo.title);
+        }
+    };
+
+    const handleToggleActive = async (user) => {
+        try {
+            await apiPut(`/api/v1/ems/users/${user.id}`, {
+                is_active: !user.is_active
+            });
+            await alert(`User ${user.is_active ? 'deactivated' : 'activated'} successfully!`, 'Success');
+            fetchUsers();
+        } catch (error) {
+            const errorInfo = handleApiError(error, { operation: 'toggle user status' });
+            await alert(errorInfo.message, errorInfo.title);
         }
     };
 
@@ -140,8 +180,12 @@ const UserManagement = () => {
                     <FaUserFriends className="text-orange-500" />
                     User Management
                 </h3>
-                <button
-                    onClick={() => setIsFormOpen(true)}
+                        <button
+                    onClick={() => {
+                        setEditingUserId(null);
+                        setFormData({ email: '', password: '', full_name: '', role: 'STUDENT', tenant_id: '' });
+                        setIsFormOpen(true);
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-white font-medium transition-colors"
                 >
                     <FaPlus className="text-sm" /> Add User
@@ -182,7 +226,7 @@ const UserManagement = () => {
                             <th className="py-3 px-4">Role</th>
                             <th className="py-3 px-4">Email</th>
                             <th className="py-3 px-4">Status</th>
-                            {/* <th className="py-3 px-4 text-right">Actions</th> */}
+                            <th className="py-3 px-4 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -206,9 +250,31 @@ const UserManagement = () => {
                                             {u.is_active ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
-                                    {/* <td className="py-3 px-4 text-right">
-                                        <button className="text-gray-400 hover:text-red-400 transition-colors p-2"><FaTrash /></button>
-                                    </td> */}
+                                    <td className="py-3 px-4 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => handleToggleActive(u)}
+                                                className="text-gray-400 hover:text-orange-400 transition-colors p-2"
+                                                title={u.is_active ? 'Deactivate' : 'Activate'}
+                                            >
+                                                {u.is_active ? <FaToggleOn className="text-green-400 text-lg" /> : <FaToggleOff className="text-red-400 text-lg" />}
+                                            </button>
+                                            <button
+                                                onClick={() => handleEditUser(u)}
+                                                className="text-gray-400 hover:text-blue-400 transition-colors p-2"
+                                                title="Edit"
+                                            >
+                                                <FaEdit />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteUser(u.id, u.full_name)}
+                                                className="text-gray-400 hover:text-red-400 transition-colors p-2"
+                                                title="Delete"
+                                            >
+                                                <FaTrash />
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))
                         )}
@@ -220,9 +286,11 @@ const UserManagement = () => {
             {isFormOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md p-6 relative animate-fade-in-up">
-                        <h3 className="text-xl font-bold text-white mb-4">Create New User</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">
+                            {editingUserId ? 'Edit User' : 'Create New User'}
+                        </h3>
 
-                        <form onSubmit={handleCreateUser} className="space-y-4">
+                        <form onSubmit={editingUserId ? handleUpdateUser : handleCreateUser} className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Full Name</label>
                                 <input
@@ -241,15 +309,17 @@ const UserManagement = () => {
                                     className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-orange-500 outline-none"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Password</label>
-                                <input
-                                    type="password" required
-                                    value={formData.password}
-                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-orange-500 outline-none"
-                                />
-                            </div>
+                            {!editingUserId && (
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Password</label>
+                                    <input
+                                        type="password" required
+                                        value={formData.password}
+                                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-orange-500 outline-none"
+                                    />
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Role</label>
                                 <select
@@ -267,7 +337,11 @@ const UserManagement = () => {
                             <div className="flex gap-3 mt-6">
                                 <button
                                     type="button"
-                                    onClick={() => setIsFormOpen(false)}
+                                    onClick={() => {
+                                        setIsFormOpen(false);
+                                        setEditingUserId(null);
+                                        setFormData({ email: '', password: '', full_name: '', role: 'STUDENT', tenant_id: '' });
+                                    }}
                                     className="flex-1 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors"
                                 >
                                     Cancel
@@ -276,7 +350,7 @@ const UserManagement = () => {
                                     type="submit"
                                     className="flex-1 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-medium transition-colors"
                                 >
-                                    Create User
+                                    {editingUserId ? 'Update User' : 'Create User'}
                                 </button>
                             </div>
                         </form>

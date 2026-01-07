@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.routers.auth import get_current_user
 from app.core.security import get_password_hash
 from app.models.all_models import User, Tenant, Cohort, Flashcard, Summary, Reflection, StudentProgress
-from app.schemas.ems import TenantCreate, TenantResponse, UserCreateAdmin, UserResponse, CohortCreate, CohortResponse
+from app.schemas.ems import TenantCreate, TenantResponse, UserCreateAdmin, UserUpdateAdmin, UserResponse, CohortCreate, CohortResponse
 import uuid
 
 router = APIRouter()
@@ -92,9 +92,87 @@ async def get_users_in_tenant(
     if current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="Only Admins can list users")
     
-    # Filter by user's tenant
-    users = db.query(User).filter(User.tenant_id == current_user.tenant_id).all()
+    # For now, return all users (can filter by tenant later if needed)
+    users = db.query(User).all()
     return users
+
+@router.put("/users/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: str,
+    user_update: UserUpdateAdmin,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Admin: Update user details"""
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only Admins can update users")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update fields if provided
+    if user_update.full_name is not None:
+        user.full_name = user_update.full_name
+    if user_update.email is not None:
+        # Check if email already exists
+        existing = db.query(User).filter(User.email == user_update.email, User.id != user_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user.email = user_update.email
+    if user_update.role is not None:
+        user.role = user_update.role.upper()
+    if user_update.is_active is not None:
+        user.is_active = user_update.is_active
+    
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Admin: Delete a user"""
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only Admins can delete users")
+    
+    if current_user.id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Delete related records (same as in auth.py delete-account)
+    from app.models.all_models import Profile, Summary, Flashcard, Reflection, StudentProgress
+    
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    if profile:
+        db.delete(profile)
+    
+    summaries = db.query(Summary).filter(Summary.user_id == user_id).all()
+    for summary in summaries:
+        db.delete(summary)
+    
+    flashcards = db.query(Flashcard).filter(Flashcard.user_id == user_id).all()
+    for flashcard in flashcards:
+        db.delete(flashcard)
+    
+    reflections = db.query(Reflection).filter(Reflection.user_id == user_id).all()
+    for reflection in reflections:
+        db.delete(reflection)
+    
+    student_progress = db.query(StudentProgress).filter(StudentProgress.user_id == user_id).all()
+    for progress in student_progress:
+        db.delete(progress)
+    
+    db.delete(user)
+    db.commit()
+    
+    return {"message": "User deleted successfully", "success": True}
 
 # --- Teacher Endpoints ---
 
