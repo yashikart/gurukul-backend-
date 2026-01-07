@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
-import { FaUser, FaGlobe, FaBell, FaShieldAlt, FaSignOutAlt, FaTrash } from 'react-icons/fa';
+import { FaUser, FaGlobe, FaShieldAlt, FaSignOutAlt, FaTrash } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../supabaseClient';
 import { useModal } from '../contexts/ModalContext';
 import { setLanguage, getCurrentLanguage } from '../utils/languageSupport';
-import { getCurrentRole, setUserRole, getRoleDisplayName, ROLES, getDashboardPath } from '../utils/roles';
 
 
 const Settings = () => {
@@ -14,14 +12,13 @@ const Settings = () => {
     const navigate = useNavigate();
     const { confirm, prompt, alert } = useModal();
     const [activeSection, setActiveSection] = useState('profile');
-    const [userRole, setUserRoleState] = useState(() => getCurrentRole());
 
     // Profile state with localStorage persistence
     const [fullName, setFullName] = useState(() => {
         const saved = localStorage.getItem('user_fullName');
         return saved || (user?.email ? user.email.split('@')[0] : 'Vasco da Gama');
     });
-    const [email, setEmail] = useState(() => {
+    const [email] = useState(() => {
         const saved = localStorage.getItem('user_email');
         return saved || (user?.email || 'vasco@gurukul.app');
     });
@@ -34,7 +31,7 @@ const Settings = () => {
     const [language, setLanguageState] = useState(() => {
         const saved = getCurrentLanguage();
         // Map language codes to display names
-        const langMap = { 'en': 'English', 'ar': 'Arabic', 'he': 'Hebrew', 'ur': 'Urdu', 'fa': 'Persian' };
+        const langMap = { 'en': 'English', 'ar': 'Arabic' };
         return langMap[saved] || 'English';
     });
     const [reduceMotion, setReduceMotion] = useState(() => {
@@ -42,20 +39,12 @@ const Settings = () => {
         return saved === 'true';
     });
 
-    // Notifications state with localStorage persistence
-    const [emailNotifications, setEmailNotifications] = useState(() => {
-        const saved = localStorage.getItem('user_emailNotifications');
-        return saved !== 'false'; // Default to true
-    });
 
     // Persist profile changes
     useEffect(() => {
         localStorage.setItem('user_fullName', fullName);
     }, [fullName]);
 
-    useEffect(() => {
-        localStorage.setItem('user_email', email);
-    }, [email]);
 
     useEffect(() => {
         localStorage.setItem('user_bio', bio);
@@ -64,7 +53,7 @@ const Settings = () => {
     // Persist preferences
     useEffect(() => {
         // Map display names to language codes
-        const langCodeMap = { 'English': 'en', 'Arabic': 'ar', 'Hebrew': 'he', 'Urdu': 'ur', 'Persian': 'fa' };
+        const langCodeMap = { 'English': 'en', 'Arabic': 'ar' };
         const langCode = langCodeMap[language] || 'en';
         setLanguage(langCode);
     }, [language]);
@@ -79,10 +68,6 @@ const Settings = () => {
         }
     }, [reduceMotion]);
 
-    // Persist notifications
-    useEffect(() => {
-        localStorage.setItem('user_emailNotifications', emailNotifications.toString());
-    }, [emailNotifications]);
 
     // Update email from auth context if available
     useEffect(() => {
@@ -132,9 +117,6 @@ const Settings = () => {
         }
     };
 
-    const handleChangeAvatar = () => {
-        navigate('/avatar');
-    };
 
     const renderContent = () => {
         switch (activeSection) {
@@ -142,22 +124,6 @@ const Settings = () => {
                 return (
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-white mb-6">Profile Settings</h2>
-
-                        <div className="flex items-center gap-6 mb-8">
-                            <div className="w-24 h-24 rounded-full bg-orange-500/20 flex items-center justify-center border-2 border-orange-500/50">
-                                <span className="text-4xl">👨‍🚀</span>
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-white">{fullName || 'User'}</h3>
-                                <p className="text-gray-400">Explorer & Student</p>
-                                <button
-                                    onClick={handleChangeAvatar}
-                                    className="mt-2 text-sm text-orange-400 hover:text-orange-300 font-medium transition-colors"
-                                >
-                                    Change Avatar
-                                </button>
-                            </div>
-                        </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -174,8 +140,9 @@ const Settings = () => {
                                 <input
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500 focus:outline-none transition-colors"
+                                    readOnly
+                                    disabled
+                                    className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-gray-500 cursor-not-allowed"
                                 />
                             </div>
                             <div className="col-span-1 md:col-span-2 space-y-2">
@@ -207,8 +174,7 @@ const Settings = () => {
                                     className="bg-white/5 border border-white/10 text-white rounded-lg p-2 outline-none focus:border-orange-500"
                                 >
                                     <option value="English">English</option>
-                                    <option value="Hindi">Hindi (हिंदी)</option>
-                                    <option value="Sanskrit">Sanskrit (संस्कृत)</option>
+                                    <option value="Arabic">Arabic (العربية)</option>
                                 </select>
                             </div>
 
@@ -225,49 +191,6 @@ const Settings = () => {
                                 </div>
                             </div>
 
-                            <div className="bg-black/60 p-4 rounded-xl border border-white/10">
-                                <div className="mb-3">
-                                    <h3 className="text-white font-medium mb-1">User Role</h3>
-                                    <p className="text-gray-400 text-sm">Switch between different role views (for testing)</p>
-                                </div>
-                                <select
-                                    value={userRole}
-                                    onChange={(e) => {
-                                        const newRole = e.target.value;
-                                        setUserRoleState(newRole);
-                                        setUserRole(newRole);
-                                        // Redirect to appropriate dashboard
-                                        navigate(getDashboardPath(newRole));
-                                    }}
-                                    className="w-full bg-white/5 border border-white/10 text-white rounded-lg p-2 outline-none focus:border-orange-500"
-                                >
-                                    <option value={ROLES.STUDENT}>{getRoleDisplayName(ROLES.STUDENT)}</option>
-                                    <option value={ROLES.TEACHER}>{getRoleDisplayName(ROLES.TEACHER)}</option>
-                                    <option value={ROLES.PARENT}>{getRoleDisplayName(ROLES.PARENT)}</option>
-                                    <option value={ROLES.ADMIN}>{getRoleDisplayName(ROLES.ADMIN)}</option>
-                                </select>
-                                <p className="text-xs text-gray-500 mt-2 italic">
-                                    Current: {getRoleDisplayName(userRole)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 'notifications':
-                return (
-                    <div className="space-y-6">
-                        <h2 className="text-2xl font-bold text-white mb-6">Notifications</h2>
-                        <div className="bg-black/60 p-4 rounded-xl border border-white/10 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-white font-medium">Email Notifications</h3>
-                                <p className="text-gray-400 text-sm">Receive study summaries and goal updates</p>
-                            </div>
-                            <div
-                                className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 ${emailNotifications ? 'bg-orange-500' : 'bg-gray-600'}`}
-                                onClick={() => setEmailNotifications(!emailNotifications)}
-                            >
-                                <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${emailNotifications ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                            </div>
                         </div>
                     </div>
                 );
@@ -305,7 +228,6 @@ const Settings = () => {
     const navItems = [
         { id: 'profile', icon: FaUser, label: 'Profile' },
         { id: 'preferences', icon: FaGlobe, label: 'Preferences' },
-        { id: 'notifications', icon: FaBell, label: 'Notifications' },
         { id: 'security', icon: FaShieldAlt, label: 'Security' },
     ];
 
