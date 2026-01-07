@@ -102,6 +102,7 @@ const SignUp = () => {
                                 <option value="STUDENT" className="bg-gray-900">Student</option>
                                 <option value="TEACHER" className="bg-gray-900">Teacher</option>
                                 <option value="PARENT" className="bg-gray-900">Parent</option>
+                                <option value="ADMIN" className="bg-gray-900">Admin</option>
                             </select>
                         </div>
 
