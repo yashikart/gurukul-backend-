@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FaArrowRight, FaUser } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getDashboardPath, setUserRole } from '../utils/roles';
 
 const SignUp = () => {
     const [name, setName] = useState('');
@@ -18,9 +19,16 @@ const SignUp = () => {
         setError(null);
         setMessage('');
         try {
-            await signup(email, password, role, name);
-            setMessage('Account created successfully! Please check your email for verification.');
-            // navigate('/signin'); // Optional auto-redirect
+            const { user } = await signup(email, password, role, name);
+            setMessage('Account created successfully! Redirecting...');
+            
+            // Auto-redirect to dashboard after successful signup
+            setTimeout(() => {
+                const roleLower = user.role.toLowerCase();
+                const { getDashboardPath, setUserRole } = require('../utils/roles');
+                setUserRole(roleLower);
+                navigate(getDashboardPath(roleLower));
+            }, 1500);
         } catch (err) {
             setError(err.message);
         }

@@ -16,32 +16,13 @@ const SignIn = () => {
         e.preventDefault();
         setError(null);
         try {
-            const { session } = await login(email, password);
-
-            // Fetch backend user role
-            try {
-                const token = session?.access_token;
-                const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (response.ok) {
-                    const userData = await response.json();
-                    // Normalize role to lowercase for frontend consistency
-                    const role = userData.role.toLowerCase();
-                    setUserRole(role);
-                    const path = getDashboardPath(role);
-                    navigate(path);
-                } else {
-                    // Fallback if backend fetch fails
-                    navigate('/');
-                }
-            } catch (roleError) {
-                console.error("Role fetch error:", roleError);
-                navigate('/');
-            }
+            const { user } = await login(email, password);
+            
+            // Normalize role to lowercase for frontend consistency
+            const role = user.role.toLowerCase();
+            setUserRole(role);
+            const path = getDashboardPath(role);
+            navigate(path);
         } catch (err) {
             setError(err.message);
         }

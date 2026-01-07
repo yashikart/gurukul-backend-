@@ -3,14 +3,40 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
+from passlib.context import CryptContext
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.all_models import User, Tenant
+from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse
 from typing import Optional
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash"""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Hash a password"""
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create a JWT access token"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
+    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return encoded_jwt
 
 # For Supabase, we might verify using the JWT secret.
 # Or if we just trust the frontend sent a valid token validated by Supabase client...
@@ -19,6 +45,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # If SUPABASE_KEY is missing, we might use a mock logic for dev (Warning: NOT PRODUCTION SAFE but enables progress)
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """Verify JWT token and return current user from SQLite database"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -26,81 +53,31 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     )
     
     try:
-        # Try to decode
-        payload = None
+        # Decode and verify JWT token
+        payload = jwt.decode(
+            token, 
+            settings.JWT_SECRET_KEY, 
+            algorithms=[settings.JWT_ALGORITHM]
+        )
         
-        print(f"[Auth] Validating Token: {token[:10]}...") 
-
-        # 1. Try Validated Decode if Key is present and likely symmetric (HS256)
-        # ES256 requires a Public Key which we probably don't have in settings.SUPABASE_KEY
-        if settings.SUPABASE_KEY:
-            try:
-                # Only try verify if we think we can (HS256)
-                # If token header says ES256, verification with a symmetric key string will fail or error.
-                unverified_header = jwt.get_unverified_header(token)
-                alg = unverified_header.get('alg')
-                
-                if alg == 'HS256':
-                    payload = jwt.decode(
-                        token, 
-                        settings.SUPABASE_KEY, 
-                        algorithms=["HS256"], 
-                        options={"verify_audience": False}
-                    )
-                else:
-                    print(f"[Auth] Algorithm is {alg}, skipping signature verification (Key is likely mismatch).")
-            except Exception as e:
-                print(f"[Auth] Signature verification attempt failed: {e}")
-                
-        # 2. Fallback: Unverified Decode (Force skip signature check)
-        if payload is None:
-            try:
-                # Explicitly skip signature verification and audience checks using get_unverified_claims
-                payload = jwt.get_unverified_claims(token)
-                print("[Auth] Successfully decoded token (Unverified).")
-            except Exception as e:
-                print(f"[Auth] Failed to decode token unverified: {e}")
-                raise credentials_exception
-
-        email: str = payload.get("email")
+        email: str = payload.get("sub")  # 'sub' is standard JWT claim for subject (user identifier)
         if email is None:
-            print("[Auth] Token payload has no email")
             raise credentials_exception
 
-        # Check if user exists in our DB
+        # Get user from database
         user = db.query(User).filter(User.email == email).first()
         if user is None:
-            print(f"[Auth] User {email} not found in DB. Auto-provisioning...")
-            
-            # Find default Tenant
-            default_tenant = db.query(Tenant).filter(Tenant.name == "Gurukul Main").first()
-            if not default_tenant:
-                 # Create tenant if missing (First Run resiliency)
-                 default_tenant = Tenant(name="Gurukul Main", type="INSTITUTION")
-                 db.add(default_tenant)
-                 db.commit()
-                 db.refresh(default_tenant)
-
-            tenant_id = default_tenant.id
-            
-            user = User(
-                email=email, 
-                role=payload.get("user_metadata", {}).get("role", "STUDENT").upper(), 
-                full_name=payload.get("user_metadata", {}).get("full_name", email.split("@")[0]),
-                tenant_id=tenant_id
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-            print(f"[Auth] Auto-provisioned user: {user.email}")
+            raise credentials_exception
+        
+        if not user.is_active:
+            raise HTTPException(status_code=400, detail="Inactive user")
             
         return user
         
-    except JWTError as e:
-        print(f"[Auth] JWT Error: {e}")
+    except JWTError:
         raise credentials_exception
     except Exception as e:
-        print(f"[Auth] Unexpected Auth Error: {e}")
+        print(f"[Auth] Error: {e}")
         raise credentials_exception
 
 def require_role(role: str):
@@ -113,6 +90,94 @@ def require_role(role: str):
         return user
     return role_checker
 
-@router.get("/me")
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+async def register(user_data: UserRegister, db: Session = Depends(get_db)):
+    """Register a new user"""
+    # Check if user already exists
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    # Find or create default tenant
+    default_tenant = db.query(Tenant).filter(Tenant.name == "Gurukul Main").first()
+    if not default_tenant:
+        default_tenant = Tenant(name="Gurukul Main", type="INSTITUTION")
+        db.add(default_tenant)
+        db.commit()
+        db.refresh(default_tenant)
+    
+    # Create new user
+    hashed_password = get_password_hash(user_data.password)
+    new_user = User(
+        email=user_data.email,
+        hashed_password=hashed_password,
+        full_name=user_data.full_name or user_data.email.split("@")[0],
+        role=user_data.role.upper(),
+        tenant_id=default_tenant.id,
+        is_active=True
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": new_user.email})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": new_user.id,
+            "email": new_user.email,
+            "full_name": new_user.full_name,
+            "role": new_user.role
+        }
+    }
+
+@router.post("/login", response_model=Token)
+async def login(user_data: UserLogin, db: Session = Depends(get_db)):
+    """Login and get access token"""
+    # Find user
+    user = db.query(User).filter(User.email == user_data.email).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    
+    # Verify password
+    if not user.hashed_password or not verify_password(user_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user"
+        )
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user.email})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role
+        }
+    }
+
+@router.get("/me", response_model=UserResponse)
 async def read_users_me(current_user: User = Depends(get_current_user)):
+    """Get current user information"""
     return current_user

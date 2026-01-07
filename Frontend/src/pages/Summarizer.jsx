@@ -5,7 +5,6 @@ import { FaFileUpload, FaCloudUploadAlt, FaMagic, FaChevronDown } from 'react-ic
 import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
 import { handleApiError, apiPost } from '../utils/apiClient';
-import { supabase } from '../supabaseClient';
 import API_BASE_URL from '../config';
 
 const Summarizer = () => {
@@ -136,10 +135,10 @@ const Summarizer = () => {
 
         try {
             // Get Auth Token
-            const { data: { session } } = await supabase.auth.getSession();
+            const token = localStorage.getItem('auth_token');
             const headers = {};
-            if (session?.access_token) {
-                headers['Authorization'] = `Bearer ${session.access_token}`;
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
             }
 
             const response = await fetch(endpoint, {

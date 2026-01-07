@@ -25,9 +25,12 @@ class Settings(BaseSettings):
     YOUTUBE_API_BASE_URL: str = "https://www.googleapis.com/youtube/v3/search"
 
     # Database
-    SUPABASE_URL: Optional[str] = None
-    SUPABASE_KEY: Optional[str] = None
-    DATABASE_URL: Optional[str] = None # postgresql://user:password@host:port/db
+    DATABASE_URL: Optional[str] = None # postgresql://user:password@host:port/db or sqlite:///./gurukul.db
+    
+    # JWT Authentication (for SQLite-only auth)
+    JWT_SECRET_KEY: str = "your-secret-key-change-in-production"  # Change this in production!
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
     # Feature Flags
     PDF_SUPPORT: bool = True

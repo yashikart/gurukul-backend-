@@ -41,14 +41,14 @@ export const apiRequest = async (endpoint, options = {}, retries = 1) => {
         },
     };
 
-    // Inject Supabase Token if available
+    // Inject auth token from localStorage if available
     try {
-        const { data: { session } } = await import('../supabaseClient').then(m => m.supabase.auth.getSession());
-        if (session?.access_token) {
-            fetchOptions.headers['Authorization'] = `Bearer ${session.access_token}`;
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+            fetchOptions.headers['Authorization'] = `Bearer ${token}`;
         }
     } catch (e) {
-        console.warn('Failed to get auth session for API request', e);
+        console.warn('Failed to get auth token for API request', e);
     }
 
     let lastError;
