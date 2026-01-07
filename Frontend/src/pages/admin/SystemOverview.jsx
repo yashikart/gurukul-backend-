@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaServer, FaDatabase, FaCheckCircle, FaExclamationTriangle, FaClock, FaActivity } from 'react-icons/fa';
+import { FaServer, FaDatabase, FaCheckCircle, FaExclamationTriangle, FaClock, FaChartBar } from 'react-icons/fa';
 import { apiGet, handleApiError } from '../../utils/apiClient';
 import { useModal } from '../../contexts/ModalContext';
 
@@ -104,34 +104,34 @@ const SystemOverview = () => {
 
             {/* User Statistics */}
             <div>
-                <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <FaActivity className="text-orange-400" />
+                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <FaChartBar className="text-orange-400" />
                     User Statistics
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard
-                        icon={FaActivity}
+                        icon={FaChartBar}
                         title="Total Users"
                         value={stats.totalUsers}
                         subtitle={`${stats.activeUsers} active`}
                         color="bg-blue-500/20"
                     />
                     <StatCard
-                        icon={FaActivity}
+                        icon={FaChartBar}
                         title="Students"
                         value={stats.totalStudents}
                         subtitle="Active learners"
                         color="bg-green-500/20"
                     />
                     <StatCard
-                        icon={FaActivity}
+                        icon={FaChartBar}
                         title="Teachers"
                         value={stats.totalTeachers}
                         subtitle="Educators"
                         color="bg-purple-500/20"
                     />
                     <StatCard
-                        icon={FaActivity}
+                        icon={FaChartBar}
                         title="Parents"
                         value={stats.totalParents}
                         subtitle="Guardians"
@@ -143,7 +143,7 @@ const SystemOverview = () => {
             {/* Recent Activities (Placeholder for now) */}
             <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10">
                 <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <FaActivity className="text-orange-400" />
+                    <FaChartBar className="text-orange-400" />
                     Recent Activities
                 </h4>
                 <div className="text-center py-8 text-gray-400 text-sm">
