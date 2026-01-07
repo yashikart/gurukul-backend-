@@ -9,12 +9,15 @@ const SignIn = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
+        setLoading(true);
+        
         try {
             const { user } = await login(email, password);
             
@@ -24,7 +27,10 @@ const SignIn = () => {
             const path = getDashboardPath(role);
             navigate(path);
         } catch (err) {
-            setError(err.message);
+            console.error('Login error:', err);
+            setError(err.message || 'Failed to sign in. Please check your credentials and try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -68,8 +74,13 @@ const SignIn = () => {
                             />
                         </div>
 
-                        <button type="submit" className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-500 hover:to-amber-600 text-white font-bold tracking-wide shadow-lg transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
-                            Sign In <FaArrowRight className="text-sm opacity-80" />
+                        <button 
+                            type="submit" 
+                            disabled={loading}
+                            className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-500 hover:to-amber-600 text-white font-bold tracking-wide shadow-lg transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                            {loading ? 'Signing In...' : 'Sign In'} 
+                            {!loading && <FaArrowRight className="text-sm opacity-80" />}
                         </button>
                     </form>
 

@@ -11,6 +11,7 @@ const SignUp = () => {
     const [role, setRole] = useState('STUDENT');
     const [error, setError] = useState(null);
     const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
     const { signup } = useAuth();
     const navigate = useNavigate();
 
@@ -18,6 +19,8 @@ const SignUp = () => {
         e.preventDefault();
         setError(null);
         setMessage('');
+        setLoading(true);
+        
         try {
             const { user } = await signup(email, password, role, name);
             setMessage('Account created successfully! Redirecting...');
@@ -25,12 +28,14 @@ const SignUp = () => {
             // Auto-redirect to dashboard after successful signup
             setTimeout(() => {
                 const roleLower = user.role.toLowerCase();
-                const { getDashboardPath, setUserRole } = require('../utils/roles');
                 setUserRole(roleLower);
                 navigate(getDashboardPath(roleLower));
             }, 1500);
         } catch (err) {
-            setError(err.message);
+            console.error('Signup error:', err);
+            setError(err.message || 'Failed to create account. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -100,8 +105,13 @@ const SignUp = () => {
                             </select>
                         </div>
 
-                        <button type="submit" className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-500 hover:to-amber-600 text-white font-bold tracking-wide shadow-lg transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
-                            Create Account <FaArrowRight className="text-sm opacity-80" />
+                        <button 
+                            type="submit" 
+                            disabled={loading}
+                            className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-500 hover:to-amber-600 text-white font-bold tracking-wide shadow-lg transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                            {loading ? 'Creating Account...' : 'Create Account'} 
+                            {!loading && <FaArrowRight className="text-sm opacity-80" />}
                         </button>
                     </form>
 

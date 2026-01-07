@@ -51,60 +51,96 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, password }),
-        });
+        try {
+            console.log('[Auth] Attempting login to:', `${API_BASE_URL}/api/v1/auth/login`);
+            const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
+            
+            console.log('[Auth] Login response status:', response.status);
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Login failed');
+            if (!response.ok) {
+                let errorMessage = 'Login failed';
+                try {
+                    const error = await response.json();
+                    errorMessage = error.detail || error.message || 'Login failed';
+                } catch (e) {
+                    // If response is not JSON, use status text
+                    errorMessage = response.statusText || 'Login failed';
+                }
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            
+            // Store token
+            localStorage.setItem('auth_token', data.access_token);
+            setToken(data.access_token);
+            
+            // Set user
+            setUser(data.user);
+            
+            return { session: { access_token: data.access_token }, user: data.user };
+        } catch (error) {
+            // Handle network errors
+            if (error instanceof TypeError && error.message.includes('fetch')) {
+                throw new Error('Unable to connect to server. Please check your internet connection.');
+            }
+            throw error;
         }
-
-        const data = await response.json();
-        
-        // Store token
-        localStorage.setItem('auth_token', data.access_token);
-        setToken(data.access_token);
-        
-        // Set user
-        setUser(data.user);
-        
-        return { session: { access_token: data.access_token }, user: data.user };
     };
 
     const signup = async (email, password, role, full_name) => {
-        const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                email, 
-                password, 
-                role: role || 'STUDENT',
-                full_name: full_name || null
-            }),
-        });
+        try {
+            console.log('[Auth] Attempting registration to:', `${API_BASE_URL}/api/v1/auth/register`);
+            const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    email, 
+                    password, 
+                    role: role || 'STUDENT',
+                    full_name: full_name || null
+                }),
+            });
+            
+            console.log('[Auth] Registration response status:', response.status);
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Registration failed');
+            if (!response.ok) {
+                let errorMessage = 'Registration failed';
+                try {
+                    const error = await response.json();
+                    errorMessage = error.detail || error.message || 'Registration failed';
+                } catch (e) {
+                    // If response is not JSON, use status text
+                    errorMessage = response.statusText || 'Registration failed';
+                }
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            
+            // Store token
+            localStorage.setItem('auth_token', data.access_token);
+            setToken(data.access_token);
+            
+            // Set user
+            setUser(data.user);
+            
+            return { user: data.user, session: { access_token: data.access_token } };
+        } catch (error) {
+            // Handle network errors
+            if (error instanceof TypeError && error.message.includes('fetch')) {
+                throw new Error('Unable to connect to server. Please check your internet connection.');
+            }
+            throw error;
         }
-
-        const data = await response.json();
-        
-        // Store token
-        localStorage.setItem('auth_token', data.access_token);
-        setToken(data.access_token);
-        
-        // Set user
-        setUser(data.user);
-        
-        return { user: data.user, session: { access_token: data.access_token } };
     };
 
     const logout = async () => {
