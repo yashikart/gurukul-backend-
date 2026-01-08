@@ -255,4 +255,163 @@ async def get_admin_dashboard_stats(
         "apiStatus": "Operational"
     }
 
+@router.get("/admin/analytics")
+async def get_admin_analytics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get comprehensive analytics for Admin Reports & Analytics"""
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only Admins can view analytics")
+    
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import func, extract
+    
+    # Base query filter by tenant if applicable
+    base_user_query = db.query(User)
+    if current_user.tenant_id:
+        base_user_query = base_user_query.filter(User.tenant_id == current_user.tenant_id)
+        user_ids = [u.id for u in base_user_query.all()]
+    else:
+        user_ids = None
+    
+    # User Statistics
+    total_users = base_user_query.count()
+    active_users = base_user_query.filter(User.is_active == True).count()
+    total_students = base_user_query.filter(User.role == "STUDENT").count()
+    total_teachers = base_user_query.filter(User.role == "TEACHER").count()
+    total_parents = base_user_query.filter(User.role == "PARENT").count()
+    
+    # Learning Activity Statistics
+    summaries_query = db.query(Summary)
+    flashcards_query = db.query(Flashcard)
+    reflections_query = db.query(Reflection)
+    progress_query = db.query(StudentProgress)
+    
+    if user_ids:
+        summaries_query = summaries_query.filter(Summary.user_id.in_(user_ids))
+        flashcards_query = flashcards_query.filter(Flashcard.user_id.in_(user_ids))
+        reflections_query = reflections_query.filter(Reflection.user_id.in_(user_ids))
+        progress_query = progress_query.filter(StudentProgress.user_id.in_(user_ids))
+    
+    total_summaries = summaries_query.count()
+    total_flashcards = flashcards_query.count()
+    total_reflections = reflections_query.count()
+    completed_milestones = progress_query.filter(StudentProgress.status == "COMPLETED").count()
+    
+    # Time-based statistics (last 30 days)
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    seven_days_ago = now - timedelta(days=7)
+    
+    # New users in last 30 days
+    new_users_30d = base_user_query.filter(User.created_at >= thirty_days_ago).count()
+    new_users_7d = base_user_query.filter(User.created_at >= seven_days_ago).count()
+    
+    # Activity in last 30 days
+    summaries_30d = summaries_query.filter(Summary.created_at >= thirty_days_ago).count()
+    flashcards_30d = flashcards_query.filter(Flashcard.created_at >= thirty_days_ago).count()
+    reflections_30d = reflections_query.filter(Reflection.created_at >= thirty_days_ago).count()
+    
+    # User growth over time (last 7 days, daily)
+    daily_user_growth = []
+    for i in range(7):
+        day_start = now - timedelta(days=6-i)
+        day_end = day_start + timedelta(days=1)
+        count = base_user_query.filter(
+            User.created_at >= day_start,
+            User.created_at < day_end
+        ).count()
+        daily_user_growth.append({
+            "date": day_start.strftime("%Y-%m-%d"),
+            "count": count
+        })
+    
+    # Activity over time (last 7 days)
+    daily_activity = []
+    for i in range(7):
+        day_start = now - timedelta(days=6-i)
+        day_end = day_start + timedelta(days=1)
+        summaries_count = summaries_query.filter(
+            Summary.created_at >= day_start,
+            Summary.created_at < day_end
+        ).count()
+        flashcards_count = flashcards_query.filter(
+            Flashcard.created_at >= day_start,
+            Flashcard.created_at < day_end
+        ).count()
+        daily_activity.append({
+            "date": day_start.strftime("%Y-%m-%d"),
+            "summaries": summaries_count,
+            "flashcards": flashcards_count,
+            "reflections": reflections_query.filter(
+                Reflection.created_at >= day_start,
+                Reflection.created_at < day_end
+            ).count()
+        })
+    
+    # Most active users (top 5 by summaries + flashcards)
+    active_users_query = db.query(
+        User.id,
+        User.full_name,
+        User.email,
+        User.role,
+        func.count(Summary.id).label('summary_count'),
+        func.count(Flashcard.id).label('flashcard_count')
+    ).outerjoin(Summary, User.id == Summary.user_id)\
+     .outerjoin(Flashcard, User.id == Flashcard.user_id)
+    
+    # Apply tenant filter if applicable
+    if current_user.tenant_id:
+        active_users_query = active_users_query.filter(User.tenant_id == current_user.tenant_id)
+    
+    active_users_query = active_users_query.group_by(User.id)\
+     .order_by((func.count(Summary.id) + func.count(Flashcard.id)).desc())\
+     .limit(5).all()
+    
+    most_active_users = [{
+        "id": u.id,
+        "name": u.full_name or u.email,
+        "email": u.email,
+        "role": u.role,
+        "summaryCount": u.summary_count or 0,
+        "flashcardCount": u.flashcard_count or 0,
+        "totalActivity": (u.summary_count or 0) + (u.flashcard_count or 0)
+    } for u in active_users_query]
+    
+    # Role distribution
+    role_distribution = {
+        "STUDENT": total_students,
+        "TEACHER": total_teachers,
+        "PARENT": total_parents,
+        "ADMIN": base_user_query.filter(User.role == "ADMIN").count()
+    }
+    
+    return {
+        "userStats": {
+            "total": total_users,
+            "active": active_users,
+            "inactive": total_users - active_users,
+            "students": total_students,
+            "teachers": total_teachers,
+            "parents": total_parents,
+            "newUsers30d": new_users_30d,
+            "newUsers7d": new_users_7d
+        },
+        "learningStats": {
+            "totalSummaries": total_summaries,
+            "totalFlashcards": total_flashcards,
+            "totalReflections": total_reflections,
+            "completedMilestones": completed_milestones,
+            "summaries30d": summaries_30d,
+            "flashcards30d": flashcards_30d,
+            "reflections30d": reflections_30d
+        },
+        "dailyUserGrowth": daily_user_growth,
+        "dailyActivity": daily_activity,
+        "mostActiveUsers": most_active_users,
+        "roleDistribution": role_distribution,
+        "generatedAt": now.isoformat()
+    }
+
 

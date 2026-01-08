@@ -17,6 +17,7 @@ const AdminSidebar = () => {
     const { isSidebarOpen, closeSidebar } = useSidebar();
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const [activeHash, setActiveHash] = React.useState(() => window.location.hash.replace('#', '') || 'overview');
 
     const adminMenuItems = [
         { icon: FaServer, label: "System Overview", path: "/admin_dashboard#overview", hash: "overview" },
@@ -24,6 +25,19 @@ const AdminSidebar = () => {
         { icon: FaChartLine, label: "Reports & Analytics", path: "/admin_dashboard#reports", hash: "reports" },
         { icon: FaCog, label: "Settings", path: "/admin_dashboard#settings", hash: "settings" },
     ];
+
+    // Listen for hash changes
+    React.useEffect(() => {
+        const handleHashChange = () => {
+            setActiveHash(window.location.hash.replace('#', '') || 'overview');
+        };
+        
+        window.addEventListener('hashchange', handleHashChange);
+        // Check initial hash
+        handleHashChange();
+        
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -62,22 +76,31 @@ const AdminSidebar = () => {
                 <div className="glass-panel p-3 flex-grow flex flex-col justify-between border border-white/10 shadow-xl rounded-2xl overflow-hidden bg-black/40 lg:bg-black/60">
                     {/* Main Menu */}
                     <div className="flex flex-col gap-2 overflow-y-auto no-scrollbar">
-                        {adminMenuItems.map((item, index) => (
-                            <NavLink
-                                key={index}
-                                to={item.path}
-                                onClick={closeSidebar}
-                                className={({ isActive }) => `
-                                    flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
-                                    ${isActive
-                                        ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg border border-white/20 transform scale-105'
-                                        : 'bg-white/5 text-gray-300 hover:text-white hover:pl-6 border border-transparent'}
-                                `}
-                            >
-                                <item.icon className="text-lg opacity-80 group-hover:opacity-100" />
-                                <span className="text-sm font-medium tracking-wide">{item.label}</span>
-                            </NavLink>
-                        ))}
+                        {adminMenuItems.map((item, index) => {
+                            const isActive = activeHash === item.hash;
+                            
+                            return (
+                                <NavLink
+                                    key={index}
+                                    to={item.path}
+                                    onClick={(e) => {
+                                        closeSidebar();
+                                        setActiveHash(item.hash);
+                                        // Ensure hash is set
+                                        window.location.hash = item.hash;
+                                    }}
+                                    className={`
+                                        flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
+                                        ${isActive
+                                            ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg border border-white/20 transform scale-105'
+                                            : 'bg-white/5 text-gray-300 hover:text-white hover:pl-6 border border-transparent'}
+                                    `}
+                                >
+                                    <item.icon className="text-lg opacity-80 group-hover:opacity-100" />
+                                    <span className="text-sm font-medium tracking-wide">{item.label}</span>
+                                </NavLink>
+                            );
+                        })}
                     </div>
 
                     {/* Footer Actions */}

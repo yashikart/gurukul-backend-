@@ -52,10 +52,21 @@ const UserManagement = () => {
         setLoading(true);
         try {
             const data = await apiGet('/api/v1/ems/users');
-            setUsers(data);
+            console.log('Fetched users:', data);
+            if (Array.isArray(data)) {
+                setUsers(data);
+            } else {
+                console.error('Invalid users data format:', data);
+                setUsers([]);
+            }
         } catch (error) {
+            console.error('Error fetching users:', error);
             const errorInfo = handleApiError(error, { operation: 'fetch users' });
-            await alert(errorInfo.message, errorInfo.title);
+            // Don't show alert on initial load, just log
+            if (users.length > 0) {
+                await alert(errorInfo.message, errorInfo.title);
+            }
+            setUsers([]);
         } finally {
             setLoading(false);
         }
@@ -173,23 +184,57 @@ const UserManagement = () => {
         return matchesSearch && matchesRole;
     });
 
+    const totalUsers = filteredUsers.length;
+    const activeUsers = filteredUsers.filter(u => u.is_active).length;
+
+    // Debug: Log when component renders
+    React.useEffect(() => {
+        console.log('UserManagement component rendered. Users:', users.length, 'Loading:', loading);
+    }, [users.length, loading]);
+
     return (
         <div className="glass-panel p-6 rounded-2xl border border-white/10">
+            {/* Header Section */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <FaUserFriends className="text-orange-500" />
-                    User Management
-                </h3>
-                        <button
+                <div>
+                    <h3 className="text-2xl font-bold text-white flex items-center gap-2 mb-2">
+                        <FaUserFriends className="text-orange-500" />
+                        User Management
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                        Manage all users in the database. View, edit, activate/deactivate, or delete user accounts.
+                    </p>
+                </div>
+                <button
                     onClick={() => {
                         setEditingUserId(null);
                         setFormData({ email: '', password: '', full_name: '', role: 'STUDENT', tenant_id: '' });
                         setIsFormOpen(true);
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-white font-medium transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-white font-medium transition-colors whitespace-nowrap"
                 >
-                    <FaPlus className="text-sm" /> Add User
+                    <FaPlus className="text-sm" /> Add New User
                 </button>
+            </div>
+
+            {/* Stats Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                    <div className="text-gray-400 text-xs uppercase mb-1">Total Users</div>
+                    <div className="text-2xl font-bold text-white">{totalUsers}</div>
+                </div>
+                <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                    <div className="text-gray-400 text-xs uppercase mb-1">Active</div>
+                    <div className="text-2xl font-bold text-green-400">{activeUsers}</div>
+                </div>
+                <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                    <div className="text-gray-400 text-xs uppercase mb-1">Inactive</div>
+                    <div className="text-2xl font-bold text-red-400">{totalUsers - activeUsers}</div>
+                </div>
+                <div className="bg-black/40 border border-white/10 rounded-lg p-3">
+                    <div className="text-gray-400 text-xs uppercase mb-1">Filtered</div>
+                    <div className="text-2xl font-bold text-orange-400">{filteredUsers.length}</div>
+                </div>
             </div>
 
             {/* Filters */}
@@ -217,59 +262,106 @@ const UserManagement = () => {
                 </select>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
+            {/* Database-Style Table */}
+            <div className="overflow-x-auto rounded-lg border border-white/20 bg-black/40">
                 <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-white/10 text-gray-400 text-sm uppercase tracking-wider">
-                            <th className="py-3 px-4">User</th>
-                            <th className="py-3 px-4">Role</th>
-                            <th className="py-3 px-4">Email</th>
-                            <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4 text-right">Actions</th>
+                    <thead className="bg-black/60 border-b-2 border-white/20">
+                        <tr className="text-gray-300 text-xs uppercase tracking-wider font-bold">
+                            <th className="py-4 px-4 border-r border-white/10">ID</th>
+                            <th className="py-4 px-4 border-r border-white/10">Full Name</th>
+                            <th className="py-4 px-4 border-r border-white/10">Email</th>
+                            <th className="py-4 px-4 border-r border-white/10">Role</th>
+                            <th className="py-4 px-4 border-r border-white/10">Tenant ID</th>
+                            <th className="py-4 px-4 border-r border-white/10">Cohort ID</th>
+                            <th className="py-4 px-4 border-r border-white/10">Status</th>
+                            <th className="py-4 px-4 border-r border-white/10">Created At</th>
+                            <th className="py-4 px-4 text-center">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-white/10">
                         {loading ? (
-                            <tr><td colSpan="5" className="py-8 text-center text-gray-500">Loading users...</td></tr>
+                            <tr>
+                                <td colSpan="9" className="py-12 text-center text-gray-400">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                                        <span>Loading users from database...</span>
+                                    </div>
+                                </td>
+                            </tr>
                         ) : filteredUsers.length === 0 ? (
-                            <tr><td colSpan="5" className="py-8 text-center text-gray-500">No users found.</td></tr>
+                            <tr>
+                                <td colSpan="9" className="py-12 text-center text-gray-400">
+                                    No users found in database.
+                                </td>
+                            </tr>
                         ) : (
                             filteredUsers.map(u => (
-                                <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="py-3 px-4 font-medium text-white">{u.full_name || 'N/A'}</td>
-                                    <td className="py-3 px-4">
+                                <tr key={u.id} className="hover:bg-white/5 transition-colors border-b border-white/5">
+                                    <td className="py-3 px-4 text-xs font-mono text-gray-400 border-r border-white/10">
+                                        {u.id.substring(0, 8)}...
+                                    </td>
+                                    <td className="py-3 px-4 font-medium text-white border-r border-white/10">
+                                        {u.full_name || <span className="text-gray-500 italic">NULL</span>}
+                                    </td>
+                                    <td className="py-3 px-4 text-gray-300 text-sm border-r border-white/10">
+                                        {u.email}
+                                    </td>
+                                    <td className="py-3 px-4 border-r border-white/10">
                                         <div className="flex items-center gap-2 text-sm">
                                             {getRoleIcon(u.role)}
-                                            <span className="capitalize">{u.role.toLowerCase()}</span>
+                                            <span className="capitalize font-medium text-gray-300">{u.role.toLowerCase()}</span>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4 text-gray-400 text-sm">{u.email}</td>
-                                    <td className="py-3 px-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${u.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                    <td className="py-3 px-4 text-xs font-mono text-gray-400 border-r border-white/10">
+                                        {u.tenant_id ? (
+                                            <span className="text-gray-400">{u.tenant_id.substring(0, 8)}...</span>
+                                        ) : (
+                                            <span className="text-gray-600 italic">NULL</span>
+                                        )}
+                                    </td>
+                                    <td className="py-3 px-4 text-xs font-mono text-gray-400 border-r border-white/10">
+                                        {u.cohort_id ? (
+                                            <span className="text-gray-400">{u.cohort_id.substring(0, 8)}...</span>
+                                        ) : (
+                                            <span className="text-gray-600 italic">NULL</span>
+                                        )}
+                                    </td>
+                                    <td className="py-3 px-4 border-r border-white/10">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                            u.is_active 
+                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                        }`}>
                                             {u.is_active ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <div className="flex items-center justify-end gap-2">
+                                    <td className="py-3 px-4 text-xs text-gray-400 border-r border-white/10">
+                                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        <div className="flex items-center justify-center gap-2">
                                             <button
                                                 onClick={() => handleToggleActive(u)}
-                                                className="text-gray-400 hover:text-orange-400 transition-colors p-2"
-                                                title={u.is_active ? 'Deactivate' : 'Activate'}
+                                                className="text-gray-400 hover:text-orange-400 transition-colors p-2 rounded hover:bg-white/10"
+                                                title={u.is_active ? 'Deactivate User' : 'Activate User'}
                                             >
-                                                {u.is_active ? <FaToggleOn className="text-green-400 text-lg" /> : <FaToggleOff className="text-red-400 text-lg" />}
+                                                {u.is_active ? (
+                                                    <FaToggleOn className="text-green-400 text-lg" />
+                                                ) : (
+                                                    <FaToggleOff className="text-red-400 text-lg" />
+                                                )}
                                             </button>
                                             <button
                                                 onClick={() => handleEditUser(u)}
-                                                className="text-gray-400 hover:text-blue-400 transition-colors p-2"
-                                                title="Edit"
+                                                className="text-gray-400 hover:text-blue-400 transition-colors p-2 rounded hover:bg-white/10"
+                                                title="Edit User"
                                             >
                                                 <FaEdit />
                                             </button>
                                             <button
                                                 onClick={() => handleDeleteUser(u.id, u.full_name)}
-                                                className="text-gray-400 hover:text-red-400 transition-colors p-2"
-                                                title="Delete"
+                                                className="text-gray-400 hover:text-red-400 transition-colors p-2 rounded hover:bg-white/10"
+                                                title="Delete User"
                                             >
                                                 <FaTrash />
                                             </button>

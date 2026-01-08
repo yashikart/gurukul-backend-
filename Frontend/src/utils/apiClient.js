@@ -24,6 +24,16 @@ class ApiError extends Error {
  */
 export const apiRequest = async (endpoint, options = {}, retries = 1) => {
     const url = `${API_BASE_URL}${endpoint}`;
+    
+    // Debug logging
+    if (endpoint.includes('analytics')) {
+        console.log('API Request Debug:', {
+            endpoint,
+            API_BASE_URL,
+            fullUrl: url,
+            hasToken: !!localStorage.getItem('auth_token')
+        });
+    }
 
     // Default options
     const defaultOptions = {
@@ -57,6 +67,16 @@ export const apiRequest = async (endpoint, options = {}, retries = 1) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
             const response = await fetch(url, fetchOptions);
+            
+            // Debug logging for analytics endpoint
+            if (endpoint.includes('analytics')) {
+                console.log('API Response Debug:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: response.url,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
+            }
 
             // Handle non-JSON responses
             const contentType = response.headers.get('content-type');

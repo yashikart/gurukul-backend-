@@ -4,6 +4,8 @@ import { FaUsers, FaChartLine, FaCog, FaServer } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import UserManagement from './UserManagement';
 import SystemOverview from './SystemOverview';
+import ReportsAnalytics from './ReportsAnalytics';
+import AdminSettings from './AdminSettings';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
@@ -11,21 +13,32 @@ const AdminDashboard = () => {
 
     // Determine active section from hash or default
     React.useEffect(() => {
-        const hash = window.location.hash.replace('#', '');
-        if (hash && ['overview', 'users', 'reports', 'settings'].includes(hash)) {
-            setActiveSection(hash);
-        }
-        
-        // Listen for hash changes
-        const handleHashChange = () => {
-            const newHash = window.location.hash.replace('#', '');
-            if (newHash && ['overview', 'users', 'reports', 'settings'].includes(newHash)) {
-                setActiveSection(newHash);
+        const updateActiveSection = () => {
+            const hash = window.location.hash.replace('#', '');
+            if (hash && ['overview', 'users', 'reports', 'settings'].includes(hash)) {
+                setActiveSection(hash);
+            } else {
+                // Default to overview if no hash or invalid hash
+                setActiveSection('overview');
             }
         };
         
+        // Set initial section
+        updateActiveSection();
+        
+        // Listen for hash changes
+        const handleHashChange = () => {
+            updateActiveSection();
+        };
+        
         window.addEventListener('hashchange', handleHashChange);
-        return () => window.removeEventListener('hashchange', handleHashChange);
+        // Also listen for popstate (browser back/forward)
+        window.addEventListener('popstate', handleHashChange);
+        
+        return () => {
+            window.removeEventListener('hashchange', handleHashChange);
+            window.removeEventListener('popstate', handleHashChange);
+        };
     }, []);
 
     const renderContent = () => {
@@ -36,27 +49,16 @@ const AdminDashboard = () => {
             default:
                 return <SystemOverview />;
             case 'reports':
-                return (
-                    <div className="glass-panel p-6 rounded-2xl border border-white/10">
-                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                            <FaChartLine className="text-orange-500" />
-                            Reports & Analytics
-                        </h3>
-                        <p className="text-gray-400">Reports and analytics coming soon...</p>
-                    </div>
-                );
+                return <ReportsAnalytics />;
             case 'settings':
-                return (
-                    <div className="glass-panel p-6 rounded-2xl border border-white/10">
-                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                            <FaCog className="text-orange-500" />
-                            Platform Settings
-                        </h3>
-                        <p className="text-gray-400">Platform settings coming soon...</p>
-                    </div>
-                );
+                return <AdminSettings />;
         }
     };
+
+    // Debug: Log active section
+    React.useEffect(() => {
+        console.log('AdminDashboard activeSection:', activeSection);
+    }, [activeSection]);
 
     return (
         <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6">
