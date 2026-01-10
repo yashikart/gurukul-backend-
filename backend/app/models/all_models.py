@@ -1,5 +1,5 @@
 
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Float, JSON, Enum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Float, JSON, Enum, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -32,6 +32,26 @@ class Cohort(Base):
     tenant = relationship("Tenant", back_populates="cohorts")
     users = relationship("User", back_populates="cohort")
 
+# Teacher-Student Assignment (Many-to-Many Relationship)
+class TeacherStudentAssignment(Base):
+    __tablename__ = "teacher_student_assignments"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    teacher_id = Column(String, ForeignKey("users.id"), nullable=False)
+    student_id = Column(String, ForeignKey("users.id"), nullable=False)
+    cohort_id = Column(String, ForeignKey("cohorts.id"), nullable=True)  # Optional: specific class
+    subject = Column(String, nullable=True)  # Optional: specific subject teacher teaches
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    teacher = relationship("User", foreign_keys=[teacher_id], back_populates="taught_students")
+    student = relationship("User", foreign_keys=[student_id], back_populates="assigned_teachers")
+    cohort = relationship("Cohort")
+
+    # Prevent duplicate assignments
+    __table_args__ = (
+        UniqueConstraint('teacher_id', 'student_id', 'cohort_id', 'subject', name='unique_teacher_student_assignment'),
+    )
+
 class User(Base):
     __tablename__ = "users"
 
@@ -42,6 +62,7 @@ class User(Base):
     role = Column(String, nullable=False) # ADMIN, TEACHER, PARENT, STUDENT
     tenant_id = Column(String, ForeignKey("tenants.id"), nullable=True)
     cohort_id = Column(String, ForeignKey("cohorts.id"), nullable=True) # For Students
+    parent_id = Column(String, ForeignKey("users.id"), nullable=True) # For Students to link to Parent
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -51,6 +72,28 @@ class User(Base):
     summaries = relationship("Summary", back_populates="user")
     flashcards = relationship("Flashcard", back_populates="user")
     reflections = relationship("Reflection", back_populates="user")
+    
+    # Parent-Child relationships
+    parent = relationship("User", remote_side=[id], foreign_keys=[parent_id], back_populates="children")
+    children = relationship("User", foreign_keys=[parent_id], back_populates="parent")
+    
+    # Teacher-Student relationships (many-to-many)
+    # Teachers have many assignments (use .taught_students to get assignment objects)
+    # Then access .student on each assignment to get the student
+    taught_students = relationship(
+        "TeacherStudentAssignment",
+        foreign_keys="[TeacherStudentAssignment.teacher_id]",
+        back_populates="teacher",
+        cascade="all, delete-orphan"
+    )
+    # Students have many assignments (use .assigned_teachers to get assignment objects)
+    # Then access .teacher on each assignment to get the teacher
+    assigned_teachers = relationship(
+        "TeacherStudentAssignment",
+        foreign_keys="[TeacherStudentAssignment.student_id]",
+        back_populates="student",
+        cascade="all, delete-orphan"
+    )
 
 class Profile(Base):
     __tablename__ = "profiles"

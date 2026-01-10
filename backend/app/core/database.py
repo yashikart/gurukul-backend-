@@ -7,18 +7,21 @@ from app.core.config import settings
 # Determine DB URL
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
-# Fallback for now if no DB configured: Use SQLite for local dev/testing if preferred, 
-# or just fail gracefully. For production hardening, we assume Postgres.
-# If URL is None, we can't connect.
+# Fallback: Use SQLite for local dev/testing if DATABASE_URL not set
+# For production, set DATABASE_URL to PostgreSQL connection string
 if not SQLALCHEMY_DATABASE_URL:
-    # Construct from Supabase URL if possible? No, Supabase URL is HTTP.
-    # We need the direct connection string.
-    # print("Warning: DATABASE_URL not set. Database features will fail.")
     SQLALCHEMY_DATABASE_URL = "sqlite:///./gurukul.db" # Fallback
+    print("Warning: DATABASE_URL not set. Using SQLite fallback.")
+
+# Create engine with SQLite-specific args only if using SQLite
+connect_args = {}
+if "sqlite" in SQLALCHEMY_DATABASE_URL:
+    connect_args = {"check_same_thread": False}
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args,
+    pool_pre_ping=True  # Verify connections before using (helps with PostgreSQL)
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

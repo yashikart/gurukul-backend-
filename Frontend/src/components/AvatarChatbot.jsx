@@ -54,7 +54,7 @@ const AvatarChatbot = ({ position, onClose }) => {
         setIsLoading(true);
 
         try {
-            const data = await apiPost('/chat', {
+            const data = await apiPost('/api/v1/chat', {
                 message: `Context: You are a helpful website assistant for Gurukul, an educational platform. Help users navigate the website, understand features, and answer questions about how to use the platform. Be concise and friendly. User question: ${input}`,
                 provider: 'auto',
                 use_rag: false

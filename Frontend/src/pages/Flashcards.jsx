@@ -66,15 +66,8 @@ const Flashcards = () => {
             // Yellow (Good) -> medium
             // Red (Hard) -> hard
 
-            const result = await apiPost('/reviews', { // Client auto-prefixes /api/v1/flashcards if using that client, check imports
-                // Wait, apiClient typically uses base URL. 
-                // In main.py: app.include_router(flashcards.router, prefix="/api/v1/flashcards"
-                // So full path is /api/v1/flashcards/reviews
-                // If using apiPost('/reviews'), we need to ensure apiClient or the call handles the prefix.
-                // Looking at other files, they use full paths like '/api/v1/learning/explore'.
-                // So I should use '/api/v1/flashcards/reviews'.
-
-                card_id: currentCard.question_id,
+            const result = await apiPost('/api/v1/flashcards/reviews', {
+                card_id: currentCard.question_id || currentCard.id,  // Support both question_id and id
                 difficulty: difficulty
             });
 

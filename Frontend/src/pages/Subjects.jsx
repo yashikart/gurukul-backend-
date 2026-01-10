@@ -1,8 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import LearningFlow from '../components/LearningFlow';
 import LearningSuggestions from '../components/LearningSuggestions';
-import { FaBook, FaLightbulb, FaBookOpen } from 'react-icons/fa';
+import { FaBook, FaLightbulb, FaBookOpen, FaFlipboard, FaChevronDown } from 'react-icons/fa';
 import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
 import { containsProfanity } from '../utils/profanityDetector';
@@ -11,7 +12,8 @@ import { trackTopicStudied } from '../utils/progressTracker';
 
 const Subjects = () => {
     const { addKarma } = useKarma();
-    const { alert, error } = useModal();
+    const { alert, error, success } = useModal();
+    const navigate = useNavigate();
     const [subject, setSubject] = React.useState(() => localStorage.getItem('subjects_subject') || '');
     const [topic, setTopic] = React.useState(() => localStorage.getItem('subjects_topic') || '');
     const [loading, setLoading] = React.useState(false);
@@ -26,6 +28,9 @@ const Subjects = () => {
     });
     const [chatLoading, setChatLoading] = React.useState(false);
     const [hasReceivedChatKarma, setHasReceivedChatKarma] = React.useState(false);
+    const [isFlashcardModalOpen, setIsFlashcardModalOpen] = React.useState(false);
+    const [flashcardGenerationStep, setFlashcardGenerationStep] = React.useState('select'); // 'select', 'loading', 'success'
+    const [flashcardLoading, setFlashcardLoading] = React.useState(false);
 
     // Persistence Effects
     React.useEffect(() => {
@@ -128,6 +133,59 @@ const Subjects = () => {
             }]);
         } finally {
             setChatLoading(false);
+        }
+    };
+
+    const handleOpenFlashcardModal = () => {
+        setFlashcardGenerationStep('select');
+        setIsFlashcardModalOpen(true);
+    };
+
+    const handleGenerateFlashcards = async (questionType) => {
+        if (!result) return;
+        
+        setFlashcardGenerationStep('loading');
+        setFlashcardLoading(true);
+
+        try {
+            // Prepare payload with Subject Explorer content
+            const flashcardPayload = {
+                title: `${result.topic} (${result.subject})`,
+                content: result.notes, // Use the generated lesson notes
+                date: new Date().toISOString(),
+                question_type: questionType
+            };
+
+            // 1. Save Summary (optional, but good for tracking)
+            try {
+                await apiPost('/api/v1/learning/summaries/save', {
+                    title: flashcardPayload.title,
+                    content: flashcardPayload.content,
+                    date: flashcardPayload.date
+                });
+            } catch (err) {
+                console.warn('Failed to save summary:', err);
+                // Continue anyway
+            }
+
+            // 2. Generate Flashcards
+            await apiPost('/api/v1/flashcards/generate', flashcardPayload);
+
+            setFlashcardGenerationStep('success');
+            addKarma(20, 'Flashcards generated! 🎴');
+            
+            // Auto-close modal after 2 seconds and navigate
+            setTimeout(() => {
+                setIsFlashcardModalOpen(false);
+                navigate('/flashcards');
+            }, 2000);
+
+        } catch (err) {
+            const errorInfo = handleApiError(err, { operation: 'generate flashcards' });
+            error(errorInfo.message, errorInfo.title);
+            setFlashcardGenerationStep('select');
+        } finally {
+            setFlashcardLoading(false);
         }
     };
 
@@ -396,13 +454,22 @@ const Subjects = () => {
                                     <FaBookOpen className="text-orange-400 text-lg sm:text-xl" />
                                     {result.topic}
                                 </h2>
-                                <button
-                                    onClick={() => setResult(null)}
-                                    className="px-4 py-2 bg-white/5 hover:bg-white/10 text-sm text-gray-400 hover:text-white rounded-lg transition-colors border border-white/5 flex items-center gap-2"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                                    Explore New Topic
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={handleOpenFlashcardModal}
+                                        className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-sm font-semibold rounded-lg transition-all border border-orange-500/50 flex items-center gap-2 shadow-lg shadow-orange-500/20 hover:-translate-y-0.5"
+                                    >
+                                        <FaFlipboard className="text-sm" />
+                                        Generate Flashcards
+                                    </button>
+                                    <button
+                                        onClick={() => setResult(null)}
+                                        className="px-4 py-2 bg-white/5 hover:bg-white/10 text-sm text-gray-400 hover:text-white rounded-lg transition-colors border border-white/5 flex items-center gap-2"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                                        Explore New Topic
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Notes Content */}
@@ -495,6 +562,98 @@ const Subjects = () => {
                 )}
 
             </main>
+
+            {/* Flashcard Generation Modal */}
+            {isFlashcardModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#1a1c16] border border-white/10 rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl relative">
+                        <button
+                            onClick={() => setIsFlashcardModalOpen(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                        >
+                            ✕
+                        </button>
+
+                        <h3 className="text-2xl font-bold text-white mb-2 text-center">
+                            {flashcardGenerationStep === 'select' && "Generate Flashcards"}
+                            {flashcardGenerationStep === 'loading' && "Creating Flashcards..."}
+                            {flashcardGenerationStep === 'success' && "Flashcards Ready! 🎴"}
+                        </h3>
+                        <p className="text-gray-400 text-center mb-6 text-sm">
+                            {flashcardGenerationStep === 'select' && `Create flashcards from "${result.topic}" to practice and review.`}
+                            {flashcardGenerationStep === 'loading' && "Please wait while our AI creates your flashcards..."}
+                            {flashcardGenerationStep === 'success' && "Your flashcards have been generated successfully!"}
+                        </p>
+
+                        {flashcardGenerationStep === 'select' && (
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => handleGenerateFlashcards('conceptual')}
+                                    disabled={flashcardLoading}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-500/50 rounded-xl flex items-center gap-4 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">?</div>
+                                    <div className="text-left flex-1">
+                                        <h4 className="font-bold text-white">General Questions</h4>
+                                        <p className="text-xs text-gray-400">Conceptual Q&A based on the lesson</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleGenerateFlashcards('fill_in_blanks')}
+                                    disabled={flashcardLoading}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-500/50 rounded-xl flex items-center gap-4 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">_</div>
+                                    <div className="text-left flex-1">
+                                        <h4 className="font-bold text-white">Fill in the Blanks</h4>
+                                        <p className="text-xs text-gray-400">Complete the missing key terms</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleGenerateFlashcards('short_answer')}
+                                    disabled={flashcardLoading}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-500/50 rounded-xl flex items-center gap-4 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">✎</div>
+                                    <div className="text-left flex-1">
+                                        <h4 className="font-bold text-white">One Line Answers</h4>
+                                        <p className="text-xs text-gray-400">Short, precise recall questions</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleGenerateFlashcards('mcq')}
+                                    disabled={flashcardLoading}
+                                    className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-500/50 rounded-xl flex items-center gap-4 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">☑</div>
+                                    <div className="text-left flex-1">
+                                        <h4 className="font-bold text-white">Multiple Choice</h4>
+                                        <p className="text-xs text-gray-400">Test with 4 options per question</p>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+
+                        {flashcardGenerationStep === 'loading' && (
+                            <div className="flex flex-col items-center justify-center py-8">
+                                <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <p className="text-gray-400 text-sm">Generating your flashcards...</p>
+                            </div>
+                        )}
+
+                        {flashcardGenerationStep === 'success' && (
+                            <div className="space-y-4 text-center">
+                                <div className="text-6xl mb-4">🎴</div>
+                                <p className="text-white font-semibold">Redirecting to Flashcards page...</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };

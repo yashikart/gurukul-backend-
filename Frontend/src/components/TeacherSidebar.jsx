@@ -1,34 +1,41 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-    FaThLarge,
     FaUsers,
+    FaUpload,
     FaChartLine,
-    FaFileAlt,
+    FaChalkboardTeacher,
+    FaClipboardList,
+    FaComments,
+    FaBook,
     FaCog,
     FaSignOutAlt,
-    FaUserCircle,
-    FaServer
+    FaUserCircle
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
 
-const AdminSidebar = () => {
+const TeacherSidebar = () => {
     const { isSidebarOpen, closeSidebar } = useSidebar();
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [activeHash, setActiveHash] = React.useState(() => window.location.hash.replace('#', '') || 'overview');
+    const [activeHash, setActiveHash] = React.useState(() => window.location.hash.replace('#', '') || 'students');
 
-    const adminMenuItems = [
-        { icon: FaServer, label: "System Overview", path: "/admin_dashboard#overview", hash: "overview" },
-        { icon: FaUsers, label: "User Management", path: "/admin_dashboard#users", hash: "users" },
-        { icon: FaChartLine, label: "Reports & Analytics", path: "/admin_dashboard#reports", hash: "reports" },
+    const teacherMenuItems = [
+        { icon: FaUsers, label: "My Students", path: "/teacher/dashboard#students", hash: "students" },
+        { icon: FaUpload, label: "Upload Content", path: "/teacher/dashboard#upload", hash: "upload" },
+        { icon: FaChartLine, label: "Student Progress", path: "/teacher/dashboard#progress", hash: "progress" },
+        { icon: FaChalkboardTeacher, label: "Class Management", path: "/teacher/dashboard#classes", hash: "classes" },
+        { icon: FaChartLine, label: "Analytics & Reports", path: "/teacher/dashboard#analytics", hash: "analytics" },
+        { icon: FaClipboardList, label: "Assignments", path: "/teacher/dashboard#assignments", hash: "assignments" },
+        { icon: FaComments, label: "Communication", path: "/teacher/dashboard#communication", hash: "communication" },
+        { icon: FaBook, label: "Content Library", path: "/teacher/dashboard#library", hash: "library" },
     ];
 
     // Listen for hash changes
     React.useEffect(() => {
         const handleHashChange = () => {
-            setActiveHash(window.location.hash.replace('#', '') || 'overview');
+            setActiveHash(window.location.hash.replace('#', '') || 'students');
         };
         
         window.addEventListener('hashchange', handleHashChange);
@@ -69,13 +76,13 @@ const AdminSidebar = () => {
             `}>
                 {/* Mobile Header */}
                 <div className="lg:hidden mb-6 mt-2 flex items-center gap-3 px-2">
-                    <span className="text-xl font-bold font-heading text-white">Admin Menu</span>
+                    <span className="text-xl font-bold font-heading text-white">Teacher Menu</span>
                 </div>
 
                 <div className="glass-panel p-3 flex-grow flex flex-col justify-between border border-white/10 shadow-xl rounded-2xl overflow-hidden bg-black/40 lg:bg-black/60">
                     {/* Main Menu */}
                     <div className="flex flex-col gap-2 overflow-y-auto no-scrollbar">
-                        {adminMenuItems.map((item, index) => {
+                        {teacherMenuItems.map((item, index) => {
                             const isActive = activeHash === item.hash;
                             
                             return (
@@ -106,7 +113,7 @@ const AdminSidebar = () => {
                     <div className="pt-3 border-t border-white/10 mt-2 space-y-2">
                         {/* Settings */}
                         <NavLink
-                            to="/admin_dashboard#settings"
+                            to="/teacher/dashboard#settings"
                             onClick={(e) => {
                                 closeSidebar();
                                 setActiveHash('settings');
@@ -146,5 +153,5 @@ const AdminSidebar = () => {
     );
 };
 
-export default AdminSidebar;
+export default TeacherSidebar;
 
