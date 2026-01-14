@@ -6,6 +6,7 @@ import { useModal } from '../contexts/ModalContext';
 
 import { containsProfanity } from '../utils/profanityDetector';
 import { apiPost, apiGet, handleApiError } from '../utils/apiClient';
+import API_BASE_URL from '../config';
 
 const Chatbot = () => {
     const { addKarma } = useKarma();
@@ -35,6 +36,17 @@ const Chatbot = () => {
         return localStorage.getItem('chatbot_hasReceivedChatKarma') === 'true';
     });
 
+    // RAG / Knowledge State
+    const [knowledgeModalOpen, setKnowledgeModalOpen] = React.useState(false);
+    const [knowledgeText, setKnowledgeText] = React.useState("");
+    const [knowledgeLoading, setKnowledgeLoading] = React.useState(false);
+
+    // TTS State
+    const [isTTSLoading, setIsTTSLoading] = React.useState(false);
+    const [ttsLanguage, setTTSLanguage] = React.useState(() => 
+        localStorage.getItem('chatbot_tts_language') || 'en'
+    );
+
     // Active Persistence Effects
     React.useEffect(() => {
         localStorage.setItem('chatbot_selectedModel', selectedModel);
@@ -56,10 +68,9 @@ const Chatbot = () => {
         localStorage.setItem('chatbot_hasReceivedChatKarma', hasReceivedChatKarma.toString());
     }, [hasReceivedChatKarma]);
 
-    // RAG / Knowledge State
-    const [knowledgeModalOpen, setKnowledgeModalOpen] = React.useState(false);
-    const [knowledgeText, setKnowledgeText] = React.useState("");
-    const [knowledgeLoading, setKnowledgeLoading] = React.useState(false);
+    React.useEffect(() => {
+        localStorage.setItem('chatbot_tts_language', ttsLanguage);
+    }, [ttsLanguage]);
 
     // Initial Load of History
     React.useEffect(() => {
@@ -286,6 +297,52 @@ const Chatbot = () => {
         }
     };
 
+    const handleTTS = async () => {
+        // Get the last assistant message
+        const lastAssistantMessage = [...chatHistory].reverse().find(msg => msg.role === 'assistant');
+        
+        if (!lastAssistantMessage || !lastAssistantMessage.content) {
+            error('No message to convert to speech', 'TTS Error');
+            return;
+        }
+
+        setIsTTSLoading(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/v1/tts/speak`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                text: lastAssistantMessage.content,
+                language: ttsLanguage
+            }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate speech');
+            }
+
+            // Get audio blob
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            // Create audio element and play
+            const audio = new Audio(audioUrl);
+            audio.play();
+            
+            // Clean up URL after playback
+            audio.onended = () => {
+                URL.revokeObjectURL(audioUrl);
+            };
+        } catch (err) {
+            console.error('TTS Error:', err);
+            error('Failed to generate speech. Please try again.', 'TTS Error');
+        } finally {
+            setIsTTSLoading(false);
+        }
+    };
+
     // Simplified Markdown Renderer
     const renderChatContent = (text) => {
         return text.split('\n').map((line, i) => {
@@ -329,9 +386,37 @@ const Chatbot = () => {
                     <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 pb-3 sm:pb-4 shrink-0 border-b border-white/5">
                         <div className="flex items-center gap-2 sm:gap-4">
                             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-heading text-white">Chatbot</h1>
-                            <button className="text-gray-400 hover:text-white transition-colors">
-                                <FaVolumeUp />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {/* Language Selector */}
+                                <select
+                                    value={ttsLanguage}
+                                    onChange={(e) => setTTSLanguage(e.target.value)}
+                                    className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300 hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
+                                    title="Select TTS language"
+                                >
+                                    <option value="en">🇺🇸 English</option>
+                                    <option value="es">🇪🇸 Spanish</option>
+                                    <option value="fr">🇫🇷 French</option>
+                                    <option value="de">🇩🇪 German</option>
+                                    <option value="it">🇮🇹 Italian</option>
+                                    <option value="pt">🇵🇹 Portuguese</option>
+                                    <option value="ru">🇷🇺 Russian</option>
+                                    <option value="zh">🇨🇳 Chinese</option>
+                                    <option value="ja">🇯🇵 Japanese</option>
+                                    <option value="ko">🇰🇷 Korean</option>
+                                    <option value="hi">🇮🇳 Hindi</option>
+                                    <option value="ar">🇸🇦 Arabic</option>
+                                </select>
+                                {/* Audio Button */}
+                                <button 
+                                    onClick={handleTTS}
+                                    disabled={isTTSLoading || !chatHistory.some(msg => msg.role === 'assistant')}
+                                    className={`text-gray-400 hover:text-white transition-colors ${isTTSLoading ? 'opacity-50 cursor-not-allowed' : ''} ${!chatHistory.some(msg => msg.role === 'assistant') ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                    title="Convert last assistant message to speech"
+                                >
+                                    <FaVolumeUp />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
