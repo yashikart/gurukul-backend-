@@ -1,0 +1,256 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { teacherAPI } from '../../services/api';
+
+const MyLessons = () => {
+  const navigate = useNavigate();
+  const [classes, setClasses] = useState([]);
+  const [lessons, setLessons] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [deletingLessonId, setDeletingLessonId] = useState(null);
+
+  useEffect(() => {
+    fetchClasses();
+  }, []);
+
+  useEffect(() => {
+    if (selectedClassId) {
+      fetchLessons(parseInt(selectedClassId));
+    }
+  }, [selectedClassId]);
+
+  const fetchClasses = async () => {
+    try {
+      setLoading(true);
+      const data = await teacherAPI.getMyClasses();
+      setClasses(data);
+      if (data.length > 0) {
+        setSelectedClassId(data[0].id.toString());
+        fetchLessons(data[0].id);
+      } else {
+        setLoading(false);
+      }
+      setError('');
+    } catch (err) {
+      setError('Failed to load classes. Please try again.');
+      console.error('Error fetching classes:', err);
+      setLoading(false);
+    }
+  };
+
+  const fetchLessons = async (classId) => {
+    try {
+      setLoading(true);
+      const data = await teacherAPI.getMyLessons(classId);
+      setLessons(data);
+      setError('');
+    } catch (err) {
+      setError('Failed to load lessons. Please try again.');
+      console.error('Error fetching lessons:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getClassName = (classId) => {
+    const cls = classes.find((c) => c.id === classId);
+    return cls ? cls.name : classId;
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  const handleEditLesson = (lesson) => {
+    navigate(`/dashboard/lessons/edit/${lesson.id}`, { state: { lesson } });
+  };
+
+  const handleDeleteLesson = async (lessonId) => {
+    if (!window.confirm('Are you sure you want to delete this lesson? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      setDeletingLessonId(lessonId);
+      await teacherAPI.deleteLesson(lessonId);
+      // Refresh lessons
+      if (selectedClassId) {
+        fetchLessons(parseInt(selectedClassId));
+      } else {
+        // Fetch all lessons
+        const allLessons = await teacherAPI.getMyLessons();
+        setLessons(allLessons);
+      }
+      alert('Lesson deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting lesson:', err);
+      alert(err.response?.data?.detail || 'Failed to delete lesson');
+    } finally {
+      setDeletingLessonId(null);
+    }
+  };
+
+  if (loading && lessons.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <p className="mt-4 text-gray-600">Loading lessons...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">My Lessons</h1>
+          <p className="text-gray-600 mt-2">View and manage your lessons</p>
+        </div>
+        <button
+          onClick={() => navigate('/dashboard/lessons/create')}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium flex items-center gap-2"
+        >
+          <span>➕</span>
+          <span>Create Lesson</span>
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
+
+      {/* Class Filter */}
+      {classes.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-4 flex flex-wrap gap-4 items-center">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Filter by Class
+            </label>
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="">All Classes</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name} {cls.subject_name ? `(${cls.subject_name})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Lessons List */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h2 className="text-xl font-bold text-gray-800">
+            Lessons ({lessons.length}) 
+            {selectedClassId && ` - ${getClassName(parseInt(selectedClassId))}`}
+          </h2>
+        </div>
+        
+        {lessons.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-gray-500 text-lg mb-4">No lessons found</p>
+            <button
+              onClick={() => navigate('/dashboard/lessons/create')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+            >
+              Create Your First Lesson
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {lessons.map((lesson) => (
+              <div key={lesson.id} className="px-6 py-4 hover:bg-gray-50 transition">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">{lesson.title}</h3>
+                      {lesson.class_name && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                          {lesson.class_name}
+                        </span>
+                      )}
+                      {lesson.subject_name && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
+                          {lesson.subject_name}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mb-2">
+                      Lesson Date: <span className="font-medium text-gray-700">{formatDate(lesson.lesson_date)}</span>
+                    </p>
+                    {lesson.description && (
+                      <p className="text-sm text-gray-600 mb-3">{lesson.description}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <button
+                      onClick={() => handleEditLesson(lesson)}
+                      className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                      title="Edit Lesson"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteLesson(lesson.id)}
+                      disabled={deletingLessonId === lesson.id}
+                      className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete Lesson"
+                    >
+                      {deletingLessonId === lesson.id ? '⏳' : '🗑️'} Delete
+                    </button>
+                  </div>
+                </div>
+                
+                {lesson.lectures && lesson.lectures.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Lectures ({lesson.lectures.length}):</p>
+                    <ul className="space-y-2">
+                      {lesson.lectures.map((lecture) => (
+                        <li key={lecture.id} className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <span className="font-medium text-gray-900">{lecture.title}</span>
+                              {lecture.content && (
+                                <p className="text-xs text-gray-500 mt-1">{lecture.content}</p>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 ml-4 text-right">
+                              <div>{formatDate(lecture.lecture_date)}</div>
+                              {lecture.start_time && (
+                                <div className="mt-1">
+                                  {lecture.start_time}
+                                  {lecture.end_time && ` - ${lecture.end_time}`}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MyLessons;
+
