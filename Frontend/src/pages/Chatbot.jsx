@@ -46,6 +46,8 @@ const Chatbot = () => {
     const [ttsLanguage, setTTSLanguage] = React.useState(() => 
         localStorage.getItem('chatbot_tts_language') || 'en'
     );
+    const [playingAudioIndex, setPlayingAudioIndex] = React.useState(null);
+    const [currentAudio, setCurrentAudio] = React.useState(null);
 
     // Active Persistence Effects
     React.useEffect(() => {
@@ -98,6 +100,16 @@ const Chatbot = () => {
             };
         }
     }, [showDeleteMenu]);
+
+    // Cleanup audio on unmount
+    React.useEffect(() => {
+        return () => {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+        };
+    }, [currentAudio]);
 
     // Save History Helper
     const saveToHistory = (id, firstMessage) => {
@@ -168,6 +180,14 @@ const Chatbot = () => {
     };
 
     const handleNewChat = () => {
+        // Stop any playing audio
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            setCurrentAudio(null);
+            setPlayingAudioIndex(null);
+        }
+        
         setChatHistory([
             {
                 role: 'assistant',
@@ -281,6 +301,14 @@ const Chatbot = () => {
     };
 
     const handleClearChat = () => {
+        // Stop any playing audio
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            setCurrentAudio(null);
+            setPlayingAudioIndex(null);
+        }
+        
         setChatHistory([
             {
                 role: 'assistant',
@@ -297,14 +325,56 @@ const Chatbot = () => {
         }
     };
 
-    const handleTTS = async () => {
-        // Get the last assistant message
-        const lastAssistantMessage = [...chatHistory].reverse().find(msg => msg.role === 'assistant');
+    // Remove markdown formatting from text for TTS
+    const cleanTextForTTS = (text) => {
+        if (!text) return '';
         
-        if (!lastAssistantMessage || !lastAssistantMessage.content) {
+        return text
+            // Remove bold/italic markdown: **text** or *text* or __text__ or _text_
+            .replace(/\*\*([^*]+)\*\*/g, '$1')  // **bold**
+            .replace(/\*([^*]+)\*/g, '$1')      // *italic* or *bold*
+            .replace(/__([^_]+)__/g, '$1')      // __bold__
+            .replace(/_([^_]+)_/g, '$1')        // _italic_
+            // Remove markdown headers: #, ##, ###
+            .replace(/^#{1,6}\s+/gm, '')
+            // Remove markdown links: [text](url)
+            .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+            // Remove markdown code blocks: `code` or ```code```
+            .replace(/```[\s\S]*?```/g, '')
+            .replace(/`([^`]+)`/g, '$1')
+            // Remove markdown lists: - item or * item or 1. item
+            .replace(/^[-*•]\s+/gm, '')
+            .replace(/^\d+\.\s+/gm, '')
+            // Remove extra whitespace and clean up
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    };
+
+    const handleTTS = async (messageContent, messageIndex) => {
+        // If this message is already playing, stop it
+        if (playingAudioIndex === messageIndex && currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            setCurrentAudio(null);
+            setPlayingAudioIndex(null);
+            return;
+        }
+
+        // Stop any currently playing audio
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            setCurrentAudio(null);
+            setPlayingAudioIndex(null);
+        }
+
+        if (!messageContent || !messageContent.trim()) {
             error('No message to convert to speech', 'TTS Error');
             return;
         }
+
+        // Clean markdown formatting before sending to TTS
+        const cleanedText = cleanTextForTTS(messageContent);
 
         setIsTTSLoading(true);
         try {
@@ -314,9 +384,9 @@ const Chatbot = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ 
-                text: lastAssistantMessage.content,
-                language: ttsLanguage
-            }),
+                    text: cleanedText,
+                    language: ttsLanguage
+                }),
             });
 
             if (!response.ok) {
@@ -329,15 +399,30 @@ const Chatbot = () => {
             
             // Create audio element and play
             const audio = new Audio(audioUrl);
+            setCurrentAudio(audio);
+            setPlayingAudioIndex(messageIndex);
+            
             audio.play();
             
-            // Clean up URL after playback
+            // Clean up when playback ends
             audio.onended = () => {
                 URL.revokeObjectURL(audioUrl);
+                setCurrentAudio(null);
+                setPlayingAudioIndex(null);
+            };
+
+            // Handle errors during playback
+            audio.onerror = () => {
+                URL.revokeObjectURL(audioUrl);
+                setCurrentAudio(null);
+                setPlayingAudioIndex(null);
+                error('Failed to play audio', 'TTS Error');
             };
         } catch (err) {
             console.error('TTS Error:', err);
             error('Failed to generate speech. Please try again.', 'TTS Error');
+            setCurrentAudio(null);
+            setPlayingAudioIndex(null);
         } finally {
             setIsTTSLoading(false);
         }
@@ -386,37 +471,26 @@ const Chatbot = () => {
                     <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 pb-3 sm:pb-4 shrink-0 border-b border-white/5">
                         <div className="flex items-center gap-2 sm:gap-4">
                             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold font-heading text-white">Chatbot</h1>
-                            <div className="flex items-center gap-2">
-                                {/* Language Selector */}
-                                <select
-                                    value={ttsLanguage}
-                                    onChange={(e) => setTTSLanguage(e.target.value)}
-                                    className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300 hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
-                                    title="Select TTS language"
-                                >
-                                    <option value="en">🇺🇸 English</option>
-                                    <option value="es">🇪🇸 Spanish</option>
-                                    <option value="fr">🇫🇷 French</option>
-                                    <option value="de">🇩🇪 German</option>
-                                    <option value="it">🇮🇹 Italian</option>
-                                    <option value="pt">🇵🇹 Portuguese</option>
-                                    <option value="ru">🇷🇺 Russian</option>
-                                    <option value="zh">🇨🇳 Chinese</option>
-                                    <option value="ja">🇯🇵 Japanese</option>
-                                    <option value="ko">🇰🇷 Korean</option>
-                                    <option value="hi">🇮🇳 Hindi</option>
-                                    <option value="ar">🇸🇦 Arabic</option>
-                                </select>
-                                {/* Audio Button */}
-                                <button 
-                                    onClick={handleTTS}
-                                    disabled={isTTSLoading || !chatHistory.some(msg => msg.role === 'assistant')}
-                                    className={`text-gray-400 hover:text-white transition-colors ${isTTSLoading ? 'opacity-50 cursor-not-allowed' : ''} ${!chatHistory.some(msg => msg.role === 'assistant') ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                    title="Convert last assistant message to speech"
-                                >
-                                    <FaVolumeUp />
-                                </button>
-                            </div>
+                            {/* Language Selector */}
+                            <select
+                                value={ttsLanguage}
+                                onChange={(e) => setTTSLanguage(e.target.value)}
+                                className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300 hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
+                                title="Select TTS language for audio playback"
+                            >
+                                <option value="en">🇺🇸 English</option>
+                                <option value="es">🇪🇸 Spanish</option>
+                                <option value="fr">🇫🇷 French</option>
+                                <option value="de">🇩🇪 German</option>
+                                <option value="it">🇮🇹 Italian</option>
+                                <option value="pt">🇵🇹 Portuguese</option>
+                                <option value="ru">🇷🇺 Russian</option>
+                                <option value="zh">🇨🇳 Chinese</option>
+                                <option value="ja">🇯🇵 Japanese</option>
+                                <option value="ko">🇰🇷 Korean</option>
+                                <option value="hi">🇮🇳 Hindi</option>
+                                <option value="ar">🇸🇦 Arabic</option>
+                            </select>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
@@ -484,8 +558,23 @@ const Chatbot = () => {
                                 <div className="flex flex-col space-y-6">
                                     {chatHistory.map((msg, index) => (
                                         <div key={index} className={`flex flex-col gap-1 items-${msg.role === 'user' ? 'end' : 'start'} max-w-full`}>
-                                            <div className={`glass-panel p-4 rounded-2xl ${msg.role === 'user' ? 'rounded-tr-none bg-white/20 border border-white/10 text-white font-medium' : 'rounded-tl-none bg-white/5 border border-white/5 text-gray-200'} text-lg leading-relaxed shadow-sm max-w-[85%]`}>
+                                            <div className={`glass-panel p-4 rounded-2xl ${msg.role === 'user' ? 'rounded-tr-none bg-white/20 border border-white/10 text-white font-medium' : 'rounded-tl-none bg-white/5 border border-white/5 text-gray-200'} text-lg leading-relaxed shadow-sm max-w-[85%] relative group`}>
                                                 {msg.role === 'user' ? msg.content : renderChatContent(msg.content)}
+                                                {/* Audio button for assistant messages */}
+                                                {msg.role === 'assistant' && (
+                                                    <button
+                                                        onClick={() => handleTTS(msg.content, index)}
+                                                        disabled={isTTSLoading && playingAudioIndex !== index}
+                                                        className={`absolute top-2 right-2 p-1.5 transition-colors rounded-lg hover:bg-white/10 ${
+                                                            playingAudioIndex === index 
+                                                                ? 'text-accent' 
+                                                                : 'text-gray-600 hover:text-gray-400'
+                                                        } ${isTTSLoading && playingAudioIndex !== index ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        title={playingAudioIndex === index ? "Stop audio" : "Convert this message to speech"}
+                                                    >
+                                                        <FaVolumeUp className="text-sm" />
+                                                    </button>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-2 px-1">
                                                 <span className="text-xs text-gray-500 font-medium capitalize">{msg.role === 'user' ? 'You' : 'Guru AI'}</span>

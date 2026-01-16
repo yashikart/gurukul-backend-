@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { FaArrowRight, FaUser } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getDashboardPath, setUserRole } from '../utils/roles';
+import { setUserRole } from '../utils/roles';
 
 const SignUp = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('STUDENT');
     const [error, setError] = useState(null);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,15 +20,17 @@ const SignUp = () => {
         setMessage('');
         setLoading(true);
         
+        // Gurukul is student-only, so always use STUDENT role
+        const role = 'STUDENT';
+        
         try {
             const { user } = await signup(email, password, role, name);
             setMessage('Account created successfully! Redirecting...');
             
-            // Auto-redirect to dashboard after successful signup
+            // Auto-redirect to student dashboard after successful signup
             setTimeout(() => {
-                const roleLower = user.role.toLowerCase();
-                setUserRole(roleLower);
-                navigate(getDashboardPath(roleLower));
+                setUserRole('student');
+                navigate('/dashboard');
             }, 1500);
         } catch (err) {
             console.error('Signup error:', err);
@@ -90,20 +91,6 @@ const SignUp = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 ml-1">Account Role</label>
-                            <select
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent/50 focus:bg-white/10 transition-all appearance-none"
-                                value={role}
-                                onChange={(e) => setRole(e.target.value)}
-                            >
-                                <option value="STUDENT" className="bg-gray-900">Student</option>
-                                <option value="TEACHER" className="bg-gray-900">Teacher</option>
-                                <option value="PARENT" className="bg-gray-900">Parent</option>
-                                <option value="ADMIN" className="bg-gray-900">Admin</option>
-                            </select>
                         </div>
 
                         <button 

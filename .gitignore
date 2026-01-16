@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Build files
+dist/
+build/
+*.egg-info/
+
+# Node modules (for frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# EMS System specific
+EMS System/venv/
+EMS System/__pycache__/
+EMS System/.env
+EMS System/*.db
+EMS System/*.sqlite
+
+# Frontend build
+Frontend/dist/
+Frontend/build/
+Frontend/node_modules/
+
+# Backend
+backend/__pycache__/
+backend/.env
+

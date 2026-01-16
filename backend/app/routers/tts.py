@@ -55,9 +55,9 @@ async def text_to_speech(request: TTSRequest):
         audio_data = text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
         
         # Determine media type based on audio format
-        # Google TTS returns MP3, pyttsx3 returns WAV
+        # OpenAI TTS returns MP3, Google TTS returns MP3, pyttsx3 returns WAV
         # Check first few bytes to determine format
-        is_mp3 = audio_data[:3] == b'ID3' or audio_data[:2] == b'\xff\xfb'
+        is_mp3 = audio_data[:3] == b'ID3' or audio_data[:2] == b'\xff\xfb' or audio_data[:4] == b'\xff\xf3' or audio_data[:4] == b'\xff\xf2'
         media_type = "audio/mpeg" if is_mp3 else "audio/wav"
         file_ext = "mp3" if is_mp3 else "wav"
         

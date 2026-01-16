@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaArrowRight } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getDashboardPath, setUserRole } from '../utils/roles';
+import { setUserRole } from '../utils/roles';
 import API_BASE_URL from '../config';
 
 const SignIn = () => {
@@ -21,11 +21,9 @@ const SignIn = () => {
         try {
             const { user } = await login(email, password);
             
-            // Normalize role to lowercase for frontend consistency
-            const role = user.role.toLowerCase();
-            setUserRole(role);
-            const path = getDashboardPath(role);
-            navigate(path);
+            // Gurukul is student-only, always redirect to student dashboard
+            setUserRole('student');
+            navigate('/dashboard');
         } catch (err) {
             console.error('Login error:', err);
             setError(err.message || 'Failed to sign in. Please check your credentials and try again.');
