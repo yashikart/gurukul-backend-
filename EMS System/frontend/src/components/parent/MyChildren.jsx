@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { parentAPI } from '../../services/api';
 
 const MyChildren = () => {
@@ -104,6 +105,16 @@ const MyChildren = () => {
               ) : (
                 <p className="text-sm text-gray-500">No classes enrolled</p>
               )}
+            </div>
+            
+            {/* View Content Button */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <Link
+                to={`/dashboard/children/${child.id}/content`}
+                className="block w-full text-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+              >
+                📚 View Generated Content
+              </Link>
             </div>
           </div>
         ))}

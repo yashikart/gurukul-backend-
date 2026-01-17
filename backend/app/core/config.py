@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: Optional[str] = None # postgresql://user:password@host:port/db or sqlite:///./gurukul.db
     
+    # EMS System Integration
+    EMS_API_BASE_URL: str = "http://localhost:8000"
+    EMS_API_KEY: Optional[str] = None  # Optional API key for EMS authentication
+    
+    # EMS Admin Credentials (for auto-creating student accounts)
+    EMS_ADMIN_EMAIL: Optional[str] = None  # EMS admin email for student creation
+    EMS_ADMIN_PASSWORD: Optional[str] = None  # EMS admin password for student creation
+    EMS_DEFAULT_SCHOOL_ID: Optional[int] = None  # Default school ID if not using admin auth
+    EMS_AUTO_CREATE_STUDENTS: bool = True  # Enable/disable auto-creation of EMS accounts
+    
     # JWT Authentication (for SQLite-only auth)
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"  # Change this in production!
     JWT_ALGORITHM: str = "HS256"

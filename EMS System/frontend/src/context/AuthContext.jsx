@@ -63,9 +63,18 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
+      // Extract error message properly
+      let errorMessage = 'Login failed. Please check your credentials.';
+      if (error.response?.data?.detail) {
+        errorMessage = typeof error.response.data.detail === 'string' 
+          ? error.response.data.detail 
+          : JSON.stringify(error.response.data.detail);
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       return {
         success: false,
-        message: error.response?.data?.detail || 'Login failed. Please check your credentials.',
+        message: errorMessage,
       };
     }
   };

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean, DateTime, Text, Date, Time, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean, DateTime, Text, Date, Time, JSON, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 from datetime import datetime, date, time
@@ -248,4 +248,95 @@ class Attendance(Base):
     student = relationship("User", foreign_keys=[student_id])
     class_obj = relationship("Class")
     teacher = relationship("User", foreign_keys=[teacher_id])
+    school = relationship("School")
+
+
+# Student-Generated Content Models (Synced from Gurukul)
+
+class StudentSummary(Base):
+    """Student-generated PDF summaries and text summaries from Gurukul"""
+    __tablename__ = "student_summaries"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    school_id = Column(Integer, ForeignKey("schools.id"), nullable=False, index=True)
+    gurukul_id = Column(String(255), nullable=False, unique=True, index=True)  # Gurukul record ID for syncing
+    title = Column(String(500), nullable=False)
+    content = Column(Text, nullable=False)
+    source = Column(String(500), nullable=True)  # Source file/URL
+    source_type = Column(String(50), nullable=True)  # "pdf", "text", "manual"
+    extra_metadata = Column(JSON, nullable=True)  # Additional metadata from Gurukul (renamed from 'metadata' - reserved word)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    synced_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    student = relationship("User", foreign_keys=[student_id])
+    school = relationship("School")
+
+
+class StudentFlashcard(Base):
+    """Student-generated flashcards from Gurukul"""
+    __tablename__ = "student_flashcards"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    school_id = Column(Integer, ForeignKey("schools.id"), nullable=False, index=True)
+    gurukul_id = Column(String(255), nullable=False, unique=True, index=True)  # Gurukul record ID for syncing
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+    question_type = Column(String(50), default="conceptual")
+    days_until_review = Column(Integer, default=0)
+    confidence = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    synced_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    student = relationship("User", foreign_keys=[student_id])
+    school = relationship("School")
+
+
+class StudentTestResult(Base):
+    """Student test/quiz results from Gurukul"""
+    __tablename__ = "student_test_results"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    school_id = Column(Integer, ForeignKey("schools.id"), nullable=False, index=True)
+    gurukul_id = Column(String(255), nullable=False, unique=True, index=True)  # Gurukul record ID for syncing
+    subject = Column(String(255), nullable=False, index=True)
+    topic = Column(String(255), nullable=False)
+    difficulty = Column(String(50), default="medium")
+    num_questions = Column(Integer, nullable=False)
+    questions = Column(JSON, nullable=False)  # All questions with options and correct answers
+    user_answers = Column(JSON, nullable=False)  # Student's selected answers
+    score = Column(Integer, nullable=False)
+    total_questions = Column(Integer, nullable=False)
+    percentage = Column(Float, nullable=False)
+    time_taken = Column(Integer, nullable=True)  # Time taken in seconds
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    synced_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    student = relationship("User", foreign_keys=[student_id])
+    school = relationship("School")
+
+
+class StudentSubjectData(Base):
+    """Student-generated subject explorer content from Gurukul"""
+    __tablename__ = "student_subject_data"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    school_id = Column(Integer, ForeignKey("schools.id"), nullable=False, index=True)
+    gurukul_id = Column(String(255), nullable=False, unique=True, index=True)  # Gurukul record ID for syncing
+    subject = Column(String(255), nullable=False, index=True)
+    topic = Column(String(255), nullable=False, index=True)
+    notes = Column(Text, nullable=False)  # Generated notes/content
+    provider = Column(String(50), default="groq")  # LLM provider used
+    youtube_recommendations = Column(JSON, default=[])  # YouTube video recommendations
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    synced_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Relationships
+    student = relationship("User", foreign_keys=[student_id])
     school = relationship("School")

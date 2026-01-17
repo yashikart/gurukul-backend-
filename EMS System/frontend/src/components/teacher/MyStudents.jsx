@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { teacherAPI } from '../../services/api';
 import { useParams } from 'react-router-dom';
 
@@ -121,6 +122,9 @@ const MyStudents = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Grade
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -136,6 +140,14 @@ const MyStudents = () => {
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                       {student.grade || 'N/A'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <Link
+                      to={`/dashboard/students/${student.id}/content`}
+                      className="text-indigo-600 hover:text-indigo-900 font-medium"
+                    >
+                      📚 View Content
+                    </Link>
                   </td>
                 </tr>
               ))}

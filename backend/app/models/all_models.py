@@ -72,6 +72,8 @@ class User(Base):
     summaries = relationship("Summary", back_populates="user")
     flashcards = relationship("Flashcard", back_populates="user")
     reflections = relationship("Reflection", back_populates="user")
+    test_results = relationship("TestResult", back_populates="user")
+    subject_data = relationship("SubjectData", back_populates="user")
     
     # Parent-Child relationships
     parent = relationship("User", remote_side=[id], foreign_keys=[parent_id], back_populates="children")
@@ -188,3 +190,40 @@ class Flashcard(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="flashcards")
+
+class TestResult(Base):
+    __tablename__ = "test_results"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    subject = Column(String, nullable=False)
+    topic = Column(String, nullable=False)
+    difficulty = Column(String, default="medium")
+    num_questions = Column(Integer, nullable=False)
+    questions = Column(JSON, nullable=False)  # Store all questions with options and correct answers
+    user_answers = Column(JSON, nullable=False)  # Store user's selected answers
+    score = Column(Integer, nullable=False)  # Number of correct answers
+    total_questions = Column(Integer, nullable=False)
+    percentage = Column(Float, nullable=False)  # Score percentage
+    time_taken = Column(Integer, nullable=True)  # Time taken in seconds (optional)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    synced_to_ems = Column(Boolean, default=False)  # Track if synced to EMS
+    ems_sync_id = Column(String, nullable=True)  # Store EMS record ID after sync
+
+    user = relationship("User", back_populates="test_results")
+
+class SubjectData(Base):
+    __tablename__ = "subject_data"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    subject = Column(String, nullable=False)
+    topic = Column(String, nullable=False)
+    notes = Column(Text, nullable=False)  # Generated notes/content
+    provider = Column(String, default="groq")  # LLM provider used (groq, ollama)
+    youtube_recommendations = Column(JSON, default=[])  # Store YouTube video recommendations
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    synced_to_ems = Column(Boolean, default=False)  # Track if synced to EMS
+    ems_sync_id = Column(String, nullable=True)  # Store EMS record ID after sync
+
+    user = relationship("User", back_populates="subject_data")

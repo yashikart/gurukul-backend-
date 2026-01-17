@@ -9,6 +9,9 @@ from app.core.config import settings
 from app.models.all_models import User, Tenant, Profile, Summary, Flashcard, Reflection, StudentProgress
 from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse, UpdateProfile
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -67,6 +70,46 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 # Ideally we verify signature.
 # For this "Yellow Mandate", let's implement a robust check if we had the key.
 # If SUPABASE_KEY is missing, we might use a mock logic for dev (Warning: NOT PRODUCTION SAFE but enables progress)
+
+async def _create_ems_student_account(user: User):
+    """
+    Helper function to auto-create EMS student account when student registers in Gurukul
+    This is called asynchronously and failures are logged but don't block registration
+    """
+    if not settings.EMS_ADMIN_EMAIL or not settings.EMS_ADMIN_PASSWORD:
+        logger.warning("EMS admin credentials not configured. Skipping EMS student account creation.")
+        return
+    
+    try:
+        from app.services.ems_client import ems_client
+        
+        # Authenticate as admin with EMS
+        admin_token_response = await ems_client.login(
+            settings.EMS_ADMIN_EMAIL,
+            settings.EMS_ADMIN_PASSWORD
+        )
+        admin_token = admin_token_response.get("access_token")
+        
+        if not admin_token:
+            logger.warning("Failed to get EMS admin token. Skipping EMS student account creation.")
+            return
+        
+        # Create student in EMS
+        student_name = user.full_name or user.email.split("@")[0]
+        await ems_client.create_student(
+            admin_token=admin_token,
+            name=student_name,
+            email=user.email,
+            grade="N/A"  # Default grade, can be updated later by admin
+        )
+        
+        logger.info(f"Successfully created EMS student account for {user.email}")
+        
+    except Exception as e:
+        # Log the error but don't fail registration
+        logger.error(f"Failed to create EMS student account for {user.email}: {str(e)}")
+        # Registration still succeeds even if EMS account creation fails
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """Verify JWT token and return current user from SQLite database"""
@@ -159,6 +202,10 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
+    # Auto-create EMS student account if enabled and user is a student
+    if settings.EMS_AUTO_CREATE_STUDENTS and new_user.role.upper() == "STUDENT":
+        await _create_ems_student_account(new_user)
     
     # Create access token
     access_token = create_access_token(data={"sub": new_user.email})

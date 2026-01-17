@@ -24,6 +24,7 @@ import Announcements from './admin/Announcements';
 import LessonsView from './admin/LessonsView';
 import Analytics from './admin/Analytics';
 import ParentStudentLinking from './admin/ParentStudentLinking';
+import AdminStudentContent from './admin/AdminStudentContent';
 
 // Teacher Components
 import TeacherDashboard from './teacher/TeacherDashboard';
@@ -34,6 +35,7 @@ import Attendance from './teacher/Attendance';
 import CreateLesson from './teacher/CreateLesson';
 import MyTimetable from './teacher/MyTimetable';
 import MyAnnouncements from './teacher/MyAnnouncements';
+import StudentContent from './teacher/StudentContent';
 
 // Student Components
 import StudentDashboard from './student/StudentDashboard';
@@ -50,6 +52,7 @@ import MyChildren from './parent/MyChildren';
 import MyChildrenGrades from './parent/MyChildrenGrades';
 import MyChildrenAttendance from './parent/MyChildrenAttendance';
 import ParentAnnouncements from './parent/MyAnnouncements';
+import MyChildContent from './parent/MyChildContent';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -75,6 +78,7 @@ const Dashboard = () => {
             <Route path="/lessons" element={<LessonsView />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/parent-student-linking" element={<ParentStudentLinking />} />
+            <Route path="/students/:studentId/content" element={<AdminStudentContent />} />
           </>
         ) : isTeacher ? (
           // Teacher Routes
@@ -83,6 +87,7 @@ const Dashboard = () => {
             <Route path="/classes" element={<TeacherMyClasses />} />
             <Route path="/classes/:classId/students" element={<MyStudents />} />
             <Route path="/students" element={<MyStudents />} />
+            <Route path="/students/:studentId/content" element={<StudentContent />} />
             <Route path="/lessons" element={<MyLessons />} />
             <Route path="/lessons/create" element={<CreateLesson />} />
             <Route path="/lessons/edit/:id" element={<CreateLesson />} />
@@ -106,6 +111,7 @@ const Dashboard = () => {
           <>
             <Route index element={<ParentDashboard />} />
             <Route path="/children" element={<MyChildren />} />
+            <Route path="/children/:studentId/content" element={<MyChildContent />} />
             <Route path="/grades" element={<MyChildrenGrades />} />
             <Route path="/attendance" element={<MyChildrenAttendance />} />
             <Route path="/announcements" element={<ParentAnnouncements />} />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { schoolAdminAPI } from '../../services/api';
 
 const StudentsManagement = () => {
@@ -326,7 +327,14 @@ const StudentsManagement = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <Link
+                          to={`/dashboard/students/${student.id}/content`}
+                          className="text-indigo-600 hover:text-indigo-900 transition"
+                          title="View Generated Content"
+                        >
+                          📚 View Content
+                        </Link>
                         <button
                           onClick={() => handleEdit(student)}
                           className="text-indigo-600 hover:text-indigo-900 transition"

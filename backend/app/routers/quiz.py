@@ -2,14 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 from app.routers.auth import get_current_user
-from app.models.all_models import User
+from app.models.all_models import User, TestResult
+from app.core.database import get_db
 from app.core.config import settings
+from app.services.ems_sync import ems_sync
+from sqlalchemy.orm import Session
 import uuid
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# In-memory storage for quizzes (in production, use database)
+# In-memory storage for quizzes (temporary until submission)
 quiz_store = {}
 
 class QuizGenerateRequest(BaseModel):
@@ -121,8 +127,12 @@ Generate {request.num_questions} questions now:"""
         raise HTTPException(status_code=500, detail=f"Failed to generate quiz: {str(e)}")
 
 @router.post("/submit")
-async def submit_quiz(request: QuizSubmitRequest, current_user: User = Depends(get_current_user)):
-    """Submit quiz answers and get results"""
+async def submit_quiz(
+    request: QuizSubmitRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Submit quiz answers and get results - saves to DB and syncs to EMS"""
     if request.quiz_id not in quiz_store:
         raise HTTPException(status_code=404, detail="Quiz not found")
     
@@ -132,11 +142,15 @@ async def submit_quiz(request: QuizSubmitRequest, current_user: User = Depends(g
     correct_count = 0
     wrong_count = 0
     results = []
+    user_answers_dict = {}
     
     for q in questions:
         question_id = q["question_id"]
         user_answer = request.answers.get(question_id, "").strip().upper()
         correct_answer = q["correct_answer"]
+        
+        # Store user answer
+        user_answers_dict[question_id] = user_answer if user_answer else "SKIPPED"
         
         # Check if answer is correct
         is_correct = (user_answer == correct_answer)
@@ -157,8 +171,55 @@ async def submit_quiz(request: QuizSubmitRequest, current_user: User = Depends(g
     
     score_percentage = round((correct_count / len(questions)) * 100, 2) if questions else 0
     
+    # Save test result to database
+    test_result = TestResult(
+        user_id=current_user.id,
+        subject=quiz_data["subject"],
+        topic=quiz_data["topic"],
+        difficulty=quiz_data["difficulty"],
+        num_questions=len(questions),
+        questions=[q for q in questions],  # Store all question data
+        user_answers=user_answers_dict,
+        score=correct_count,
+        total_questions=len(questions),
+        percentage=score_percentage
+    )
+    db.add(test_result)
+    db.commit()
+    db.refresh(test_result)
+    
+    # Sync to EMS asynchronously (don't block response)
+    try:
+        # Get school_id from user if available (from EMS authentication)
+        school_id = getattr(current_user, 'school_id', None)
+        
+        ems_sync_result = await ems_sync.sync_test_result(
+            gurukul_id=test_result.id,
+            student_email=current_user.email,
+            school_id=school_id,
+            subject=quiz_data["subject"],
+            topic=quiz_data["topic"],
+            difficulty=quiz_data["difficulty"],
+            num_questions=len(questions),
+            questions=[q for q in questions],
+            user_answers=user_answers_dict,
+            score=correct_count,
+            total_questions=len(questions),
+            percentage=score_percentage
+        )
+        
+        if ems_sync_result:
+            test_result.ems_sync_id = ems_sync_result.get("id")
+            test_result.synced_to_ems = True
+            db.commit()
+            logger.info(f"Synced test result {test_result.id} to EMS")
+    except Exception as e:
+        logger.error(f"Failed to sync test result {test_result.id} to EMS: {str(e)}")
+        # Don't fail the request if sync fails
+    
     return {
         "quiz_id": request.quiz_id,
+        "test_result_id": test_result.id,
         "score": correct_count,
         "total_questions": len(questions),
         "correct_answers": correct_count,
@@ -166,3 +227,27 @@ async def submit_quiz(request: QuizSubmitRequest, current_user: User = Depends(g
         "score_percentage": score_percentage,
         "results": results
     }
+
+
+@router.get("/results")
+async def get_user_test_results(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all test results for the current user"""
+    test_results = db.query(TestResult).filter(
+        TestResult.user_id == current_user.id
+    ).order_by(TestResult.created_at.desc()).all()
+    
+    return [{
+        "id": t.id,
+        "subject": t.subject,
+        "topic": t.topic,
+        "difficulty": t.difficulty,
+        "num_questions": t.num_questions,
+        "score": t.score,
+        "total_questions": t.total_questions,
+        "percentage": t.percentage,
+        "time_taken": t.time_taken,
+        "created_at": t.created_at.isoformat() if t.created_at else None
+    } for t in test_results]

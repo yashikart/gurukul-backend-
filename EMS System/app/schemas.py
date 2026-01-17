@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import date, datetime
 from app.models import UserRole
 
@@ -551,6 +551,131 @@ class AttendanceResponse(BaseModel):
     created_at: datetime
     student_name: Optional[str] = None
     class_name: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+
+# Student Content Sync Schemas (from Gurukul)
+
+class StudentContentSyncBase(BaseModel):
+    student_email: EmailStr
+    school_id: Optional[int] = None
+    gurukul_id: str  # Gurukul record ID for tracking
+
+
+class StudentSummarySync(StudentContentSyncBase):
+    title: str
+    content: str
+    source: Optional[str] = None
+    source_type: str = "text"
+    extra_metadata: Optional[Dict] = None  # Renamed from 'metadata' (reserved word)
+
+
+class StudentFlashcardSync(StudentContentSyncBase):
+    question: str
+    answer: str
+    question_type: str = "conceptual"
+    days_until_review: int = 0
+    confidence: float = 0.0
+
+
+class StudentTestResultSync(StudentContentSyncBase):
+    subject: str
+    topic: str
+    difficulty: str = "medium"
+    num_questions: int
+    questions: Dict  # All questions with options and correct answers
+    user_answers: Dict  # Student's selected answers
+    score: int
+    total_questions: int
+    percentage: float
+    time_taken: Optional[int] = None
+
+
+class StudentSubjectDataSync(StudentContentSyncBase):
+    subject: str
+    topic: str
+    notes: str
+    provider: str = "groq"
+    youtube_recommendations: Optional[List[Dict]] = None
+
+
+class StudentContentSyncResponse(BaseModel):
+    id: int
+    message: str
+    synced_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# Response schemas for viewing student-generated content
+class StudentSummaryResponse(BaseModel):
+    id: int
+    gurukul_id: str
+    student_id: int
+    student_name: str
+    student_email: str
+    title: str
+    content: str
+    source: Optional[str] = None
+    source_type: Optional[str] = None
+    extra_metadata: Optional[Dict] = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class StudentFlashcardResponse(BaseModel):
+    id: int
+    gurukul_id: str
+    student_id: int
+    student_name: str
+    student_email: str
+    question: str
+    answer: str
+    question_type: Optional[str] = None
+    days_until_review: int
+    confidence: float
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class StudentTestResultResponse(BaseModel):
+    id: int
+    gurukul_id: str
+    student_id: int
+    student_name: str
+    student_email: str
+    subject: str
+    topic: str
+    difficulty: Optional[str] = None
+    total_questions: int
+    correct_answers: int
+    score_percentage: float
+    results_data: Optional[Dict] = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class StudentSubjectDataResponse(BaseModel):
+    id: int
+    gurukul_id: str
+    student_id: int
+    student_name: str
+    student_email: str
+    subject: str
+    topic: str
+    notes: str
+    provider: Optional[str] = None
+    youtube_recommendations: Optional[List[Dict]] = None
+    created_at: datetime
     
     class Config:
         from_attributes = True

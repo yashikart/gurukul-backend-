@@ -18,8 +18,9 @@ from app.email_service import (
 )
 from app.dependencies import get_current_user
 from app.auth import verify_password
+from app.schemas import UserResponse
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(prefix="/v1/auth", tags=["authentication"])
 
 
 @router.post("/login", response_model=Token)
@@ -29,10 +30,11 @@ def login(
 ):
     """
     Authenticate user and return JWT token.
-    Supports both OAuth2 form data (username/password) and JSON (email/password).
+    Supports OAuth2 form data (username/password).
     Token contains: user_id, role, school_id
     
     Note: In Swagger UI, 'username' field should contain the email address.
+    For JSON requests, use /v1/auth/login-json instead.
     """
     # OAuth2PasswordRequestForm uses 'username' field, but we use email
     # So we treat 'username' as email
@@ -97,8 +99,24 @@ def login_json(credentials: LoginRequest, db: Session = Depends(get_db)):
             )
     
     # Now authenticate
+    # Log authentication attempt (without password)
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Login attempt for email: {credentials.email}")
+    
     user = authenticate_user(db, credentials.email, credentials.password)
     if not user:
+        # Provide more detailed error information
+        db_user = db.query(User).filter(User.email == credentials.email).first()
+        if not db_user:
+            logger.warning(f"Login failed: User with email {credentials.email} not found")
+        elif not db_user.is_active:
+            logger.warning(f"Login failed: User {credentials.email} is inactive")
+        elif db_user.password is None:
+            logger.warning(f"Login failed: User {credentials.email} has no password set")
+        else:
+            logger.warning(f"Login failed: Password mismatch for {credentials.email}")
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -297,4 +315,18 @@ def change_password(
     return ChangePasswordResponse(
         success=True,
         message="Password changed successfully."
+    )
+
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    """
+    Get current authenticated user information.
+    """
+    return UserResponse(
+        id=current_user.id,
+        name=current_user.name,
+        email=current_user.email,
+        role=current_user.role,
+        school_id=current_user.school_id
     )

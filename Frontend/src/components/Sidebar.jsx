@@ -12,7 +12,13 @@ import {
     FaCog,
     FaSignOutAlt,
     FaUserCircle,
-    FaFlipboard
+    FaFlipboard,
+    FaCalendarAlt,
+    FaBullhorn,
+    FaCheckCircle,
+    FaChalkboardTeacher,
+    FaGraduationCap,
+    FaFolder
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,10 +38,21 @@ const Sidebar = () => {
         { icon: FaComments, label: "Chatbot", path: "/chatbot" },
         { icon: FaClipboardList, label: "Test", path: "/test" },
         { icon: FaFlipboard, label: "Flashcards", path: "/flashcards" },
+        { icon: FaFolder, label: "My Content", path: "/my-content" },
         { icon: FaVideo, label: "Lectures", path: "/lectures" },
         { icon: FaRobot, label: "Agent Simulator", path: "/agent-simulator" },
         { icon: FaUserAstronaut, label: "Avatar", path: "/avatar" },
     ];
+
+    // EMS-specific menu items for students
+    const emsMenuItems = currentRole === 'student' ? [
+        { icon: FaBookOpen, label: "My Classes", path: "/ems/classes" },
+        { icon: FaCalendarAlt, label: "My Schedule", path: "/ems/schedule" },
+        { icon: FaBullhorn, label: "Announcements", path: "/ems/announcements" },
+        { icon: FaCheckCircle, label: "Attendance", path: "/ems/attendance" },
+        { icon: FaChalkboardTeacher, label: "My Teachers", path: "/ems/teachers" },
+        { icon: FaGraduationCap, label: "My Grades", path: "/ems/grades" },
+    ] : [];
 
 
 
@@ -94,6 +111,32 @@ const Sidebar = () => {
                                 <span className="text-sm font-medium tracking-wide">{item.label}</span>
                             </NavLink>
                         ))}
+
+                        {/* EMS Menu Items Separator */}
+                        {emsMenuItems.length > 0 && (
+                            <>
+                                <div className="h-px bg-white/10 my-2" />
+                                <div className="px-4 py-2">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">School</span>
+                                </div>
+                                {emsMenuItems.map((item, index) => (
+                                    <NavLink
+                                        key={`ems-${index}`}
+                                        to={item.path}
+                                        onClick={closeSidebar}
+                                        className={({ isActive }) => `
+                            flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
+                            ${isActive
+                                                ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg border border-white/20 transform scale-105'
+                                                : 'bg-white/5 text-gray-300 hover:text-white hover:pl-6 border border-transparent'}
+                          `}
+                                    >
+                                        <item.icon className="text-lg opacity-80 group-hover:opacity-100" />
+                                        <span className="text-sm font-medium tracking-wide">{item.label}</span>
+                                    </NavLink>
+                                ))}
+                            </>
+                        )}
                     </div>
 
                     {/* Footer Actions */}

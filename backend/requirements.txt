@@ -29,5 +29,6 @@ numpy<2
 passlib[bcrypt]
 bcrypt
 email-validator
+httpx>=0.24.0
 
 

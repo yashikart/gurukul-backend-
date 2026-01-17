@@ -21,6 +21,13 @@ import Avatar from './pages/Avatar';
 import Settings from './pages/Settings';
 import Lectures from './pages/Lectures';
 import Flashcards from './pages/Flashcards';
+import MyClasses from './pages/ems/MyClasses';
+import MySchedule from './pages/ems/MySchedule';
+import MyAnnouncements from './pages/ems/MyAnnouncements';
+import MyAttendance from './pages/ems/MyAttendance';
+import MyTeachers from './pages/ems/MyTeachers';
+import MyGrades from './pages/ems/MyGrades';
+import MyContent from './pages/MyContent';
 import DraggableAvatar from './components/DraggableAvatar';
 import { KarmaProvider } from './contexts/KarmaContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -186,6 +193,69 @@ const App = () => {
                         <Route path="/avatar" element={<PrivateRoute><Avatar /></PrivateRoute>} />
                         <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
                         <Route path="/lectures" element={<PrivateRoute><Lectures /></PrivateRoute>} />
+                        <Route path="/my-content" element={<PrivateRoute><RoleGuard allowedRoles={['student']}><MyContent /></RoleGuard></PrivateRoute>} />
+
+                        {/* EMS Student Routes */}
+                        <Route
+                          path="/ems/classes"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['student']}>
+                                <MyClasses />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
+                        <Route
+                          path="/ems/schedule"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['student']}>
+                                <MySchedule />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
+                        <Route
+                          path="/ems/announcements"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['student']}>
+                                <MyAnnouncements />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
+                        <Route
+                          path="/ems/attendance"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['student']}>
+                                <MyAttendance />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
+                        <Route
+                          path="/ems/teachers"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['student']}>
+                                <MyTeachers />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
+                        <Route
+                          path="/ems/grades"
+                          element={
+                            <PrivateRoute>
+                              <RoleGuard allowedRoles={['student']}>
+                                <MyGrades />
+                              </RoleGuard>
+                            </PrivateRoute>
+                          }
+                        />
 
                         {/* EMS + Governance Routes */}
                         <Route

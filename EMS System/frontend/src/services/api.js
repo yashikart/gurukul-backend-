@@ -41,11 +41,11 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (email, password) => {
-    const response = await api.post('/auth/login-json', { email, password });
+    const response = await api.post('/v1/auth/login-json', { email, password });
     return response.data;
   },
   setPassword: async (token, password) => {
-    const response = await api.post('/auth/set-password', { token, password });
+    const response = await api.post('/v1/auth/set-password', { token, password });
     return response.data;
   },
 };
@@ -406,6 +406,24 @@ export const schoolAdminAPI = {
     const response = await api.get('/admin/analytics');
     return response.data;
   },
+  
+  // Student-generated content (Gurukul)
+  getStudentSummaries: async (studentId) => {
+    const response = await api.get(`/admin/students/${studentId}/content/summaries`);
+    return response.data;
+  },
+  getStudentFlashcards: async (studentId) => {
+    const response = await api.get(`/admin/students/${studentId}/content/flashcards`);
+    return response.data;
+  },
+  getStudentTestResults: async (studentId) => {
+    const response = await api.get(`/admin/students/${studentId}/content/test-results`);
+    return response.data;
+  },
+  getStudentSubjectData: async (studentId) => {
+    const response = await api.get(`/admin/students/${studentId}/content/subject-data`);
+    return response.data;
+  },
 };
 
 // Teacher API
@@ -465,6 +483,24 @@ export const teacherAPI = {
     const response = await api.get('/teacher/attendance', { params });
     return response.data;
   },
+  // Student-generated content (Gurukul)
+  getStudentSummaries: async (studentId) => {
+    const response = await api.get(`/teacher/students/${studentId}/content/summaries`);
+    return response.data;
+  },
+  getStudentFlashcards: async (studentId) => {
+    const response = await api.get(`/teacher/students/${studentId}/content/flashcards`);
+    return response.data;
+  },
+  getStudentTestResults: async (studentId) => {
+    const response = await api.get(`/teacher/students/${studentId}/content/test-results`);
+    return response.data;
+  },
+  getStudentSubjectData: async (studentId) => {
+    const response = await api.get(`/teacher/students/${studentId}/content/subject-data`);
+    return response.data;
+  },
+  
   markAttendance: async (attendanceData) => {
     const response = await api.post('/teacher/attendance/mark', attendanceData);
     return response.data;
@@ -563,6 +599,24 @@ export const parentAPI = {
   // Announcements
   getMyAnnouncements: async () => {
     const response = await api.get('/parent/announcements');
+    return response.data;
+  },
+  
+  // Student-generated content (Gurukul)
+  getChildSummaries: async (childId) => {
+    const response = await api.get(`/parent/children/${childId}/content/summaries`);
+    return response.data;
+  },
+  getChildFlashcards: async (childId) => {
+    const response = await api.get(`/parent/children/${childId}/content/flashcards`);
+    return response.data;
+  },
+  getChildTestResults: async (childId) => {
+    const response = await api.get(`/parent/children/${childId}/content/test-results`);
+    return response.data;
+  },
+  getChildSubjectData: async (childId) => {
+    const response = await api.get(`/parent/children/${childId}/content/subject-data`);
     return response.data;
   },
 };

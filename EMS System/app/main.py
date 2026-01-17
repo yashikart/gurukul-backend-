@@ -5,9 +5,13 @@ from app.routers import auth, super_admin, schools, dashboard, teacher, student,
 from app.routers.admin import dashboard as admin_dashboard
 from app.config import settings
 
-# Note: Database tables will be created on first request or via setup script
-# Uncomment the line below if you want to create tables on startup
-# Base.metadata.create_all(bind=engine)
+# Create database tables on startup
+try:
+    from app.models import StudentSummary, StudentFlashcard, StudentTestResult, StudentSubjectData
+    Base.metadata.create_all(bind=engine)
+    print("[Startup] Database tables created/verified successfully!")
+except Exception as e:
+    print(f"[Startup] Database table creation warning: {e}")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -22,9 +26,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "http://localhost:5173",  # Vite default port
+        "http://localhost:5173",  # Vite default port (Gurukul frontend)
         "http://127.0.0.1:5173",
-        "http://localhost:3001",  # Additional ports
+        "http://localhost:3001",  # EMS frontend port
         "http://127.0.0.1:3001",
         # Add production frontend URL here when deploying
     ],

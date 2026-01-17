@@ -5,7 +5,7 @@ All endpoints are filtered by school_id to ensure data isolation.
 
 from typing import List, Optional
 from datetime import datetime, date, time, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from app.database import get_db
@@ -13,7 +13,8 @@ from app.dependencies import get_current_admin
 from app.models import (
     User, UserRole, School, Subject, Class, ClassStudent,
     StudentParent, Lesson, Lecture, TimetableSlot,
-    Holiday, Event, Announcement
+    Holiday, Event, Announcement,
+    StudentSummary, StudentFlashcard, StudentTestResult, StudentSubjectData
 )
 from app.schemas import (
     TeacherCreate, TeacherResponse, TeacherUpdate,
@@ -28,7 +29,11 @@ from app.schemas import (
     StudentWithParentsResponse, ParentWithStudentsResponse,
     ParentStudentStatsResponse,
     AnalyticsResponse, TeacherWorkloadResponse, GradeDistributionResponse,
-    SubjectDistributionResponse, ParentStudentRelationResponse
+    SubjectDistributionResponse, ParentStudentRelationResponse,
+    StudentSummarySync, StudentFlashcardSync, StudentTestResultSync,
+    StudentSubjectDataSync, StudentContentSyncResponse,
+    StudentSummaryResponse, StudentFlashcardResponse,
+    StudentTestResultResponse, StudentSubjectDataResponse
 )
 from app.utils.password_generator import generate_unique_password
 from app.utils.excel_upload import upload_teachers_excel, upload_students_excel, upload_parents_excel
@@ -528,6 +533,52 @@ async def create_student(
         parent_emails=parent_emails if parent_emails else None,
         parent_names=parent_names if parent_names else None
     )
+
+
+@router.post("/students/{student_id}/reset-password")
+async def reset_student_password(
+    student_id: int,
+    new_password: str = Body(..., embed=True, description="New password to set"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """
+    Reset a student's password to a specific value.
+    Useful when the password in the email doesn't match what's stored.
+    """
+    school_id = current_user.school_id
+    
+    # Get student
+    student = db.query(User).filter(
+        User.id == student_id,
+        User.role == UserRole.STUDENT,
+        User.school_id == school_id
+    ).first()
+    
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found"
+        )
+    
+    # Validate password length
+    if len(new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters long"
+        )
+    
+    # Hash and set new password
+    hashed_password = get_password_hash(new_password)
+    student.password = hashed_password
+    db.commit()
+    db.refresh(student)
+    
+    return {
+        "message": f"Password reset successfully for student {student.name} ({student.email})",
+        "student_id": student.id,
+        "student_email": student.email
+    }
 
 
 @router.post("/students/upload-excel", response_model=ExcelUploadResponse)
@@ -2670,3 +2721,452 @@ def get_analytics(
         linked_students=linked_students,
         unlinked_students=unlinked_students
     )
+
+
+# ==================== STUDENT CONTENT SYNC (from Gurukul) ====================
+
+@router.post("/student-content/summaries", response_model=StudentContentSyncResponse, status_code=status.HTTP_201_CREATED)
+async def sync_student_summary(
+    summary_data: StudentSummarySync,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Sync a student summary from Gurukul to EMS"""
+    # Find student by email
+    student = db.query(User).filter(
+        User.email == summary_data.student_email,
+        User.role == UserRole.STUDENT,
+        User.is_active == True
+    ).first()
+    
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with email {summary_data.student_email} not found"
+        )
+    
+    # Use provided school_id or student's school_id
+    school_id = summary_data.school_id or student.school_id
+    if not school_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="School ID is required"
+        )
+    
+    # Check if already synced (prevent duplicates)
+    existing = db.query(StudentSummary).filter(
+        StudentSummary.gurukul_id == summary_data.gurukul_id
+    ).first()
+    
+    if existing:
+        return StudentContentSyncResponse(
+            id=existing.id,
+            message="Summary already synced",
+            synced_at=existing.synced_at
+        )
+    
+    # Create new summary record
+    student_summary = StudentSummary(
+        student_id=student.id,
+        school_id=school_id,
+        gurukul_id=summary_data.gurukul_id,
+        title=summary_data.title,
+        content=summary_data.content,
+        source=summary_data.source,
+        source_type=summary_data.source_type or "text",
+        extra_metadata=summary_data.extra_metadata or {}
+    )
+    
+    db.add(student_summary)
+    db.commit()
+    db.refresh(student_summary)
+    
+    return StudentContentSyncResponse(
+        id=student_summary.id,
+        message="Summary synced successfully",
+        synced_at=student_summary.synced_at
+    )
+
+
+@router.post("/student-content/flashcards", response_model=StudentContentSyncResponse, status_code=status.HTTP_201_CREATED)
+async def sync_student_flashcard(
+    flashcard_data: StudentFlashcardSync,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Sync a student flashcard from Gurukul to EMS"""
+    # Find student by email
+    student = db.query(User).filter(
+        User.email == flashcard_data.student_email,
+        User.role == UserRole.STUDENT,
+        User.is_active == True
+    ).first()
+    
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with email {flashcard_data.student_email} not found"
+        )
+    
+    # Use provided school_id or student's school_id
+    school_id = flashcard_data.school_id or student.school_id
+    if not school_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="School ID is required"
+        )
+    
+    # Check if already synced
+    existing = db.query(StudentFlashcard).filter(
+        StudentFlashcard.gurukul_id == flashcard_data.gurukul_id
+    ).first()
+    
+    if existing:
+        return StudentContentSyncResponse(
+            id=existing.id,
+            message="Flashcard already synced",
+            synced_at=existing.synced_at
+        )
+    
+    # Create new flashcard record
+    student_flashcard = StudentFlashcard(
+        student_id=student.id,
+        school_id=school_id,
+        gurukul_id=flashcard_data.gurukul_id,
+        question=flashcard_data.question,
+        answer=flashcard_data.answer,
+        question_type=flashcard_data.question_type,
+        days_until_review=flashcard_data.days_until_review,
+        confidence=flashcard_data.confidence
+    )
+    
+    db.add(student_flashcard)
+    db.commit()
+    db.refresh(student_flashcard)
+    
+    return StudentContentSyncResponse(
+        id=student_flashcard.id,
+        message="Flashcard synced successfully",
+        synced_at=student_flashcard.synced_at
+    )
+
+
+@router.post("/student-content/test-results", response_model=StudentContentSyncResponse, status_code=status.HTTP_201_CREATED)
+async def sync_student_test_result(
+    test_data: StudentTestResultSync,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Sync a student test result from Gurukul to EMS"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Syncing test result for student email: {test_data.student_email}, gurukul_id: {test_data.gurukul_id}")
+    
+    # Find student by email
+    student = db.query(User).filter(
+        User.email == test_data.student_email,
+        User.role == UserRole.STUDENT,
+        User.is_active == True
+    ).first()
+    
+    if not student:
+        logger.error(f"Student not found for email: {test_data.student_email}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with email {test_data.student_email} not found"
+        )
+    
+    logger.info(f"Found student: {student.name} (ID: {student.id})")
+    
+    # Use provided school_id or student's school_id
+    school_id = test_data.school_id or student.school_id
+    if not school_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="School ID is required"
+        )
+    
+    # Check if already synced
+    existing = db.query(StudentTestResult).filter(
+        StudentTestResult.gurukul_id == test_data.gurukul_id
+    ).first()
+    
+    if existing:
+        return StudentContentSyncResponse(
+            id=existing.id,
+            message="Test result already synced",
+            synced_at=existing.synced_at
+        )
+    
+    # Create new test result record
+    test_result = StudentTestResult(
+        student_id=student.id,
+        school_id=school_id,
+        gurukul_id=test_data.gurukul_id,
+        subject=test_data.subject,
+        topic=test_data.topic,
+        difficulty=test_data.difficulty,
+        num_questions=test_data.num_questions,
+        questions=test_data.questions,
+        user_answers=test_data.user_answers,
+        score=test_data.score,
+        total_questions=test_data.total_questions,
+        percentage=test_data.percentage,
+        time_taken=test_data.time_taken
+    )
+    
+    db.add(test_result)
+    db.commit()
+    db.refresh(test_result)
+    
+    return StudentContentSyncResponse(
+        id=test_result.id,
+        message="Test result synced successfully",
+        synced_at=test_result.synced_at
+    )
+
+
+@router.post("/student-content/subject-data", response_model=StudentContentSyncResponse, status_code=status.HTTP_201_CREATED)
+async def sync_student_subject_data(
+    subject_data: StudentSubjectDataSync,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Sync student subject explorer data from Gurukul to EMS"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Syncing subject data for student email: {subject_data.student_email}, gurukul_id: {subject_data.gurukul_id}")
+    
+    # Find student by email
+    student = db.query(User).filter(
+        User.email == subject_data.student_email,
+        User.role == UserRole.STUDENT,
+        User.is_active == True
+    ).first()
+    
+    if not student:
+        logger.error(f"Student not found for email: {subject_data.student_email}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with email {subject_data.student_email} not found"
+        )
+    
+    logger.info(f"Found student: {student.name} (ID: {student.id})")
+    
+    # Use provided school_id or student's school_id
+    school_id = subject_data.school_id or student.school_id
+    if not school_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="School ID is required"
+        )
+    
+    # Check if already synced
+    existing = db.query(StudentSubjectData).filter(
+        StudentSubjectData.gurukul_id == subject_data.gurukul_id
+    ).first()
+    
+    if existing:
+        return StudentContentSyncResponse(
+            id=existing.id,
+            message="Subject data already synced",
+            synced_at=existing.synced_at
+        )
+    
+    # Create new subject data record
+    student_subject_data = StudentSubjectData(
+        student_id=student.id,
+        school_id=school_id,
+        gurukul_id=subject_data.gurukul_id,
+        subject=subject_data.subject,
+        topic=subject_data.topic,
+        notes=subject_data.notes,
+        provider=subject_data.provider,
+        youtube_recommendations=subject_data.youtube_recommendations or []
+    )
+    
+    db.add(student_subject_data)
+    db.commit()
+    db.refresh(student_subject_data)
+    
+    return StudentContentSyncResponse(
+        id=student_subject_data.id,
+        message="Subject data synced successfully",
+        synced_at=student_subject_data.synced_at
+    )
+
+
+# ==================== VIEW STUDENT-GENERATED CONTENT (GURUKUL) ====================
+
+@router.get("/students/{student_id}/content/summaries", response_model=List[StudentSummaryResponse])
+def view_student_summaries(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Get all summaries generated by a student in Gurukul (admin can view any student in their school)"""
+    # Verify student is in admin's school
+    student = db.query(User).filter(
+        User.id == student_id,
+        User.role == UserRole.STUDENT,
+        User.school_id == current_user.school_id
+    ).first()
+    
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found in your school"
+        )
+    
+    # Get summaries
+    summaries = db.query(StudentSummary).filter(
+        StudentSummary.student_id == student_id
+    ).order_by(StudentSummary.created_at.desc()).all()
+    
+    student_name = student.name if student else "Unknown"
+    student_email = student.email if student else "Unknown"
+    
+    return [StudentSummaryResponse(
+        id=s.id,
+        gurukul_id=s.gurukul_id,
+        student_id=s.student_id,
+        student_name=student_name,
+        student_email=student_email,
+        title=s.title,
+        content=s.content,
+        source=s.source,
+        source_type=s.source_type,
+        extra_metadata=s.extra_metadata,
+        created_at=s.created_at
+    ) for s in summaries]
+
+
+@router.get("/students/{student_id}/content/flashcards", response_model=List[StudentFlashcardResponse])
+def view_student_flashcards(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Get all flashcards generated by a student in Gurukul (admin can view any student in their school)"""
+    # Verify student is in admin's school
+    student = db.query(User).filter(
+        User.id == student_id,
+        User.role == UserRole.STUDENT,
+        User.school_id == current_user.school_id
+    ).first()
+    
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found in your school"
+        )
+    
+    # Get flashcards
+    flashcards = db.query(StudentFlashcard).filter(
+        StudentFlashcard.student_id == student_id
+    ).order_by(StudentFlashcard.created_at.desc()).all()
+    
+    student_name = student.name if student else "Unknown"
+    student_email = student.email if student else "Unknown"
+    
+    return [StudentFlashcardResponse(
+        id=f.id,
+        gurukul_id=f.gurukul_id,
+        student_id=f.student_id,
+        student_name=student_name,
+        student_email=student_email,
+        question=f.question,
+        answer=f.answer,
+        question_type=f.question_type,
+        days_until_review=f.days_until_review,
+        confidence=f.confidence,
+        created_at=f.created_at
+    ) for f in flashcards]
+
+
+@router.get("/students/{student_id}/content/test-results", response_model=List[StudentTestResultResponse])
+def view_student_test_results(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Get all test results for a student from Gurukul (admin can view any student in their school)"""
+    # Verify student is in admin's school
+    student = db.query(User).filter(
+        User.id == student_id,
+        User.role == UserRole.STUDENT,
+        User.school_id == current_user.school_id
+    ).first()
+    
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found in your school"
+        )
+    
+    # Get test results
+    test_results = db.query(StudentTestResult).filter(
+        StudentTestResult.student_id == student_id
+    ).order_by(StudentTestResult.created_at.desc()).all()
+    
+    student_name = student.name if student else "Unknown"
+    student_email = student.email if student else "Unknown"
+    
+    return [StudentTestResultResponse(
+        id=t.id,
+        gurukul_id=t.gurukul_id,
+        student_id=t.student_id,
+        student_name=student_name,
+        student_email=student_email,
+        subject=t.subject,
+        topic=t.topic,
+        difficulty=t.difficulty,
+        total_questions=t.total_questions,
+        correct_answers=t.score,  # score is the number of correct answers
+        score_percentage=t.percentage,  # percentage is the score percentage
+        results_data={"questions": t.questions, "user_answers": t.user_answers} if t.questions and t.user_answers else None,
+        created_at=t.created_at
+    ) for t in test_results]
+
+
+@router.get("/students/{student_id}/content/subject-data", response_model=List[StudentSubjectDataResponse])
+def view_student_subject_data(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Get all subject explorer data for a student from Gurukul (admin can view any student in their school)"""
+    # Verify student is in admin's school
+    student = db.query(User).filter(
+        User.id == student_id,
+        User.role == UserRole.STUDENT,
+        User.school_id == current_user.school_id
+    ).first()
+    
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found in your school"
+        )
+    
+    # Get subject data
+    subject_data = db.query(StudentSubjectData).filter(
+        StudentSubjectData.student_id == student_id
+    ).order_by(StudentSubjectData.created_at.desc()).all()
+    
+    student_name = student.name if student else "Unknown"
+    student_email = student.email if student else "Unknown"
+    
+    return [StudentSubjectDataResponse(
+        id=s.id,
+        gurukul_id=s.gurukul_id,
+        student_id=s.student_id,
+        student_name=student_name,
+        student_email=student_email,
+        subject=s.subject,
+        topic=s.topic,
+        notes=s.notes,
+        provider=s.provider,
+        youtube_recommendations=s.youtube_recommendations,
+        created_at=s.created_at
+    ) for s in subject_data]

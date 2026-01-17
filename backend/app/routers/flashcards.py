@@ -16,9 +16,13 @@ from app.core.database import get_db
 # from app.core.memory_store import flashcards_db # Deprecated
 from app.models.all_models import Flashcard as DBFlashcard, User
 from app.routers.auth import get_current_user
+from app.services.ems_sync import ems_sync
 from app.schemas.flashcard import (
     GenerateFlashcardsRequest, Flashcard
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -325,13 +329,57 @@ This is generation attempt #{int(time.time() % 100)} - ensure maximum variety!""
             db_cards.append(db_card)
         
         db.commit()
-        # db.refresh(db_cards) # Refresh might be needed if we return them
+        db.refresh(db_cards[0])  # Refresh one to ensure IDs are available
+        
+        # Sync each flashcard to EMS asynchronously (don't block response)
+        for db_card in db_cards:
+            try:
+                # Get school_id from user if available
+                school_id = getattr(current_user, 'school_id', None)
+                
+                ems_sync_result = await ems_sync.sync_flashcard(
+                    gurukul_id=db_card.id,
+                    student_email=current_user.email,
+                    school_id=school_id,
+                    question=db_card.question,
+                    answer=db_card.answer,
+                    question_type=db_card.question_type,
+                    days_until_review=db_card.days_until_review,
+                    confidence=db_card.confidence
+                )
+                
+                if ems_sync_result:
+                    logger.info(f"Synced flashcard {db_card.id} to EMS")
+            except Exception as e:
+                logger.error(f"Failed to sync flashcard {db_card.id} to EMS: {str(e)}")
+                # Don't fail the request if sync fails
         
         return {"message": f"Generated {len(new_cards)} cards", "cards": new_cards}
         
     except Exception as e:
         print(f"[Flashcards] Critical Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("")
+async def get_user_flashcards(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all flashcards for the current user"""
+    flashcards = db.query(DBFlashcard).filter(
+        DBFlashcard.user_id == current_user.id
+    ).order_by(DBFlashcard.created_at.desc()).all()
+    
+    return [{
+        "id": f.id,
+        "question": f.question,
+        "answer": f.answer,
+        "question_type": f.question_type,
+        "days_until_review": f.days_until_review,
+        "confidence": f.confidence,
+        "created_at": f.created_at.isoformat() if f.created_at else None
+    } for f in flashcards]
+
 
 @router.get("/download_pdf")
 async def download_flashcards_pdf(

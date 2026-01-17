@@ -4,12 +4,16 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.routers.auth import get_current_user
 from app.models.all_models import User, Summary as DBSummary
+from app.services.ems_sync import ems_sync
 from typing import Optional
 from app.schemas.summary import (
     PDFSummarizerResponse, DOCSummarizerResponse,
     SummarizerRequest, SummarizerResponse
 )
 from app.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Import specific summarizers
 try:
@@ -75,17 +79,45 @@ async def summarize_pdf(
         if "success" not in result:
             result["success"] = True
             
-        if save_summary:
-            print(f"[Summarizer] Saving summary to DB for user {current_user.email}")
-            new_summary = DBSummary(
-                user_id=current_user.id,
-                title=summary_title or f"PDF Summary - {file.filename}",
-                content=result.get("overall_summary", ""), # Assuming this is the field
+        # Always save summary to DB (enable sync to EMS)
+        summary_title_final = summary_title or f"PDF Summary - {file.filename}"
+        summary_content = result.get("overall_summary", "")
+        
+        new_summary = DBSummary(
+            user_id=current_user.id,
+            title=summary_title_final,
+            content=summary_content,
+            source=file.filename,
+            source_type="pdf"
+        )
+        db.add(new_summary)
+        db.commit()
+        db.refresh(new_summary)
+        
+        # Sync to EMS asynchronously (don't block response)
+        try:
+            # Get school_id from user if available
+            school_id = getattr(current_user, 'school_id', None)
+            
+            ems_sync_result = await ems_sync.sync_summary(
+                gurukul_id=new_summary.id,
+                student_email=current_user.email,
+                school_id=school_id,
+                title=summary_title_final,
+                content=summary_content,
                 source=file.filename,
                 source_type="pdf"
             )
-            db.add(new_summary)
-            db.commit()
+            
+            if ems_sync_result:
+                # Store EMS sync ID in metadata if needed
+                new_summary.metadata_ = new_summary.metadata_ or {}
+                new_summary.metadata_["ems_sync_id"] = ems_sync_result.get("id")
+                db.commit()
+                logger.info(f"Synced summary {new_summary.id} to EMS")
+        except Exception as e:
+            logger.error(f"Failed to sync summary {new_summary.id} to EMS: {str(e)}")
+            # Don't fail the request if sync fails
             
         return result
     except Exception as e:
