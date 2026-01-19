@@ -39,15 +39,25 @@ class EMSSyncService:
     async def _get_admin_token(self) -> Optional[str]:
         """Get admin token for EMS authentication"""
         if not self.admin_email or not self.admin_password:
-            logger.warning("EMS admin credentials not configured. Cannot sync content.")
+            logger.error("EMS admin credentials not configured. Cannot sync content.")
+            logger.error(f"EMS_ADMIN_EMAIL: {'SET' if self.admin_email else 'NOT SET'}")
+            logger.error(f"EMS_ADMIN_PASSWORD: {'SET' if self.admin_password else 'NOT SET'}")
             return None
         
         try:
+            logger.info(f"Attempting to get EMS admin token for email: {self.admin_email}")
             from app.services.ems_client import ems_client
             token_response = await ems_client.login(self.admin_email, self.admin_password)
-            return token_response.get("access_token")
+            token = token_response.get("access_token")
+            if token:
+                logger.info("Successfully obtained EMS admin token")
+            else:
+                logger.error("EMS admin login succeeded but no access_token in response")
+            return token
         except Exception as e:
             logger.error(f"Failed to get EMS admin token: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
     
     async def _request(
@@ -131,7 +141,11 @@ class EMSSyncService:
         """Sync a summary from Gurukul to EMS"""
         admin_token = await self._get_admin_token()
         if not admin_token:
-            return None
+            logger.error(f"Cannot sync summary {gurukul_id}: No admin token (EMS_ADMIN_EMAIL/EMS_ADMIN_PASSWORD not configured)")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="EMS sync not configured: Missing EMS_ADMIN_EMAIL or EMS_ADMIN_PASSWORD in environment variables"
+            )
         
         sync_data = {
             "student_email": student_email,
@@ -177,7 +191,11 @@ class EMSSyncService:
         """Sync a flashcard from Gurukul to EMS"""
         admin_token = await self._get_admin_token()
         if not admin_token:
-            return None
+            logger.error(f"Cannot sync flashcard {gurukul_id}: No admin token (EMS_ADMIN_EMAIL/EMS_ADMIN_PASSWORD not configured)")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="EMS sync not configured: Missing EMS_ADMIN_EMAIL or EMS_ADMIN_PASSWORD in environment variables"
+            )
         
         sync_data = {
             "student_email": student_email,
@@ -228,7 +246,11 @@ class EMSSyncService:
         """Sync a test result from Gurukul to EMS"""
         admin_token = await self._get_admin_token()
         if not admin_token:
-            return None
+            logger.error(f"Cannot sync test result {gurukul_id}: No admin token (EMS_ADMIN_EMAIL/EMS_ADMIN_PASSWORD not configured)")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="EMS sync not configured: Missing EMS_ADMIN_EMAIL or EMS_ADMIN_PASSWORD in environment variables"
+            )
         
         sync_data = {
             "student_email": student_email,
@@ -279,7 +301,11 @@ class EMSSyncService:
         """Sync subject explorer data from Gurukul to EMS"""
         admin_token = await self._get_admin_token()
         if not admin_token:
-            return None
+            logger.error(f"Cannot sync subject data {gurukul_id}: No admin token (EMS_ADMIN_EMAIL/EMS_ADMIN_PASSWORD not configured)")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="EMS sync not configured: Missing EMS_ADMIN_EMAIL or EMS_ADMIN_PASSWORD in environment variables"
+            )
         
         sync_data = {
             "student_email": student_email,
