@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import API_BASE_URL from '../config';
 import { FaBookOpen, FaFlipboard, FaClipboardList, FaFileAlt, FaSpinner, FaFilter, FaSearch, FaSync } from 'react-icons/fa';
 import { handleApiError } from '../utils/apiClient';
+import { createLesson } from '../utils/contextManager';
 
 const MyContent = () => {
     const { user } = useAuth();
@@ -21,6 +22,28 @@ const MyContent = () => {
 
     useEffect(() => {
         fetchAllContent();
+        
+        // Create a general lesson context when the user enters MyContent
+        const createLearningSession = async () => {
+            try {
+                console.log('[MyContent] Attempting to create learning session...');
+                const result = await createLesson(
+                    'Learning Session',
+                    'General',
+                    'Self-directed Learning',
+                    'User is exploring their generated content and learning materials.'
+                );
+                if (result) {
+                    console.log('[MyContent] Learning session created successfully:', result.lesson_id);
+                } else {
+                    console.error('[MyContent] Failed to create learning session - no result returned');
+                }
+            } catch (error) {
+                console.error('[MyContent] Error creating learning session:', error);
+            }
+        };
+        
+        createLearningSession();
     }, []);
 
     const fetchAllContent = async () => {
@@ -306,6 +329,7 @@ const MyContent = () => {
 
 const ContentCard = ({ item, formatDate }) => {
     const [expanded, setExpanded] = useState(false);
+    const [lessonCreated, setLessonCreated] = useState(false);
     
     const getTypeIcon = (type) => {
         switch (type) {
@@ -341,6 +365,32 @@ const ContentCard = ({ item, formatDate }) => {
                          item.type === 'flashcard' ? item.question :
                          item.type === 'test' ? `${item.subject} - ${item.topic}` :
                          item.type === 'subject' ? item.notes : '').substring(0, 150);
+
+    const handleExpand = async () => {
+        const newExpandedState = !expanded;
+        setExpanded(newExpandedState);
+        
+        // Create lesson context when user starts engaging with specific content
+        if (newExpandedState && !lessonCreated) {
+            try {
+                console.log('[ContentCard] Attempting to create specific lesson for item:', item.id);
+                const result = await createLesson(
+                    item.title || item.subject || item.question || item.topic || 'Learning Content',
+                    item.subject || 'General',
+                    item.topic || item.type || 'Learning Activity',
+                    item.content || item.notes || item.question || 'Detailed learning content'
+                );
+                if (result) {
+                    setLessonCreated(true);
+                    console.log('[ContentCard] Specific lesson created successfully:', result.lesson_id);
+                } else {
+                    console.error('[ContentCard] Failed to create specific lesson - no result returned');
+                }
+            } catch (error) {
+                console.error('[ContentCard] Error creating lesson context:', error);
+            }
+        }
+    };
 
     return (
         <div className={`glass-panel p-6 border rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all ${getTypeColor(item.type)}`}>
@@ -384,7 +434,7 @@ const ContentCard = ({ item, formatDate }) => {
             <div className="flex items-center justify-between pt-3 border-t border-white/10">
                 <span className="text-xs text-gray-400">{formatDate(item.created_at)}</span>
                 <button
-                    onClick={() => setExpanded(!expanded)}
+                    onClick={handleExpand}
                     className="text-xs text-orange-400 hover:text-orange-300 font-medium"
                 >
                     {expanded ? 'Show Less' : 'View Details'}

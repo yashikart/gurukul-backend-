@@ -69,6 +69,7 @@ class User(Base):
     tenant = relationship("Tenant", back_populates="users")
     cohort = relationship("Cohort", back_populates="users")
     profile = relationship("Profile", back_populates="user", uselist=False)
+    lessons = relationship("Lesson", back_populates="user")
     summaries = relationship("Summary", back_populates="user")
     flashcards = relationship("Flashcard", back_populates="user")
     reflections = relationship("Reflection", back_populates="user")
@@ -162,6 +163,23 @@ class StudentProgress(Base):
     milestone = relationship("Milestone", back_populates="student_progress")
 
 # --- Learning Models ---
+
+class Lesson(Base):
+    __tablename__ = "lessons"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    title = Column(String, nullable=False)
+    subject = Column(String, nullable=False)
+    topic = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)
+    status = Column(String, default="active")  # active, archived, draft
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="lessons")
+
 
 class Summary(Base):
     __tablename__ = "summaries"
