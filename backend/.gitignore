@@ -53,3 +53,8 @@ models/*.h5
 *.db
 *.sqlite3
 
+# Vector Store Directories (generated data, too large for git)
+knowledge_store/
+vector_stores/
+*.index
+*_metadata.json

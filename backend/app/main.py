@@ -12,13 +12,21 @@ from app.routers import ems_sync_manual
 # Initialize FastAPI
 app = FastAPI(title=settings.API_TITLE)
 
-# CORS
+# CORS - Allow frontend to access backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:3000",  # Alternative frontend port
+        "http://localhost:3001",  # EMS frontend
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "*"  # Allow all in development (remove in production)
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 @app.on_event("startup")

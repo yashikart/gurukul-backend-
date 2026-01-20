@@ -46,6 +46,27 @@ class Settings(BaseSettings):
     PDF_SUPPORT: bool = True
     DOC_SUMMARIZER_SUPPORT: bool = False
     PDF_SUMMARIZER_SUPPORT: bool = False
+    
+    # Vector Store Configuration
+    VECTOR_STORE_BACKEND: str = "chromadb"  # Options: "chromadb", "faiss", "qdrant"
+    VECTOR_STORE_PATH: str = "./knowledge_store"
+    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    VECTOR_STORE_COLLECTION: str = "knowledge_base"
+    
+    # Vector Store Categories (for future use)
+    # VECTOR_STORE_CATEGORIES: List[str] = ["vedas", "educational", "wellness", "unified"]
+    
+    # Pinecone Configuration (if using cloud)
+    PINECONE_API_KEY: Optional[str] = None
+    PINECONE_ENVIRONMENT: Optional[str] = None
+    
+    # Qdrant Configuration (if using cloud/server)
+    QDRANT_URL: Optional[str] = None
+    QDRANT_API_KEY: Optional[str] = None
+    
+    # Weaviate Configuration (if using)
+    WEAVIATE_URL: Optional[str] = None
+    WEAVIATE_API_KEY: Optional[str] = None
 
     class Config:
         env_file = ".env"

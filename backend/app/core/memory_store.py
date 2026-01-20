@@ -1,13 +1,21 @@
 
 from typing import Dict, List
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Conversation Memory Storage
 # Structure: {conversation_id: {"messages": [...], "created_at": "...", "updated_at": "..."}}
 conversation_store: Dict[str, Dict] = {}
 
-# RAG Knowledge Store
+# RAG Knowledge Store (DEPRECATED - Now using VectorStoreService)
+# Kept for backward compatibility, but new code should use VectorStoreService
 # Structure: {hash: {"text": "...", "metadata": {...}}}
 rag_knowledge_store: Dict[str, Dict] = {}
+
+# Note: The vector store service is now the primary storage for RAG knowledge.
+# See: backend/app/services/vector_store.py
+# The in-memory dict above is kept for backward compatibility only.
 
 # Saved Summaries Store
 # Structure: {summary_id: {"title": "...", "content": "...", "source": "...", "created_at": "...", "questions": [...]}}

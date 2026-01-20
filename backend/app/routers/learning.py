@@ -8,8 +8,9 @@ from app.core.database import get_db
 from app.routers.auth import get_current_user
 from app.services.ems_sync import ems_sync
 from sqlalchemy.orm import Session
-from app.services.llm import call_groq_api, call_ollama_api
+from app.services.llm import call_groq_api, call_ollama_api, create_teaching_prompt, generate_text
 from app.services.youtube import get_youtube_recommendations
+from app.services.knowledge_base_helper import get_knowledge_base_context, enhance_prompt_with_context
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,21 +25,60 @@ async def subject_explorer(
 ):
     """
     Explore a subject/topic to get comprehensive notes and resources.
+    Uses Knowledge Base + Groq with automatic fallback to Groq-only if KB fails.
     Saves to DB and syncs to EMS.
     """
-    print(f"\n[API] Received /subject-explorer request: {request.subject} - {request.topic}")
+    logger.info(f"Received /subject-explorer request: {request.subject} - {request.topic}")
     
-    # 1. Generate Notes using LLM
+    # Step 1: Try to get relevant knowledge from knowledge base
+    kb_result = get_knowledge_base_context(
+        query=f"{request.subject} {request.topic}",
+        top_k=5,
+        filter_metadata={"subject": request.subject} if request.subject else None,
+        use_knowledge_base=True
+    )
+    
+    # Step 2: Generate Notes using LLM (with or without KB context)
+    notes = ""
+    kb_used = False
+    groq_used = False
+    
     try:
-        if request.provider == "groq":
-            notes = await call_groq_api(request.subject, request.topic)
-        elif request.provider == "ollama":
-            notes = await call_ollama_api(request.subject, request.topic)
+        # Create base teaching prompt
+        base_prompt = create_teaching_prompt(request.subject, request.topic)
+        
+        if kb_result["knowledge_base_used"] and kb_result["context"]:
+            # Best case: Use Knowledge Base context + Groq
+            enhanced_prompt = enhance_prompt_with_context(
+                base_prompt=base_prompt,
+                query=f"Generate comprehensive notes about {request.topic}",
+                context=kb_result["context"],
+                include_context_instruction=True
+            )
+            
+            # Use enhanced prompt with Groq
+            system_prompt = "You are an expert teacher who explains concepts clearly and simply."
+            notes = await generate_text(system_prompt, enhanced_prompt, temperature=0.7)
+            kb_used = True
+            groq_used = True
+            logger.info(f"Generated notes using Knowledge Base + Groq: {len(kb_result['context'])} chars context")
         else:
-            # Default to Groq
-            notes = await call_groq_api(request.subject, request.topic)
+            # Fallback: Use Groq only (KB failed or empty)
+            if request.provider == "groq":
+                notes = await call_groq_api(request.subject, request.topic)
+            elif request.provider == "ollama":
+                notes = await call_ollama_api(request.subject, request.topic)
+            else:
+                # Default to Groq
+                notes = await call_groq_api(request.subject, request.topic)
+            groq_used = True
+            if kb_result["error"]:
+                logger.warning(f"Knowledge Base unavailable, using Groq only: {kb_result['error']}")
+            else:
+                logger.info("No relevant knowledge base content, using Groq only")
+    
     except Exception as e:
-        print(f"[API] LLM Error: {str(e)}")
+        logger.error(f"LLM Error: {str(e)}")
         # Fallback notes
         notes = f"# Error Generating Notes\n\nCould not generate notes for {request.topic}. Please try again."
 
@@ -87,6 +127,9 @@ async def subject_explorer(
         logger.error(f"Failed to sync subject data {subject_data.id} to EMS: {str(e)}")
         # Don't fail the request if sync fails
         
+    # Log KB usage for debugging
+    logger.info(f"Subject Explorer: KB={kb_used}, Groq={groq_used}, Fallback={not kb_used}")
+    
     return SubjectExplorerResponse(
         subject=request.subject,
         topic=request.topic,

@@ -25,10 +25,17 @@ sentencepiece>=0.1.99
 gdown>=4.7.0
 
 python-multipart
-numpy<2
+numpy>=2.0.0
 passlib[bcrypt]
 bcrypt
 email-validator
 httpx>=0.24.0
+
+# Vector stores & embeddings
+sentence-transformers>=2.7.0
+qdrant-client>=1.8.0
+chromadb>=0.5.0
+weaviate-client>=4.9.0
+pinecone-client>=3.0.0
 
 

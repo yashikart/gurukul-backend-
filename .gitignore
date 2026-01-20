@@ -8,6 +8,7 @@ venv/
 env/
 ENV/
 .venv
+Embedding_LM/
 
 # Environment variables
 .env

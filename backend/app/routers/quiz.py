@@ -6,6 +6,7 @@ from app.models.all_models import User, TestResult
 from app.core.database import get_db
 from app.core.config import settings
 from app.services.ems_sync import ems_sync
+from app.services.knowledge_base_helper import get_knowledge_base_context, enhance_prompt_with_context
 from sqlalchemy.orm import Session
 import uuid
 from datetime import datetime
@@ -31,14 +32,19 @@ class QuizSubmitRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_quiz(request: QuizGenerateRequest, current_user: User = Depends(get_current_user)):
-    """Generate a quiz using Groq AI"""
-    try:
-        from groq import Groq
-        
-        client = Groq(api_key=settings.GROQ_API_KEY)
-        
-        # Create a prompt for quiz generation
-        prompt = f"""Generate exactly {request.num_questions} multiple-choice quiz questions (MCQs) about {request.subject} - {request.topic}.
+    """
+    Generate a quiz using Knowledge Base + Groq with automatic fallback to Groq-only if KB fails
+    """
+    # Step 1: Try to get relevant knowledge from knowledge base
+    kb_result = get_knowledge_base_context(
+        query=f"{request.subject} {request.topic}",
+        top_k=5,
+        filter_metadata={"subject": request.subject} if request.subject else None,
+        use_knowledge_base=True
+    )
+    
+    # Step 2: Build quiz generation prompt (with or without KB context)
+    base_prompt = f"""Generate exactly {request.num_questions} multiple-choice quiz questions (MCQs) about {request.subject} - {request.topic}.
 
 Requirements:
 - Difficulty level: {request.difficulty}
@@ -58,7 +64,29 @@ Requirements:
 }}
 
 Generate {request.num_questions} questions now:"""
-
+    
+    if kb_result["knowledge_base_used"] and kb_result["context"]:
+        # Best case: Use Knowledge Base context + Groq
+        prompt = enhance_prompt_with_context(
+            base_prompt=base_prompt,
+            query=f"Generate quiz questions about {request.topic}",
+            context=kb_result["context"],
+            include_context_instruction=True
+        )
+        logger.info(f"Generating quiz using Knowledge Base + Groq: {len(kb_result['context'])} chars context")
+    else:
+        # Fallback: Use Groq only (KB failed or empty)
+        prompt = base_prompt
+        if kb_result["error"]:
+            logger.warning(f"Knowledge Base unavailable, using Groq only: {kb_result['error']}")
+        else:
+            logger.info("No relevant knowledge base content, using Groq only")
+    
+    try:
+        from groq import Groq
+        
+        client = Groq(api_key=settings.GROQ_API_KEY)
+        
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -111,6 +139,10 @@ Generate {request.num_questions} questions now:"""
             "topic": request.topic,
             "difficulty": request.difficulty,
             "total_questions": len(processed_questions),
+            "knowledge_base_used": kb_result["knowledge_base_used"],
+            "groq_used": True,
+            "fallback_used": not kb_result["knowledge_base_used"],
+            "context_length": len(kb_result["context"]) if kb_result["context"] else 0,
             "questions": [
                 {
                     "question_id": q["question_id"],
