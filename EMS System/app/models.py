@@ -340,3 +340,23 @@ class StudentSubjectData(Base):
     # Relationships
     student = relationship("User", foreign_keys=[student_id])
     school = relationship("School")
+
+
+# --- PRANA-E / BHIV Bucket Ledger ---
+
+class PranaPacket(Base):
+    """Append-only ledger of PRANA-E telemetry packets (EMS side BHIV Bucket)."""
+    __tablename__ = "prana_packets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    packet_id = Column(String(64), unique=True, nullable=False, index=True)
+    employee_id = Column(String(255), nullable=False, index=True)
+    task_id = Column(String(255), nullable=True, index=True)
+    state = Column(String(32), nullable=False, index=True)  # WORKING | IDLE | AWAY | DISTRACTED | FAKING
+    integrity_score = Column(Float, nullable=False)
+    active_seconds = Column(Float, nullable=False)
+    idle_seconds = Column(Float, nullable=False)
+    away_seconds = Column(Float, nullable=False)
+    raw_signals = Column(JSON, nullable=False)  # stored as-is (no mutation)
+    client_timestamp = Column(DateTime, nullable=False, index=True)
+    received_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)

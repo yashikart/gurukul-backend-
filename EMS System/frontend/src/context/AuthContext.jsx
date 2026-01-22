@@ -60,6 +60,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(userData));
       
       setUser(userData);
+      // Expose minimal context for PRANA-E (actor id + role + school)
+      window.EMSUserContext = userData;
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
@@ -83,6 +85,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    window.EMSUserContext = null;
   };
 
   const value = {

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.routers import auth, super_admin, schools, dashboard, teacher, student, parent
+from app.routers import auth, super_admin, schools, dashboard, teacher, student, parent, bucket
 from app.routers.admin import dashboard as admin_dashboard
 from app.config import settings
 
@@ -47,6 +47,7 @@ app.include_router(admin_dashboard.router)  # School Admin Dashboard
 app.include_router(teacher.router)  # Teacher Dashboard
 app.include_router(student.router)  # Student Dashboard
 app.include_router(parent.router)  # Parent Dashboard
+app.include_router(bucket.router)  # BHIV Bucket PRANA ingest
 
 
 @app.get("/")
