@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 
 # Import Routers
-from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts, ems_student, lesson
+from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts, ems_student, lesson, sovereign, vaani
 from app.routers import ems_sync_manual
 
 # Initialize FastAPI
@@ -40,6 +40,7 @@ async def startup_event():
     try:
         from app.core.database import engine, Base
         from app.models import all_models
+        from app.models import rl_models  # Import RL models to register them with Base
         print("[Startup] Creating database tables...")
         Base.metadata.create_all(bind=engine)
         print("[Startup] ✓ Database tables created successfully!")
@@ -69,6 +70,8 @@ app.include_router(quiz.router, prefix="/api/v1/quiz", tags=["Quiz"])
 app.include_router(journey.router, prefix="/api/v1/learning", tags=["Learning Journey"])
 app.include_router(tts.router, prefix="/api/v1/tts", tags=["Text-to-Speech"])
 app.include_router(lesson.router, prefix="/api/v1/lesson", tags=["Lesson Context"])
+app.include_router(sovereign.router, prefix="/api/v1/sovereign", tags=["Sovereign Fusion Layer"])
+app.include_router(vaani.router, prefix="/api/v1/vaani", tags=["Vaani RL-TTS"])
 
 
 # Root Health Check

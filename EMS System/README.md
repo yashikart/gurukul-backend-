@@ -806,6 +806,59 @@ The frontend uses React Router for navigation:
 
 ---
 
+## 🔗 PRANA Telemetry Integration
+
+### EMS Backend Responsibilities (Identity Stability Only)
+
+The EMS backend's responsibility with respect to PRANA telemetry is **limited to providing stable identifiers**. EMS backend does NOT interpret, score, store, or influence PRANA telemetry.
+
+#### What EMS Backend Provides
+
+1. **User Identity Stability**
+   - `user_id` (from `users.id`) must be stable and consistent
+   - JWT token contains `user_id` that persists across sessions
+   - User ID is extracted from JWT and made available to frontend via `window.EMSUserContext`
+
+2. **Session Identity** (if implemented)
+   - `session_id` should exist early in the user session
+   - Should persist across page refreshes
+   - Should be available to frontend for PRANA packet construction
+
+3. **Lesson Context Updates**
+   - `lesson_id` must update correctly when user navigates to a different lesson
+   - Lesson ID is backend-issued (auto-increment Integer from `lessons` table)
+   - Frontend receives `lesson_id` from API responses and URL parameters
+   - Frontend is responsible for setting `window.EMSTaskContext` with current `lesson_id`
+
+#### What EMS Backend Does NOT Do
+
+The EMS backend does **NOT**:
+- ❌ Interpret PRANA telemetry packets
+- ❌ Score or evaluate PRANA data
+- ❌ Store PRANA packets (this is handled by the Bucket endpoint at `/bucket/prana/ingest`)
+- ❌ Influence UX based on PRANA data
+- ❌ Make decisions based on telemetry signals
+
+**PRANA consumes identifiers only.** The EMS backend's role is purely to provide stable, reliable identifiers that PRANA can use to tag telemetry packets.
+
+### Integration Points
+
+- **User ID**: Available via JWT token (`sub` claim) → `window.EMSUserContext.id`
+- **Lesson ID**: Available via lesson API responses → Frontend sets `window.EMSTaskContext.currentTaskId`
+- **Session ID**: (To be implemented) Should be generated early and persist across refreshes
+
+### Bucket Endpoint
+
+The EMS backend provides a **separate, append-only ledger endpoint** at `/bucket/prana/ingest` that:
+- Validates PRANA-E packet structure
+- Stores packets immutably in `prana_packets` table
+- Does NOT interpret or score the data
+- Acts as a pure ingestion endpoint
+
+See `app/routers/bucket.py` for implementation details.
+
+---
+
 ## 📚 Additional Documentation
 
 - **Super Admin Guide**: `document/SUPER_ADMIN_GUIDE.md`

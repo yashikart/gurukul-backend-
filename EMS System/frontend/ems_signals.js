@@ -1,4 +1,10 @@
 (function () {
+    // Kill switch: set window.PRANA_DISABLED = true to disable all PRANA telemetry
+    if (window.PRANA_DISABLED === true) {
+        console.log('[EMS] PRANA telemetry disabled via kill switch');
+        return;
+    }
+
     const SIGNAL_UPDATE_INTERVAL_MS = 1000;  // update in-memory state every 1s
     const SIGNAL_LOG_INTERVAL_MS = 5000;     // log summary every 5s
   

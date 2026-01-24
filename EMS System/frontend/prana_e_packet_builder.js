@@ -3,6 +3,12 @@
 // and forwards them to the BHIV Bucket via BucketBridge.
 
 (function () {
+  // Kill switch: set window.PRANA_DISABLED = true to disable all PRANA telemetry
+  if (window.PRANA_DISABLED === true) {
+    console.log('[PRANA-E] PRANA telemetry disabled via kill switch');
+    return;
+  }
+
   const PACKET_INTERVAL_MS = 5000; // 5-second windows
 
   if (!window.EMSSignals) {

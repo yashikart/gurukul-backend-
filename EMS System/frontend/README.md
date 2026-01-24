@@ -126,6 +126,47 @@ frontend/
 3. **Role-based Access**: Only SUPER_ADMIN can access the dashboard
 4. **Password Requirements**: Admin passwords must be at least 6 characters
 
+## PRANA Telemetry System
+
+### PRANA Lifecycle Safety
+
+The PRANA telemetry system (EMS signals, PRANA-E packet builder, and Bucket bridge) is designed with strict lifecycle guarantees:
+
+- ✅ **Loads once at app startup**: PRANA modules are imported at the top level of `main.jsx` before React renders
+- ✅ **Lives outside React lifecycle**: Uses IIFEs (Immediately Invoked Function Expressions) that attach to `window` object
+- ✅ **No remounts on route changes**: PRANA modules are not React components and persist across all route navigations
+- ✅ **No cleanup on unmount**: Global event listeners (`window.addEventListener`) are never removed, ensuring continuous telemetry
+
+**Important**: Do NOT:
+- ❌ Wrap PRANA modules in React components
+- ❌ Lazy-load PRANA modules
+- ❌ Add cleanup logic that removes PRANA event listeners
+- ❌ Refactor PRANA code into React hooks or components
+
+### PRANA Kill Switch
+
+For emergency scenarios or demos, PRANA telemetry can be disabled globally:
+
+```javascript
+// In browser console or before app loads:
+window.PRANA_DISABLED = true;
+```
+
+When enabled, all PRANA modules (`ems_signals.js`, `bucket_bridge.js`, `prana_e_packet_builder.js`) will:
+- Exit immediately on load
+- Log a console message indicating telemetry is disabled
+- Not attach any event listeners
+- Not send any packets to the Bucket
+
+**Usage**:
+- Set `window.PRANA_DISABLED = true` before the app loads to prevent PRANA initialization
+- Or set it in browser console after load (will prevent new intervals/listeners, but existing ones may continue until next page reload)
+
+**Files affected**:
+- `ems_signals.js` - Signal capture disabled
+- `bucket_bridge.js` - Packet sending disabled
+- `prana_e_packet_builder.js` - Packet building disabled
+
 ## Troubleshooting
 
 ### CORS Errors

@@ -38,4 +38,11 @@ chromadb>=0.5.0
 weaviate-client>=4.9.0
 pinecone-client>=3.0.0
 
+# Sovereign Fusion Layer dependencies
+peft>=0.8.0  # For LoRA adapter loading
+accelerate>=0.24.0  # For model loading
+
+# Testing
+pytest>=7.4.0  # For smoke tests
+
 

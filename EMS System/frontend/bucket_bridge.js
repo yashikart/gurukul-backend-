@@ -3,6 +3,12 @@
 // Pure frontend, uses fetch, no retries beyond what is defined here.
 
 (function () {
+  // Kill switch: set window.PRANA_DISABLED = true to disable all PRANA telemetry
+  if (window.PRANA_DISABLED === true) {
+    console.log('[PRANA-E][BucketBridge] PRANA telemetry disabled via kill switch');
+    return;
+  }
+
   const DEFAULT_ENDPOINT = 'http://localhost:8000/bucket/prana/ingest';
 
   let config = {
