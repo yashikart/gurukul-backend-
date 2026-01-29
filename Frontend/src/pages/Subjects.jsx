@@ -4,15 +4,16 @@ import Sidebar from '../components/Sidebar';
 import LearningFlow from '../components/LearningFlow';
 import LearningSuggestions from '../components/LearningSuggestions';
 import { FaBook, FaLightbulb, FaBookOpen, FaFlipboard, FaChevronDown } from 'react-icons/fa';
-import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
+import { useAuth } from '../contexts/AuthContext';
 import { containsProfanity } from '../utils/profanityDetector';
 import { apiPost, handleApiError } from '../utils/apiClient';
 import { trackTopicStudied } from '../utils/progressTracker';
+import { sendLifeEvent } from '../utils/karmaTrackerClient';
 
 const Subjects = () => {
-    const { addKarma } = useKarma();
     const { alert, error, success } = useModal();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [subject, setSubject] = React.useState(() => localStorage.getItem('subjects_subject') || '');
     const [topic, setTopic] = React.useState(() => localStorage.getItem('subjects_topic') || '');
@@ -73,9 +74,18 @@ const Subjects = () => {
             if (data.success) {
                 setResult(data);
                 setHasReceivedChatKarma(false);
-                addKarma(20, 'Content generated! 📚');
                 // Track learning progress
                 trackTopicStudied(subject, topic);
+
+                // Backend karma: content generated & viewed
+                if (user?.id) {
+                    sendLifeEvent({
+                        userId: user.id,
+                        action: 'completing_lessons',
+                        note: `Subject Explorer content generated for ${subject} - ${topic}`,
+                        context: `source=subjects;subject=${subject};topic=${topic}`
+                    });
+                }
             } else {
                 error('Failed to generate content: ' + (data.detail || 'Unknown error'), 'Generation Error');
             }
@@ -92,7 +102,15 @@ const Subjects = () => {
 
         // Check for profanity
         if (containsProfanity(chatInput)) {
-            addKarma(-20, 'Inappropriate language detected ⚠️');
+            // Backend karma: inappropriate language (negative)
+            if (user?.id) {
+                sendLifeEvent({
+                    userId: user.id,
+                    action: 'cheat',
+                    note: 'Inappropriate language detected in Subjects chat',
+                    context: 'source=subjects-chat'
+                });
+            }
             alert('Let\'s keep our conversation respectful and focused on learning. Thank you for understanding.', 'Kind Reminder');
             return;
         }
@@ -102,10 +120,17 @@ const Subjects = () => {
         setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
         setChatLoading(true);
 
-        // Award karma for first chat message
+        // First chat message for this topic → solving doubts (positive)
         if (!hasReceivedChatKarma) {
-            addKarma(20, 'Started learning conversation! 💬');
             setHasReceivedChatKarma(true);
+            if (user?.id) {
+                sendLifeEvent({
+                    userId: user.id,
+                    action: 'solving_doubts',
+                    note: 'Started learning conversation in Subjects',
+                    context: `source=subjects-chat;subject=${subject};topic=${topic}`
+                });
+            }
         }
 
         try {
@@ -163,6 +188,16 @@ const Subjects = () => {
                     content: flashcardPayload.content,
                     date: flashcardPayload.date
                 });
+
+                // Karma: reward generating a structured summary from Subject Explorer
+                if (user?.id) {
+                    sendLifeEvent({
+                        userId: user.id,
+                        action: 'completing_lessons',
+                        note: `Generated Subject Explorer summary for ${result.subject} - ${result.topic}`,
+                        context: `source=subjects-summary;subject=${result.subject};topic=${result.topic}`
+                    });
+                }
             } catch (err) {
                 console.warn('Failed to save summary:', err);
                 // Continue anyway
@@ -171,8 +206,17 @@ const Subjects = () => {
             // 2. Generate Flashcards
             await apiPost('/api/v1/flashcards/generate', flashcardPayload);
 
+            // 3. Karma: summary + flashcards generated from Subject Explorer
+            if (user?.id) {
+                sendLifeEvent({
+                    userId: user.id,
+                    action: 'completing_lessons',
+                    note: `Generated summary + flashcards in Subject Explorer for ${result.subject} - ${result.topic}`,
+                    context: `source=subjects-summary;subject=${result.subject};topic=${result.topic}`
+                });
+            }
+
             setFlashcardGenerationStep('success');
-            addKarma(20, 'Flashcards generated! 🎴');
             
             // Auto-close modal after 2 seconds and navigate
             setTimeout(() => {

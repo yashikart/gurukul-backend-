@@ -36,6 +36,28 @@ async def sync_all_user_content(
     # Log the student email being used for debugging
     logger.info(f"Starting sync for student: {current_user.email} (ID: {current_user.id})")
     
+    # Require EMS admin credentials for syncing (EMS endpoints are admin-only)
+    if not settings.EMS_ADMIN_EMAIL or not settings.EMS_ADMIN_PASSWORD:
+        logger.warning(
+            f"Sync requested by {current_user.email} but EMS admin credentials are not configured "
+            "(set EMS_ADMIN_EMAIL and EMS_ADMIN_PASSWORD)."
+        )
+        # Return a structured error so the frontend shows a clear sync error,
+        # instead of the generic "No content found to sync".
+        return {
+            "message": "❌ Sync failed: EMS sync is not configured. Please contact your administrator.",
+            "results": {
+                "summaries": {"synced": 0, "failed": 0, "errors": ["EMS sync not available: EMS admin credentials are missing."]},
+                "flashcards": {"synced": 0, "failed": 0, "errors": []},
+                "test_results": {"synced": 0, "failed": 0, "errors": []},
+                "subject_data": {"synced": 0, "failed": 0, "errors": []}
+            },
+            "total_synced": 0,
+            "total_failed": 1,
+            "configured": False,
+            "error": "No EMS token available. Please authenticate with EMS first."
+        }
+    
     # Get user's school_id if available (from tenant or other source)
     school_id = None
     if hasattr(current_user, 'school_id') and current_user.school_id:
@@ -56,6 +78,7 @@ async def sync_all_user_content(
     summaries = db.query(Summary).filter(
         Summary.user_id == current_user.id
     ).all()
+    logger.info(f"Found {len(summaries)} summaries to sync for user {current_user.email}")
     
     for summary in summaries:
         try:
@@ -73,7 +96,7 @@ async def sync_all_user_content(
                 results["summaries"]["synced"] += 1
             else:
                 results["summaries"]["failed"] += 1
-                results["summaries"]["errors"].append(f"Summary {summary.id}: Sync returned None (check EMS logs)")
+                results["summaries"]["errors"].append(f"Summary {summary.id}: Sync returned None (check EMS logs or ensure student is authenticated with EMS)")
         except HTTPException as e:
             error_msg = f"HTTP {e.status_code}: {e.detail}"
             logger.error(f"Failed to sync summary {summary.id}: {error_msg}")
@@ -90,6 +113,7 @@ async def sync_all_user_content(
     flashcards = db.query(Flashcard).filter(
         Flashcard.user_id == current_user.id
     ).all()
+    logger.info(f"Found {len(flashcards)} flashcards to sync for user {current_user.email}")
     
     for flashcard in flashcards:
         try:
@@ -107,7 +131,7 @@ async def sync_all_user_content(
                 results["flashcards"]["synced"] += 1
             else:
                 results["flashcards"]["failed"] += 1
-                results["flashcards"]["errors"].append(f"Flashcard {flashcard.id}: Sync returned None (check EMS logs)")
+                results["flashcards"]["errors"].append(f"Flashcard {flashcard.id}: Sync returned None (check EMS logs or ensure student is authenticated with EMS)")
         except HTTPException as e:
             error_msg = f"HTTP {e.status_code}: {e.detail}"
             logger.error(f"Failed to sync flashcard {flashcard.id}: {error_msg}")
@@ -124,6 +148,7 @@ async def sync_all_user_content(
     test_results = db.query(TestResult).filter(
         TestResult.user_id == current_user.id
     ).all()
+    logger.info(f"Found {len(test_results)} test results to sync for user {current_user.email}")
     
     for test_result in test_results:
         try:
@@ -146,7 +171,7 @@ async def sync_all_user_content(
                 results["test_results"]["synced"] += 1
             else:
                 results["test_results"]["failed"] += 1
-                results["test_results"]["errors"].append(f"Test {test_result.id}: Sync returned None (check EMS logs)")
+                results["test_results"]["errors"].append(f"Test {test_result.id}: Sync returned None (check EMS logs or ensure student is authenticated with EMS)")
         except HTTPException as e:
             error_msg = f"HTTP {e.status_code}: {e.detail}"
             logger.error(f"Failed to sync test result {test_result.id}: {error_msg}")
@@ -163,6 +188,7 @@ async def sync_all_user_content(
     subject_data_list = db.query(SubjectData).filter(
         SubjectData.user_id == current_user.id
     ).all()
+    logger.info(f"Found {len(subject_data_list)} subject data entries to sync for user {current_user.email}")
     
     for subject_data in subject_data_list:
         try:
@@ -180,7 +206,7 @@ async def sync_all_user_content(
                 results["subject_data"]["synced"] += 1
             else:
                 results["subject_data"]["failed"] += 1
-                results["subject_data"]["errors"].append(f"Subject data {subject_data.id}: Sync returned None (check EMS logs)")
+                results["subject_data"]["errors"].append(f"Subject data {subject_data.id}: Sync returned None (check EMS logs or ensure student is authenticated with EMS)")
         except HTTPException as e:
             error_msg = f"HTTP {e.status_code}: {e.detail}"
             logger.error(f"Failed to sync subject data {subject_data.id}: {error_msg}")
@@ -207,10 +233,52 @@ async def sync_all_user_content(
         results["subject_data"]["failed"]
     )
     
+    total_items = len(summaries) + len(flashcards) + len(test_results) + len(subject_data_list)
+    logger.info(f"Sync completed for {current_user.email}: {total_synced} synced, {total_failed} failed out of {total_items} total items")
+    
+    # If no items found at all, return a helpful message
+    if total_items == 0:
+        logger.warning(f"No content found for user {current_user.email} (ID: {current_user.id}) to sync")
+        return {
+            "message": "No content found to sync. Create some summaries, flashcards, tests, or subject data first.",
+            "results": results,
+            "total_synced": 0,
+            "total_failed": 0,
+            "total_items": 0,
+            "configured": True,
+            "debug": {
+                "user_id": current_user.id,
+                "summaries_count": len(summaries),
+                "flashcards_count": len(flashcards),
+                "test_results_count": len(test_results),
+                "subject_data_count": len(subject_data_list)
+            }
+        }
+    
+    logger.info(f"Sync summary for {current_user.email}: {total_synced} synced, {total_failed} failed out of {total_items} total")
+    
+    # Build detailed message
+    if total_items == 0:
+        message = "No content found to sync. Create some summaries, flashcards, tests, or subject data first."
+    elif total_synced > 0:
+        message = f"✅ Successfully synced {total_synced} items to EMS!" + (f" ({total_failed} failed)" if total_failed > 0 else "")
+    elif total_failed > 0:
+        message = f"⚠️ Sync attempted for {total_items} items, but all failed. Check errors below."
+    else:
+        message = f"⚠️ Found {total_items} items but sync returned no results. This may indicate a configuration issue."
+    
     return {
-        "message": f"Sync completed. {total_synced} items synced, {total_failed} failed.",
+        "message": message,
         "results": results,
         "total_synced": total_synced,
-        "total_failed": total_failed
+        "total_failed": total_failed,
+        "total_items": total_items,
+        "configured": True,
+        "debug": {
+            "summaries_found": len(summaries),
+            "flashcards_found": len(flashcards),
+            "test_results_found": len(test_results),
+            "subject_data_found": len(subject_data_list)
+        }
     }
 

@@ -1,3 +1,6 @@
+// Standalone copy of Gurukul's PRANA cognitive state engine
+// Source: Frontend/src/utils/prana_state_engine.js
+
 export const CognitiveState = {
   ON_TASK: 'ON_TASK',
   THINKING: 'THINKING',
@@ -284,3 +287,5 @@ export function getStateEngine() {
 }
 
 export default PranaCognitiveStateEngine;
+
+

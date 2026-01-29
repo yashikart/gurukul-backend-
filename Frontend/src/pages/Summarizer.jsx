@@ -2,14 +2,15 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { FaFileUpload, FaCloudUploadAlt, FaMagic, FaChevronDown } from 'react-icons/fa';
-import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
+import { useAuth } from '../contexts/AuthContext';
 import { handleApiError, apiPost } from '../utils/apiClient';
+import { sendLifeEvent } from '../utils/karmaTrackerClient';
 import API_BASE_URL from '../config';
 
 const Summarizer = () => {
-    const { addKarma } = useKarma();
     const { confirm } = useModal();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [selectedModel, setSelectedModel] = React.useState(() => localStorage.getItem('summarizer_selectedModel') || 'Uniguru');
     const [summaryType, setSummaryType] = React.useState(() => localStorage.getItem('summarizer_summaryType') || 'concise');
@@ -161,9 +162,18 @@ const Summarizer = () => {
             // Small delay to let user see 100%
             setTimeout(() => {
                 setResult(data);
-                addKarma(20, 'Document summarized! 📄');
                 setLoading(false);
                 setProgress(0);
+
+                // Backend karma: document summarized and reviewed
+                if (user?.id) {
+                    sendLifeEvent({
+                        userId: user.id,
+                        action: 'completing_lessons',
+                        note: `Document summarized in Summarizer (${file.name})`,
+                        context: `source=summarizer;summary_type=${summaryType}`
+                    });
+                }
             }, 500);
 
         } catch (err) {
@@ -189,6 +199,16 @@ const Summarizer = () => {
 
 
             await apiPost('/api/v1/learning/summaries/save', summaryPayload);
+
+            // Karma: reward generating a reusable summary from Summarizer
+            if (user?.id) {
+                sendLifeEvent({
+                    userId: user.id,
+                    action: 'completing_lessons',
+                    note: `Generated Summarizer summary (${summaryPayload.title})`,
+                    context: `source=summarizer-summary;summary_type=${summaryType}`
+                });
+            }
 
             // 2. Generate Flashcards
             await apiPost('/api/v1/flashcards/generate', summaryPayload);

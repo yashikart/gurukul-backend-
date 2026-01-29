@@ -5,7 +5,7 @@ from sqlalchemy import func, or_
 from app.database import get_db
 from app.dependencies import get_current_super_admin
 from app.models import School, User, UserRole
-from app.schemas import UserResponse
+from app.schemas import UserDashboardResponse
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -47,7 +47,7 @@ def get_dashboard_stats(
     )
 
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get("/users", response_model=List[UserDashboardResponse])
 def get_all_users(
     search: Optional[str] = Query(None, description="Search by name or email"),
     role: Optional[str] = Query(None, description="Filter by role"),
@@ -88,7 +88,7 @@ def get_all_users(
     return users
 
 
-@router.get("/users/{user_id}", response_model=UserResponse)
+@router.get("/users/{user_id}", response_model=UserDashboardResponse)
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),

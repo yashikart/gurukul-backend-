@@ -45,7 +45,6 @@ const ControlInput = ({ label, value, onChange, unit = "" }) => {
 
 const Avatar = () => {
     const fileInputRef = useRef(null);
-    const { addKarma } = useKarma();
     const { alert, confirm } = useModal();
 
     // Load from localStorage or use defaults
@@ -107,11 +106,6 @@ const Avatar = () => {
         const reader = new FileReader();
         reader.onloadend = () => {
             const imageData = reader.result;
-
-            // Award karma for first-time upload
-            if (!uploadedImage) {
-                addKarma(20, 'Avatar uploaded! 🎨');
-            }
 
             setUploadedImage(imageData);
             localStorage.setItem('avatarImage', imageData);

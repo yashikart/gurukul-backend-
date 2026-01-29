@@ -1,3 +1,6 @@
+// Standalone copy of Gurukul's PRANA packet builder
+// Source: Frontend/src/utils/prana_packet_builder.js
+
 import { CognitiveState } from './prana_state_engine.js';
 
 class PranaPacketBuilder {
@@ -29,7 +32,6 @@ class PranaPacketBuilder {
     // Streak counters for detecting sustained negative behavior
     this.offTaskStreak = 0;   // consecutive OFF_TASK/AWAY windows
     this.idleStreak = 0;      // consecutive IDLE windows
-    this.onTaskStreak = 0;    // consecutive ON_TASK/DEEP_FOCUS windows
     
     // Last known state for tracking
     this.lastState = null;
@@ -129,8 +131,8 @@ class PranaPacketBuilder {
     // Log packet to console
     console.log('[PRANA_PACKET]', packet);
     
-    // Send to Karma Tracker (non-blocking)
-    this._sendToKarmaTracker(packet, cognitiveState, timeInSeconds, focusScore);
+    // NOTE: In this standalone copy we do NOT send to Karma directly.
+    // Downstream systems should consume the PRANA packets via the Bucket bridge or their own transport.
     
     // Reset window for next packet
     this._resetWindow();
@@ -144,18 +146,16 @@ class PranaPacketBuilder {
       return this.contextProvider.getContext();
     }
     
-    // Try to get user from AuthContext if available
+    // Try to get user/session/lesson IDs from storage (optional)
     let userId = null;
     let sessionId = null;
     let lessonId = null;
     
     try {
-      // Check if we're in a browser environment with localStorage
       if (typeof window !== 'undefined' && window.localStorage) {
         const token = localStorage.getItem('auth_token');
         
         if (token) {
-          // Try to get user_id from stored user info
           try {
             const storedUser = localStorage.getItem('user');
             if (storedUser) {
@@ -166,18 +166,11 @@ class PranaPacketBuilder {
             console.warn('[PRANA] Error parsing stored user:', e);
           }
           
-          // Try to get session_id from localStorage
           sessionId = localStorage.getItem('session_id');
-          
-          // Try to get lesson_id from sessionStorage
           lessonId = sessionStorage.getItem('current_lesson_id');
-          
-          // Session ID fetching is async, so we'll handle it separately
-          // For now, we'll just use what we have locally and fetch async elsewhere
         }
       }
     } catch (e) {
-      // localStorage not available or error
       console.warn('[PRANA] Error getting context:', e);
     }
     
@@ -206,7 +199,6 @@ class PranaPacketBuilder {
       if (response.ok) {
         const data = await response.json();
         if (data.session_id) {
-          // Store the session ID in localStorage for future use
           localStorage.setItem('session_id', data.session_id);
           return data.session_id;
         }
@@ -315,7 +307,6 @@ class PranaPacketBuilder {
     }
     
     // Time distribution penalty
-    // More idle/away time = lower focus
     const activeRatio = timeInSeconds.active / 5.0;
     adjustedScore = Math.round(adjustedScore * activeRatio);
     
@@ -333,154 +324,6 @@ class PranaPacketBuilder {
     
     this.windowStart = performance.now();
     this.lastCheckTime = performance.now();
-  }
-
-  /**
-   * Map PRANA cognitive state to Karma Tracker action
-   * @param {string} cognitiveState - PRANA cognitive state
-   * @param {number} activeSeconds - Active seconds in this window
-   * @param {number} focusScore - Focus score (0-100)
-   * @returns {string|null} Karma action or null if no action should be logged
-   */
-  _mapStateToKarmaAction(cognitiveState, activeSeconds, focusScore) {
-    // Only send karma events for meaningful states, not every 5 seconds
-    // This prevents spam and focuses on actual user behavior changes
-
-    // --- Positive behavior mapping ---
-    // DEEP_FOCUS or ON_TASK with high activity for a sustained period → completing_lessons
-    // We require ~10 minutes of good engagement (120 windows × 5s)
-    const REWARD_STREAK_WINDOWS = 120; // 10 minutes
-    const PENALTY_STREAK_WINDOWS = 120; // 10 minutes
-
-    if ((cognitiveState === 'DEEP_FOCUS' || cognitiveState === 'ON_TASK') &&
-        activeSeconds >= 3 &&
-        focusScore >= 60) {
-      this.onTaskStreak += 1;
-      // Reset negative streaks on good behavior
-      this.offTaskStreak = 0;
-      this.idleStreak = 0;
-
-      if (this.onTaskStreak >= REWARD_STREAK_WINDOWS) {
-        // 10 minutes of sustained good engagement → one completing_lessons event
-        this.onTaskStreak = 0;
-        return 'completing_lessons';
-      }
-    } else {
-      // Break the positive streak if conditions not met
-      this.onTaskStreak = 0;
-    }
-
-    // --- Negative behavior tracking (for penalties) ---
-    // Track IDLE streaks (not yet mapped to penalties, but ready if needed)
-    if (cognitiveState === 'IDLE') {
-      this.idleStreak += 1;
-    } else {
-      this.idleStreak = 0;
-    }
-
-    // Track OFF_TASK / AWAY streaks
-    if (cognitiveState === 'OFF_TASK' || cognitiveState === 'AWAY') {
-      this.offTaskStreak += 1;
-    } else if (cognitiveState === 'ON_TASK' || cognitiveState === 'DEEP_FOCUS') {
-      // Reset when user comes back to focused state
-      this.offTaskStreak = 0;
-    }
-
-    // After ~10 minutes of sustained OFF_TASK/AWAY with very low focus,
-    // treat it as a cheating-like pattern and send a negative karma action.
-    // (120 windows * 5s = 600s = 10 minutes)
-    if (this.offTaskStreak >= PENALTY_STREAK_WINDOWS && focusScore <= 10) {
-      // Reset streak so we don't spam cheat events
-      this.offTaskStreak = 0;
-      return 'cheat';
-    }
-
-    // Default: no action for this window
-    return null;
-  }
-
-  /**
-   * Send PRANA packet data to Karma Tracker
-   * @param {Object} packet - PRANA packet
-   * @param {string} cognitiveState - Cognitive state
-   * @param {Object} timeInSeconds - Time accounting
-   * @param {number} focusScore - Focus score
-   */
-  async _sendToKarmaTracker(packet, cognitiveState, timeInSeconds, focusScore) {
-    // Only send if we have a user_id
-    if (!packet.user_id) {
-      return;
-    }
-
-    // Map cognitive state to karma action
-    const karmaAction = this._mapStateToKarmaAction(
-      cognitiveState,
-      timeInSeconds.active,
-      focusScore
-    );
-
-    // Only send if there's a meaningful action
-    if (!karmaAction) {
-      return;
-    }
-
-    // Build karma event payload
-    const karmaEvent = {
-      type: 'life_event',
-      data: {
-        user_id: packet.user_id,
-        action: karmaAction,
-        role: 'learner', // Default role, could be enhanced later
-        context: `source=prana-g;state=${cognitiveState};focus=${focusScore};active=${timeInSeconds.active}`,
-        note: `PRANA-G: ${cognitiveState} state with ${timeInSeconds.active}s active time`
-      },
-      source: 'prana-g'
-    };
-
-    // Mark this as a PRANA-driven positive karma change so frontend can suppress notifications
-    if (karmaAction === 'completing_lessons') {
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('prana_silent_karma', '1');
-        }
-      } catch (e) {
-        // Ignore storage errors
-      }
-    }
-
-    // Send to Karma Tracker (non-blocking, fail silently)
-    try {
-      const response = await fetch(`${this.karmaTrackerUrl}/v1/event/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(karmaEvent),
-        // Don't wait too long - 2 second timeout
-        signal: AbortSignal.timeout(2000)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('[PRANA→KARMA] Event sent successfully:', result);
-      } else {
-        console.warn('[PRANA→KARMA] Event failed:', response.status, response.statusText);
-      }
-    } catch (error) {
-      // Silently fail - don't break PRANA if Karma Tracker is down
-      if (error.name !== 'AbortError') {
-        console.warn('[PRANA→KARMA] Event send error (non-blocking):', error.message);
-      }
-    }
-  }
-
-  /**
-   * Get the last emitted packet (for testing/debugging)
-   * @returns {Object|null} Last packet or null
-   */
-  getLastPacket() {
-    // This would require storing last packet, not implemented yet
-    return null;
   }
 
   /**
@@ -531,3 +374,5 @@ export function getPacketBuilder() {
 }
 
 export default PranaPacketBuilder;
+
+

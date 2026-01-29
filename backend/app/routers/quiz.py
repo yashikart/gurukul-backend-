@@ -224,7 +224,7 @@ async def submit_quiz(
     try:
         # Get school_id from user if available (from EMS authentication)
         school_id = getattr(current_user, 'school_id', None)
-        
+
         ems_sync_result = await ems_sync.sync_test_result(
             gurukul_id=test_result.id,
             student_email=current_user.email,

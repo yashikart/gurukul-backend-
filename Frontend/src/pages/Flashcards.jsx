@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import LearningFlow from '../components/LearningFlow';
 import { FaFlipboard, FaCheckCircle, FaTimesCircle, FaChartBar, FaBook, FaSpinner, FaArrowRight, FaArrowLeft, FaRedo } from 'react-icons/fa';
-import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
+import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost, handleApiError } from '../utils/apiClient';
 import { trackReflectionSession } from '../utils/progressTracker';
+import { sendLifeEvent } from '../utils/karmaTrackerClient';
 
 const Flashcards = () => {
-    const { addKarma } = useKarma();
     const { success, error } = useModal();
+    const { user } = useAuth();
     const [cards, setCards] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
@@ -71,15 +72,6 @@ const Flashcards = () => {
                 difficulty: difficulty
             });
 
-            // Award karma
-            if (difficulty === 'easy') {
-                addKarma(10, 'Mastered! 🌟');
-            } else if (difficulty === 'medium') {
-                addKarma(5, 'Good progress! 👍');
-            } else {
-                addKarma(2, 'Keep practicing! 💪');
-            }
-
             // Remove current card from list
             const newCards = cards.filter((_, index) => index !== currentIndex);
             setCards(newCards);
@@ -89,6 +81,16 @@ const Flashcards = () => {
             // Track reflection session when all cards are reviewed
             if (newCards.length === 0) {
                 trackReflectionSession();
+
+                // Backend karma: completed a flashcard review session
+                if (user?.id) {
+                    sendLifeEvent({
+                        userId: user.id,
+                        action: 'completing_lessons',
+                        note: `Completed flashcard review session (${newReviewedCount} cards)`,
+                        context: 'source=flashcards'
+                    });
+                }
             }
 
             // Update stats

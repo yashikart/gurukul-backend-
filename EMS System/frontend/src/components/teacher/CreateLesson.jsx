@@ -313,6 +313,7 @@ const CreateLesson = () => {
             <h2 className="text-xl font-semibold text-gray-800">Lectures (Optional)</h2>
             <button
               type="button"
+              data-ems-task="true"
               onClick={addLecture}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
             >
@@ -416,6 +417,7 @@ const CreateLesson = () => {
           <button
             type="submit"
             disabled={submitting}
+            data-ems-task="true"
             className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update Lesson' : 'Create Lesson')}

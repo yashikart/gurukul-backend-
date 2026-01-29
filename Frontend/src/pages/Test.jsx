@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import LearningFlow from '../components/LearningFlow';
 import { FaBrain, FaClock, FaQuestionCircle, FaBolt, FaPlay, FaChevronDown, FaCheckCircle, FaTimesCircle, FaArrowRight, FaArrowLeft, FaRedo } from 'react-icons/fa';
-import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
+import { useAuth } from '../contexts/AuthContext';
 import { apiPost, handleApiError } from '../utils/apiClient';
 import { trackPracticeSession } from '../utils/progressTracker';
+import { sendLifeEvent } from '../utils/karmaTrackerClient';
 
 const Test = () => {
-    const { addKarma } = useKarma();
     const { alert, confirm, error } = useModal();
+    const { user } = useAuth();
     // Mode: 'setup', 'taking', 'results'
     const [mode, setMode] = useState('setup');
     const [loading, setLoading] = useState(false);
@@ -145,12 +146,40 @@ const Test = () => {
             // Track learning progress
             trackPracticeSession();
 
-            // Award karma based on score
-            const percentage = (result.score / result.total_questions) * 100;
-            if (percentage >= 50) {
-                addKarma(20, `Great score: ${percentage.toFixed(0)}%! 🎉`);
-            } else {
-                addKarma(-20, `Keep practicing: ${percentage.toFixed(0)}% 📚`);
+            // Backend karma: quiz performance-based rewards/penalties
+            if (user?.id && result?.score != null && result?.total_questions) {
+                const percentage = (result.score / result.total_questions) * 100;
+                const rounded = Math.round(percentage);
+
+                // 1) Below 40% → -10 (cheat / poor effort)
+                if (rounded < 40) {
+                    sendLifeEvent({
+                        userId: user.id,
+                        action: 'cheat',
+                        note: `Quiz completed below 40% (${rounded}%)`,
+                        context: `source=test;subject=${subject};topic=${topic};difficulty=${difficulty}`
+                    });
+                }
+                // 2) Perfect score (100%) → +50 (5 × +10)
+                else if (rounded === 100) {
+                    for (let i = 0; i < 5; i++) {
+                        sendLifeEvent({
+                            userId: user.id,
+                            action: 'completing_lessons',
+                            note: `Quiz completed with a perfect score (100%)`,
+                            context: `source=test;subject=${subject};topic=${topic};difficulty=${difficulty}`
+                        });
+                    }
+                }
+                // 3) Between 40% and 99% → +10
+                else if (rounded >= 40) {
+                    sendLifeEvent({
+                        userId: user.id,
+                        action: 'completing_lessons',
+                        note: `Quiz completed with score ${rounded}%`,
+                        context: `source=test;subject=${subject};topic=${topic};difficulty=${difficulty}`
+                    });
+                }
             }
 
             setMode('results');

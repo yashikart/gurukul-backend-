@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import KarmaNotification from './components/KarmaNotification';
 import Home from './pages/Home';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
@@ -29,27 +30,19 @@ import MyTeachers from './pages/ems/MyTeachers';
 import MyGrades from './pages/ems/MyGrades';
 import MyContent from './pages/MyContent';
 import DraggableAvatar from './components/DraggableAvatar';
-import { KarmaProvider } from './contexts/KarmaContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { KarmaProvider, useKarma } from './contexts/KarmaContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ModalProvider } from './contexts/ModalContext';
 import { PranaProvider } from './contexts/PranaContext';
-import KarmaNotification from './components/KarmaNotification';
 import { SidebarProvider } from './contexts/SidebarContext';
+import { sendLifeEvent } from './utils/karmaTrackerClient';
 import bgImage from './assets/background.png';
 
-const App = () => {
+const AppContent = () => {
+  const { user } = useAuth();
+  const { refreshKarma } = useKarma();
+
   // --- Global Timer State Logic (Lifted from Dashboard) ---
-  // ... (existing timer logic)
-
-  // (Note: To avoid replacing the whole file repeatedly, just showing the layout part update will affect the import. 
-  // But replace_file_content requires contiguous block. I will target the imports and the Route section separately if needed, 
-  // or use multi_replace if they are far apart. Here I will replace the imports first then the route using another call or just one replace if I target the App definition start.)
-
-  // Actually, I can just replace the imports block and then the Routes block.
-  // Wait, I can't do two replaces in one step unless using multi.
-  // I will use multi_replace_file_content.
-  // --- Global Timer State Logic (Lifted from Dashboard) ---
-
   // Total Study Time (Persists only for the current day)
   const [studyTimeSeconds, setStudyTimeSeconds] = React.useState(() => {
     const saved = localStorage.getItem('gurukul_studyTime');
@@ -77,6 +70,10 @@ const App = () => {
   // Derived State for Goal Timer
   const [timeLeft, setTimeLeft] = React.useState(0);
   const [isActive, setIsActive] = React.useState(false);
+  
+  // Track previous timeLeft to detect completion
+  const prevTimeLeftRef = React.useRef(0);
+  const goalCompletedRef = React.useRef(false);
 
   // --- Persistence Effects ---
   React.useEffect(() => {
@@ -121,70 +118,139 @@ const App = () => {
         setTimeLeft(remaining);
         setIsActive(true);
       } else {
+        // Timer completed naturally - mark as completed before clearing
+        goalCompletedRef.current = true;
+        const completedDuration = targetGoalSeconds;
+        
         setTimeLeft(0);
         setIsActive(false);
         setEndTime(null);
+        
+        // Award karma for completing daily goal
+        if (user?.id) {
+          sendLifeEvent({
+            userId: user.id,
+            action: 'completing_lessons',
+            role: 'learner',
+            note: `Completed daily goal timer (${Math.floor(completedDuration / 60)} minutes)`,
+            context: `source=daily_goal_timer;duration=${completedDuration}`
+          }).then(() => {
+            // Refresh karma after a short delay to allow backend to process
+            setTimeout(() => {
+              refreshKarma?.();
+            }, 500);
+          }).catch(err => {
+            console.warn('[Karma] Failed to log goal completion:', err);
+          });
+        }
+        
+        goalCompletedRef.current = false; // Reset flag after sending event
       }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [endTime]);
+  }, [endTime, targetGoalSeconds, user]);
 
   // --- Handlers ---
   const handleStartGoal = (durationSeconds) => {
     const newEndTime = Date.now() + (durationSeconds * 1000);
     setTargetGoalSeconds(durationSeconds);
     setEndTime(newEndTime);
+    goalCompletedRef.current = false; // Reset completion flag when starting new goal
   };
 
   const handleStopGoal = () => {
+    // Capture values BEFORE resetting state (important: React state updates are async)
+    const currentTimeLeft = timeLeft;
+    const goalDuration = targetGoalSeconds;
+    const wasPremature = isActive && currentTimeLeft > 0; // Timer was active and had time remaining
+    
+    // Reset state
     setEndTime(null);
     setTargetGoalSeconds(0);
     setTimeLeft(0);
     setIsActive(false);
+    goalCompletedRef.current = false; // Reset completion flag
+    
+    // Subtract karma for premature stop
+    if (wasPremature && user?.id && goalDuration > 0) {
+      const minutesLeft = Math.floor(currentTimeLeft / 60);
+      const totalMinutes = Math.floor(goalDuration / 60);
+      
+      console.log('[Karma] Premature stop detected:', { 
+        currentTimeLeft, 
+        goalDuration, 
+        minutesLeft, 
+        totalMinutes,
+        userId: user.id,
+        isActive,
+        wasPremature
+      });
+      
+      sendLifeEvent({
+        userId: user.id,
+        action: 'cheat',
+        role: 'learner',
+        note: `Stopped daily goal timer prematurely (${minutesLeft} minutes remaining of ${totalMinutes} minute goal)`,
+        context: `source=daily_goal_timer;premature_stop=true;time_left=${currentTimeLeft};goal_duration=${goalDuration}`
+      }).then((response) => {
+        console.log('[Karma] Premature stop event sent successfully:', response);
+        // Refresh karma after a short delay to allow backend to process
+        setTimeout(() => {
+          console.log('[Karma] Refreshing karma after premature stop...');
+          refreshKarma?.();
+        }, 1000); // Increased delay to 1 second to ensure backend processing
+      }).catch(err => {
+        console.error('[Karma] Failed to log premature stop:', err);
+      });
+    } else {
+      console.log('[Karma] Stop was not premature:', { 
+        wasPremature, 
+        isActive, 
+        currentTimeLeft, 
+        goalDuration, 
+        hasUser: !!user?.id 
+      });
+    }
   };
 
   return (
-    <ErrorBoundary>
-      <KarmaProvider>
-        <AuthProvider>
-          <PranaProvider>
-            <Router>
-              <div className="app-background">
-                <img src={bgImage} alt="Gurukul Background" />
-                <div className="overlay"></div>
-              </div>
+    <Router>
+      <div className="app-background">
+        <img src={bgImage} alt="Gurukul Background" />
+        <div className="overlay"></div>
+      </div>
 
-              <ModalProvider>
-                <SidebarProvider>
-                  <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
-                    <Navbar />
+      <ModalProvider>
+        <SidebarProvider>
+          <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
+            <Navbar />
 
-                    <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
-                      <ErrorBoundary>
-                        <Routes>
-                          <Route path="/" element={<Home />} />
-                          <Route path="/signin" element={<SignIn />} />
-                          <Route path="/signup" element={<SignUp />} />
-                          <Route
-                            path="/dashboard"
-                            element={
-                              <PrivateRoute>
-                                <RoleGuard allowedRoles={['student']}>
-                                  <Dashboard
-                                    studyTimeSeconds={studyTimeSeconds}
-                                    targetGoalSeconds={targetGoalSeconds}
-                                    timeLeft={timeLeft}
-                                    isActive={isActive}
-                                    onStartGoal={handleStartGoal}
-                                    onStopGoal={handleStopGoal}
-                                  />
-                                </RoleGuard>
-                              </PrivateRoute>
-                            }
+            <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/signin" element={<SignIn />} />
+                  <Route path="/signup" element={<SignUp />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <PrivateRoute>
+                        <RoleGuard allowedRoles={['student']}>
+                          <Dashboard
+                            studyTimeSeconds={studyTimeSeconds}
+                            targetGoalSeconds={targetGoalSeconds}
+                            timeLeft={timeLeft}
+                            isActive={isActive}
+                            onStartGoal={handleStartGoal}
+                            onStopGoal={handleStopGoal}
                           />
+                        </RoleGuard>
+                      </PrivateRoute>
+                    }
+                  />
                           <Route path="/subjects" element={<PrivateRoute><Subjects /></PrivateRoute>} />
                           <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
                           <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
@@ -310,9 +376,19 @@ const App = () => {
                 </SidebarProvider>
               </ModalProvider>
             </Router>
+  );
+};
+
+const App = () => {
+  return (
+    <ErrorBoundary>
+      <AuthProvider>
+        <KarmaProvider>
+          <PranaProvider>
+            <AppContent />
           </PranaProvider>
-        </AuthProvider>
-      </KarmaProvider>
+        </KarmaProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 };

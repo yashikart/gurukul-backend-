@@ -1,16 +1,17 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar';
 import { FaVolumeUp, FaPlus, FaHistory, FaTrashAlt, FaPaperclip, FaArrowUp, FaChevronDown } from 'react-icons/fa';
-import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
+import { useAuth } from '../contexts/AuthContext';
 
 import { containsProfanity } from '../utils/profanityDetector';
 import { apiPost, apiGet, handleApiError } from '../utils/apiClient';
+import { sendLifeEvent } from '../utils/karmaTrackerClient';
 import API_BASE_URL from '../config';
 
 const Chatbot = () => {
-    const { addKarma } = useKarma();
     const { alert, confirm, success, error } = useModal();
+    const { user } = useAuth();
     const [message, setMessage] = React.useState('');
     const [selectedModel, setSelectedModel] = React.useState(() => localStorage.getItem('chatbot_selectedModel') || 'Grok');
     const [isModelOpen, setIsModelOpen] = React.useState(false);
@@ -131,7 +132,15 @@ const Chatbot = () => {
 
         // Check for profanity
         if (containsProfanity(message)) {
-            addKarma(-20, 'Inappropriate language detected ⚠️');
+            // Backend karma: inappropriate language (negative)
+            if (user?.id) {
+                sendLifeEvent({
+                    userId: user.id,
+                    action: 'cheat',
+                    note: 'Inappropriate language detected in Chatbot',
+                    context: 'source=chatbot'
+                });
+            }
             alert('Let\'s keep our conversation respectful and focused on learning. Thank you for understanding.', 'Kind Reminder');
             return;
         }
@@ -142,10 +151,17 @@ const Chatbot = () => {
         setMessage('');
         setLoading(true);
 
-        // Award karma for first chat message
+        // First chat message in this conversation → solving doubts (positive)
         if (!hasReceivedChatKarma && !conversationId) {
-            addKarma(20, 'Started chatting! 💬');
             setHasReceivedChatKarma(true);
+            if (user?.id) {
+                sendLifeEvent({
+                    userId: user.id,
+                    action: 'solving_doubts',
+                    note: 'Started learning conversation in Chatbot',
+                    context: 'source=chatbot'
+                });
+            }
         }
 
         try {

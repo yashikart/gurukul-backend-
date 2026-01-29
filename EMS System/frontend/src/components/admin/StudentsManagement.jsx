@@ -136,12 +136,14 @@ const StudentsManagement = () => {
         </div>
         <div className="flex gap-3">
           <button
+            data-ems-task="true"
             onClick={() => setShowUploadForm(!showUploadForm)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
           >
             📤 Upload Excel
           </button>
           <button
+            data-ems-task="true"
             onClick={() => setShowCreateForm(!showCreateForm)}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
           >
@@ -252,6 +254,7 @@ const StudentsManagement = () => {
             <div className="flex gap-3">
               <button
                 type="submit"
+                data-ems-task="true"
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
               >
                 {editingStudent ? 'Update Student' : 'Create Student'}
@@ -330,6 +333,7 @@ const StudentsManagement = () => {
                       <div className="flex gap-2 flex-wrap">
                         <Link
                           to={`/dashboard/students/${student.id}/content`}
+                          data-ems-interaction="true"
                           className="text-indigo-600 hover:text-indigo-900 transition"
                           title="View Generated Content"
                         >

@@ -25,19 +25,36 @@ class EMSTokenRequest(BaseModel):
 
 async def get_ems_token(
     ems_token: Optional[str] = Header(None, alias="X-EMS-Token"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> str:
     """
-    Get EMS token from header or generate from user credentials
-    For Phase 1: Token is passed from frontend
-    For Phase 3: We'll auto-generate/store tokens
+    Get EMS token from header, database, or require authentication.
+    Priority: Header > Database (if valid) > Require authentication
     """
-    if not ems_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="EMS token required. Please authenticate with EMS first."
-        )
-    return ems_token
+    # Priority 1: Token provided in header (manual override)
+    if ems_token:
+        return ems_token
+    
+    # Priority 2: Check if user has a stored token that's still valid
+    if current_user.ems_token:
+        from datetime import datetime
+        # Check if token is expired
+        if current_user.ems_token_expires_at and current_user.ems_token_expires_at > datetime.utcnow():
+            logger.info(f"Using stored EMS token for user {current_user.email}")
+            return current_user.ems_token
+        else:
+            # Token expired, clear it
+            logger.info(f"Stored EMS token expired for user {current_user.email}, clearing it")
+            current_user.ems_token = None
+            current_user.ems_token_expires_at = None
+            db.commit()
+    
+    # Priority 3: No valid token found, require authentication
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="EMS token required. Please authenticate with EMS first."
+    )
 
 
 @router.get("/dashboard/stats")
@@ -239,12 +256,12 @@ async def get_grades(
 @router.post("/auth/ems-token")
 async def get_ems_token_from_credentials(
     credentials: EMSTokenRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
-    Authenticate with EMS using user credentials and return EMS token
-    This is a helper endpoint for Phase 1
-    In Phase 3, we'll auto-create EMS accounts and store tokens
+    Authenticate with EMS using user credentials, store token in database, and return EMS token.
+    This is a one-time authentication - token is stored and reused automatically.
     """
     if current_user.role != "STUDENT":
         raise HTTPException(
@@ -274,11 +291,33 @@ async def get_ems_token_from_credentials(
                 detail="EMS authentication returned invalid response"
             )
         
-        logger.info(f"EMS authentication successful for student {current_user.email}")
+        # Store token in database for future use
+        from datetime import datetime, timedelta
+        from jose import jwt
+        
+        access_token = token_response.get("access_token")
+        
+        # Try to decode token to get expiration (JWT tokens contain exp claim)
+        try:
+            # Decode without verification to read claims (we trust EMS's token)
+            decoded = jwt.get_unverified_claims(access_token)
+            expires_at = datetime.utcfromtimestamp(decoded.get("exp", 0))
+        except Exception:
+            # If we can't decode, assume 24 hours expiration (default JWT expiration)
+            expires_at = datetime.utcnow() + timedelta(hours=24)
+        
+        # Store token and expiration in user record
+        current_user.ems_token = access_token
+        current_user.ems_token_expires_at = expires_at
+        db.commit()
+        db.refresh(current_user)
+        
+        logger.info(f"EMS authentication successful for student {current_user.email}. Token stored in database.")
         return {
-            "ems_token": token_response.get("access_token"),
+            "ems_token": access_token,
             "token_type": token_response.get("token_type", "bearer"),
-            "message": "EMS authentication successful"
+            "expires_at": expires_at.isoformat() if expires_at else None,
+            "message": "EMS authentication successful. Token stored for future use."
         }
     except HTTPException as e:
         logger.error(f"EMS authentication HTTPException for {credentials.email}: {e.detail}")
@@ -291,6 +330,51 @@ async def get_ems_token_from_credentials(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"EMS authentication failed: {str(e)}"
         )
+
+
+@router.get("/auth/status")
+async def get_ems_auth_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Check if the current user has a valid stored EMS token.
+    Returns whether authentication is needed or if token exists and is valid.
+    """
+    from datetime import datetime
+    
+    if current_user.role != "STUDENT":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can access this endpoint"
+        )
+    
+    has_token = bool(current_user.ems_token)
+    is_valid = False
+    expires_at = None
+    
+    if has_token:
+        # Check if token is expired
+        if current_user.ems_token_expires_at:
+            expires_at = current_user.ems_token_expires_at.isoformat()
+            is_valid = current_user.ems_token_expires_at > datetime.utcnow()
+        else:
+            # Token exists but no expiration date - assume valid
+            is_valid = True
+        
+        # If expired, clear it
+        if not is_valid:
+            current_user.ems_token = None
+            current_user.ems_token_expires_at = None
+            db.commit()
+            has_token = False
+    
+    return {
+        "authenticated": is_valid,
+        "has_token": has_token,
+        "expires_at": expires_at,
+        "needs_authentication": not is_valid
+    }
 
 
 @router.get("/health")

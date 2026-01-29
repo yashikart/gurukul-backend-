@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { FaRobot, FaCog, FaCommentAlt, FaBook, FaDollarSign, FaHeartbeat, FaCircle, FaPaperPlane, FaSpinner, FaCheckCircle, FaTrashAlt, FaGlobeAmericas, FaUser, FaChevronDown } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
-import { useKarma } from '../contexts/KarmaContext';
 import { useModal } from '../contexts/ModalContext';
+import { useAuth } from '../contexts/AuthContext';
 import { containsProfanity } from '../utils/profanityDetector';
+import { sendLifeEvent } from '../utils/karmaTrackerClient';
 import API_BASE_URL from '../config';
 
 const AGENTS = [
@@ -50,8 +51,8 @@ const AGENTS = [
 const AgentSimulator = () => {
     const { agentName } = useParams();
     const navigate = useNavigate();
-    const { addKarma } = useKarma();
     const { alert, confirm, error } = useModal();
+    const { user } = useAuth();
     // --- State ---
     const [selectedAgent, setSelectedAgent] = useState(() => {
         // Priority to URL param
@@ -414,9 +415,6 @@ const AgentSimulator = () => {
             setLastGenConfig({ ...config }); // Store the config we just used
             setIsChatEnabled(true);
 
-            // Award karma for lesson generation
-            addKarma(20, 'Lesson generated! 📚');
-
             // Add system message to chat history to show start
             setChatHistory([{
                 role: 'assistant',
@@ -436,7 +434,15 @@ const AgentSimulator = () => {
 
         // Check for profanity
         if (containsProfanity(message)) {
-            addKarma(-20, 'Inappropriate language detected ⚠️');
+            // Karma: negative event for cursing with any agent
+            if (user?.id) {
+                sendLifeEvent({
+                    userId: user.id,
+                    action: 'cheat',
+                    note: `Inappropriate language detected in Agent Simulator (${selectedAgent?.name || 'Unknown agent'})`,
+                    context: `source=agent-simulator;agent=${selectedAgent?.name || 'unknown'}`
+                });
+            }
             alert('Please keep the conversation respectful.', 'Warning');
             return;
         }
@@ -445,6 +451,16 @@ const AgentSimulator = () => {
         setChatHistory(prev => [...prev, userMsg]);
         setMessage('');
         setIsChatLoading(true);
+
+        // Karma: positive event for using an agent (any of the three)
+        if (user?.id && selectedAgent?.name) {
+            sendLifeEvent({
+                userId: user.id,
+                action: 'completing_lessons',
+                note: `Interacted with ${selectedAgent.name} in Agent Simulator`,
+                context: `source=agent-simulator;agent=${selectedAgent.name}`
+            });
+        }
 
         try {
             let finalMessage = userMsg.content;
@@ -575,9 +591,6 @@ User Question: ${userMsg.content}`;
             setLastFinancialConfig({ ...financialConfig });
             setIsChatEnabled(true);
 
-            // Award karma for financial advice generation
-            addKarma(20, 'Financial advice received! 💰');
-
             setChatHistory([{
                 role: 'assistant',
                 content: `✅ I've analyzed your financial profile for **${financialConfig.name}**. What questions do you have about the advice?`
@@ -611,9 +624,6 @@ User Question: ${userMsg.content}`;
             setGeneratedSupport(data);
             setLastWellnessConfig({ ...wellnessConfig });
             setIsChatEnabled(true);
-
-            // Award karma for wellness support generation
-            addKarma(20, 'Wellness support received! 💚');
 
             setChatHistory([{
                 role: 'assistant',

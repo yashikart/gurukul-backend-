@@ -2,7 +2,7 @@
 
 All tests assume:
 - EMS frontend is running and `ems_signals.js`, `prana_e_packet_builder.js`, and `bucket_bridge.js` are active.
-- Gurukul backend Bucket endpoint is running at `http://localhost:3000/bucket/prana/ingest`.
+- EMS backend Bucket endpoint is running at `http://localhost:8000/bucket/prana/ingest`.
 - DevTools Console is open (for logs).
 
 ---
@@ -73,8 +73,9 @@ All tests assume:
   - `browser_visibility = "hidden"` when minimized/backgrounded.
   - `idle_seconds` climbs above 60.
 - **Expected PRANA-E packets**:
-  - `state = "AWAY"` once conditions meet:
-    - `!window_focus` OR `browser_visibility === "hidden"` OR `idle_seconds >= 60`
+  - `state = "AWAY"` once both conditions meet:
+    - `!window_focus` OR `browser_visibility === "hidden"`
+    - **and** `idle_seconds >= 60`
   - `away_seconds ≈ 5`, `active_seconds = 0`, `idle_seconds = 0`
   - `integrity_score` reduced by `0.5` for AWAY.
 
@@ -98,7 +99,7 @@ All tests assume:
 
 ### 6. Bucket ingestion verification
 
-- **Setup**: Ensure Gurukul backend is running (`http://localhost:3000`) and the `/bucket/prana/ingest` route is available.
+- **Setup**: Ensure EMS backend is running (`http://localhost:8000`) and the `/bucket/prana/ingest` route is available.
 - **Action**:
   - With EMS frontend open for at least 15–30 seconds, perform any normal activity.
 - **Expected Backend behavior**:

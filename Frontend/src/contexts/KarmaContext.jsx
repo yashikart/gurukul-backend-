@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 const KarmaContext = createContext();
 
@@ -10,45 +11,130 @@ export const useKarma = () => {
     return context;
 };
 
+const KARMA_TRACKER_URL = import.meta.env.VITE_KARMA_TRACKER_URL || 'http://localhost:8001';
+
 export const KarmaProvider = ({ children }) => {
+    const { user } = useAuth();
+
     const [karma, setKarma] = useState(() => {
         const saved = localStorage.getItem('gurukul_karma');
-        return saved ? parseInt(saved, 10) : 120;
+        return saved ? parseInt(saved, 10) : 0;
     });
 
+    // Ephemeral frontend-only notifications, driven by backend karma changes
     const [notifications, setNotifications] = useState([]);
 
-    useEffect(() => {
-        localStorage.setItem('gurukul_karma', karma.toString());
-    }, [karma]);
+    const addNotification = (amount, reason) => {
+        if (!amount) return;
+        const id = Date.now() + Math.random().toString(36).slice(2);
+        const type = amount > 0 ? 'positive' : 'negative';
 
-    const addKarma = (amount, reason) => {
-        const newKarma = karma + amount;
-        setKarma(newKarma);
+        setNotifications(prev => {
+            // Avoid duplicate toasts with the same amount + reason
+            const alreadyExists = prev.some(n => n.amount === amount && n.reason === reason);
+            if (alreadyExists) return prev;
+            return [...prev, { id, amount, reason, type }];
+        });
 
-        // Add notification
-        const notification = {
-            id: Date.now(),
-            type: amount > 0 ? 'positive' : 'negative',
-            amount,
-            reason,
-            timestamp: Date.now()
-        };
-
-        setNotifications(prev => [...prev, notification]);
-
-        // Auto-remove notification after 3 seconds
+        // Auto-remove after 4 seconds
         setTimeout(() => {
-            setNotifications(prev => prev.filter(n => n.id !== notification.id));
-        }, 3000);
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        }, 4000);
     };
 
     const removeNotification = (id) => {
         setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
+    // Persist last known karma so users see something instantly on reload
+    useEffect(() => {
+        localStorage.setItem('gurukul_karma', karma.toString());
+    }, [karma]);
+
+    // Fetch karma from Karma Tracker
+    const fetchKarmaFromTracker = React.useCallback(async () => {
+        if (!user || !user.id) {
+            console.log('[Karma] Cannot fetch karma - no user:', { user: !!user, userId: user?.id });
+            return;
+        }
+
+        try {
+            console.log('[Karma] Fetching karma for user:', user.id);
+            const res = await fetch(`${KARMA_TRACKER_URL}/api/v1/karma/${user.id}`);
+            if (!res.ok) {
+                // Don't spam errors; just keep local value
+                console.warn('[Karma] Failed to fetch karma profile:', res.status, res.statusText);
+                return;
+            }
+            const data = await res.json();
+            console.log('[Karma] Fetched karma data:', data);
+
+            // Use DharmaPoints as the main visible karma metric
+            const dharma = data?.balances?.DharmaPoints ?? 0;
+            const nextKarma = Math.round(dharma);
+            console.log('[Karma] Calculated karma:', { dharma, nextKarma });
+
+            setKarma(prev => {
+                const delta = nextKarma - prev;
+                console.log('[Karma] Karma delta:', { prev, nextKarma, delta });
+
+                // Check if this change came from PRANA (activity-based karma)
+                let suppressNotification = false;
+                try {
+                    if (typeof window !== 'undefined' && window.localStorage) {
+                        const silentFlag = localStorage.getItem('prana_silent_karma');
+                        if (silentFlag === '1') {
+                            suppressNotification = true;
+                            localStorage.removeItem('prana_silent_karma');
+                            console.log('[Karma] Suppressing notification for PRANA-driven karma change');
+                        }
+                    }
+                } catch (e) {
+                    // Ignore storage errors, fall back to normal behavior
+                }
+
+                if (delta !== 0 && !suppressNotification) {
+                    const reason = delta > 0
+                        ? 'Well done – your karma has increased.'
+                        : 'A karmic penalty was applied. Reflect and realign.';
+                    console.log('[Karma] Adding notification:', { delta, reason });
+                    addNotification(delta, reason);
+                } else if (delta === 0) {
+                    console.log('[Karma] No karma change detected');
+                }
+
+                return nextKarma;
+            });
+        } catch (error) {
+            console.warn('[Karma] Error fetching karma profile (non-blocking):', error);
+        }
+    }, [user?.id]);
+
+    // Sync karma from Karma Tracker when user changes
+    useEffect(() => {
+        if (!user || !user.id) return;
+
+        let cancelled = false;
+
+        const fetchWithCancellation = async () => {
+            if (cancelled) return;
+            await fetchKarmaFromTracker();
+        };
+
+        // Initial fetch
+        fetchWithCancellation();
+
+        // Periodic refresh every 30 seconds
+        const intervalId = setInterval(fetchWithCancellation, 30000);
+
+        return () => {
+            cancelled = true;
+            clearInterval(intervalId);
+        };
+    }, [user?.id, fetchKarmaFromTracker]);
+
     return (
-        <KarmaContext.Provider value={{ karma, addKarma, notifications, removeNotification }}>
+        <KarmaContext.Provider value={{ karma, notifications, removeNotification, refreshKarma: fetchKarmaFromTracker }}>
             {children}
         </KarmaContext.Provider>
     );

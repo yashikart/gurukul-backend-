@@ -336,7 +336,7 @@ This is generation attempt #{int(time.time() % 100)} - ensure maximum variety!""
             try:
                 # Get school_id from user if available
                 school_id = getattr(current_user, 'school_id', None)
-                
+
                 ems_sync_result = await ems_sync.sync_flashcard(
                     gurukul_id=db_card.id,
                     student_email=current_user.email,

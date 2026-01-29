@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { FaHeart, FaTimes, FaSmile, FaMeh, FaFrown, FaGrinStars, FaSadTear } from 'react-icons/fa';
 import { apiPost, handleApiError } from '../utils/apiClient';
-import { useKarma } from '../contexts/KarmaContext';
 
 const ReflectionModal = ({ isOpen, onClose, onSuccess }) => {
     const [content, setContent] = useState('');
     const [mood, setMood] = useState(3); // 1-5
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const { addKarma } = useKarma();
 
     if (!isOpen) return null;
 
@@ -32,8 +30,6 @@ const ReflectionModal = ({ isOpen, onClose, onSuccess }) => {
                 content,
                 mood_score: mood
             });
-
-            addKarma(10, 'Reflection logged! 🧘');
             if (onSuccess) onSuccess();
             onClose();
             setContent('');

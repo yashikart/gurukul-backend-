@@ -20,7 +20,9 @@ export const AuthProvider = ({ children }) => {
                     const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
-                        }
+                        },
+                        // Add timeout to prevent hanging
+                        signal: AbortSignal.timeout(10000) // 10 second timeout
                     });
                     
                     if (response.ok) {
@@ -31,17 +33,32 @@ export const AuthProvider = ({ children }) => {
                             full_name: userData.full_name,
                             role: userData.role
                         });
-                    } else {
-                        // Token is invalid, clear it
+                    } else if (response.status === 401) {
+                        // Only logout on actual 401 Unauthorized (token is invalid/expired)
+                        console.warn('[Auth] Token invalid (401), logging out');
                         localStorage.removeItem('auth_token');
+                        localStorage.removeItem('ems_token');
                         setToken(null);
                         setUser(null);
+                    } else {
+                        // For other errors (500, 503, network issues, etc.), keep user logged in
+                        // They might have a valid token but server is temporarily unavailable
+                        console.warn('[Auth] Auth check failed with status:', response.status, '- keeping session active');
+                        // Don't clear token or logout - just don't set user state
+                        // User can still use the app, and we'll retry on next page load
                     }
                 } catch (error) {
-                    console.error('Auth check failed:', error);
-                    localStorage.removeItem('auth_token');
-                    setToken(null);
-                    setUser(null);
+                    // Network errors, timeouts, CORS issues - don't logout
+                    // User might have valid token but connection is temporarily unavailable
+                    if (error.name === 'AbortError' || error.message.includes('timeout')) {
+                        console.warn('[Auth] Auth check timed out - keeping session active');
+                    } else if (error instanceof TypeError && error.message.includes('fetch')) {
+                        console.warn('[Auth] Network error during auth check - keeping session active');
+                    } else {
+                        console.warn('[Auth] Auth check error:', error.message, '- keeping session active');
+                    }
+                    // Don't clear token or logout on network errors
+                    // User stays logged in and can continue using the app
                 }
             }
             setLoading(false);
@@ -146,6 +163,8 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         // Clear token and user
         localStorage.removeItem('auth_token');
+        // Clear EMS authentication to prevent cross-account contamination
+        localStorage.removeItem('ems_token');
         setToken(null);
         setUser(null);
     };

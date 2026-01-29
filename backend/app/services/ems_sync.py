@@ -136,16 +136,16 @@ class EMSSyncService:
         content: str,
         source: Optional[str] = None,
         source_type: Optional[str] = None,
-        extra_metadata: Optional[Dict] = None
+        extra_metadata: Optional[Dict] = None,
     ) -> Optional[Dict]:
-        """Sync a summary from Gurukul to EMS"""
+        """Sync a summary from Gurukul to EMS using EMS admin credentials"""
         admin_token = await self._get_admin_token()
         if not admin_token:
-            logger.error(f"Cannot sync summary {gurukul_id}: No admin token (EMS_ADMIN_EMAIL/EMS_ADMIN_PASSWORD not configured)")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="EMS sync not configured: Missing EMS_ADMIN_EMAIL or EMS_ADMIN_PASSWORD in environment variables"
+            logger.warning(
+                f"Cannot sync summary {gurukul_id}: EMS admin credentials not configured. "
+                "Set EMS_ADMIN_EMAIL and EMS_ADMIN_PASSWORD to enable syncing."
             )
+            return None  # Gracefully fail without raising exception
         
         sync_data = {
             "student_email": student_email,
@@ -186,16 +186,16 @@ class EMSSyncService:
         answer: str,
         question_type: str = "conceptual",
         days_until_review: int = 0,
-        confidence: float = 0.0
+        confidence: float = 0.0,
     ) -> Optional[Dict]:
-        """Sync a flashcard from Gurukul to EMS"""
+        """Sync a flashcard from Gurukul to EMS using EMS admin credentials"""
         admin_token = await self._get_admin_token()
         if not admin_token:
-            logger.error(f"Cannot sync flashcard {gurukul_id}: No admin token (EMS_ADMIN_EMAIL/EMS_ADMIN_PASSWORD not configured)")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="EMS sync not configured: Missing EMS_ADMIN_EMAIL or EMS_ADMIN_PASSWORD in environment variables"
+            logger.warning(
+                f"Cannot sync flashcard {gurukul_id}: EMS admin credentials not configured. "
+                "Set EMS_ADMIN_EMAIL and EMS_ADMIN_PASSWORD to enable syncing."
             )
+            return None  # Gracefully fail without raising exception
         
         sync_data = {
             "student_email": student_email,
@@ -241,16 +241,16 @@ class EMSSyncService:
         score: int,
         total_questions: int,
         percentage: float,
-        time_taken: Optional[int] = None
+        time_taken: Optional[int] = None,
     ) -> Optional[Dict]:
-        """Sync a test result from Gurukul to EMS"""
+        """Sync a test result from Gurukul to EMS using EMS admin credentials"""
         admin_token = await self._get_admin_token()
         if not admin_token:
-            logger.error(f"Cannot sync test result {gurukul_id}: No admin token (EMS_ADMIN_EMAIL/EMS_ADMIN_PASSWORD not configured)")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="EMS sync not configured: Missing EMS_ADMIN_EMAIL or EMS_ADMIN_PASSWORD in environment variables"
+            logger.warning(
+                f"Cannot sync test result {gurukul_id}: EMS admin credentials not configured. "
+                "Set EMS_ADMIN_EMAIL and EMS_ADMIN_PASSWORD to enable syncing."
             )
+            return None  # Gracefully fail without raising exception
         
         sync_data = {
             "student_email": student_email,
@@ -296,16 +296,16 @@ class EMSSyncService:
         topic: str,
         notes: str,
         provider: str = "groq",
-        youtube_recommendations: Optional[list] = None
+        youtube_recommendations: Optional[list] = None,
     ) -> Optional[Dict]:
-        """Sync subject explorer data from Gurukul to EMS"""
+        """Sync subject explorer data from Gurukul to EMS using EMS admin credentials"""
         admin_token = await self._get_admin_token()
         if not admin_token:
-            logger.error(f"Cannot sync subject data {gurukul_id}: No admin token (EMS_ADMIN_EMAIL/EMS_ADMIN_PASSWORD not configured)")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="EMS sync not configured: Missing EMS_ADMIN_EMAIL or EMS_ADMIN_PASSWORD in environment variables"
+            logger.warning(
+                f"Cannot sync subject data {gurukul_id}: EMS admin credentials not configured. "
+                "Set EMS_ADMIN_EMAIL and EMS_ADMIN_PASSWORD to enable syncing."
             )
+            return None  # Gracefully fail without raising exception
         
         sync_data = {
             "student_email": student_email,

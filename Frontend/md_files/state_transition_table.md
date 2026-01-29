@@ -8,7 +8,7 @@ Only ONE state active at any time:
 
 1. **ON_TASK** - Actively learning
 2. **THINKING** - Pausing to process
-3. **IDLE** - No activity 30+ seconds
+3. **IDLE** - No activity 10+ minutes
 4. **DISTRACTED** - Browser lost focus
 5. **AWAY** - Tab hidden/switched
 6. **OFF_TASK** - Frustrated/anxious behavior
@@ -37,7 +37,7 @@ Higher priority states override lower ones:
 - **Meaning:** Clicked outside browser
 
 ### IDLE
-- **When:** No interaction for 30+ seconds
+- **When:** No interaction for 10+ minutes
 - **Meaning:** Stepped away or just reading
 
 ### OFF_TASK
@@ -74,7 +74,7 @@ Higher priority states override lower ones:
 |----------------------|------------|------------------------------|-----------|
 | Any → AWAY           | ✅ Always | Tab hidden                   | None      |
 | Any → DISTRACTED     | ✅ Always | Focus lost                   | None      |
-| Any → IDLE           | ✅ Yes    | 30s inactivity               | 5s        |
+| Any → IDLE           | ✅ Yes    | 10min inactivity             | 5s        |
 | ON_TASK → OFF_TASK   | ✅ Yes    | Rapid clicks / high velocity | 5s        |
 | ON_TASK → DEEP_FOCUS | ✅ Yes    | Sustained calm (15s)         | 15s entry |
 | ON_TASK → THINKING   | ✅ Yes    | Contemplative pause          | 5s        |
@@ -102,6 +102,6 @@ Switch tab → AWAY (instantly)
 
 Every state change logs:
 ```
-[PRANA] STATE_CHANGE: ON_TASK → IDLE | reason: inactivity > 30s | duration: 45s
+[PRANA] STATE_CHANGE: ON_TASK → IDLE | reason: inactivity > 10min | duration: 45s
 ```
 

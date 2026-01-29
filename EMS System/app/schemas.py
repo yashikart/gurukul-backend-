@@ -21,8 +21,12 @@ class TokenData(BaseModel):
     school_id: Optional[int] = None
 
 
-# User Schemas
+# User Schemas (core)
 class UserBase(BaseModel):
+    """
+    Base schema for user data where strict email validation is desired
+    (e.g. auth flows, user creation).
+    """
     name: str
     email: EmailStr
     role: UserRole
@@ -36,6 +40,22 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
     
+    class Config:
+        from_attributes = True
+
+
+class UserDashboardResponse(BaseModel):
+    """
+    Relaxed response schema for Super Admin dashboard listings.
+    Uses plain string for email so a single bad row in the DB
+    does not crash the whole /dashboard/users endpoint.
+    """
+    id: int
+    name: str
+    email: str  # deliberately not EmailStr to avoid ResponseValidationError on bad data
+    role: UserRole
+    school_id: Optional[int] = None
+
     class Config:
         from_attributes = True
 

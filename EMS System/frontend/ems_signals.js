@@ -34,7 +34,6 @@
   
     // Internal state (not exposed)
     let lastActivityTs = Date.now();
-    let lastUpdateTs = Date.now();
     let lastMouseX = null;
     let lastMouseY = null;
   
@@ -106,7 +105,7 @@
       { passive: true }
     );
   
-    // Scroll
+    // Scroll (window + in-app scroll containers)
     window.addEventListener(
       "scroll",
       () => {
@@ -115,12 +114,25 @@
       },
       { passive: true }
     );
+
+    // Capture scrolls on inner containers (e.g., dashboards with their own scrollbars)
+    document.addEventListener(
+      "scroll",
+      (event) => {
+        const root = document.getElementById("root");
+        if (root && root.contains(event.target)) {
+          state.scroll_events += 1;
+          markActivity();
+        }
+      },
+      { passive: true, capture: true }
+    );
   
-    // Content interaction (task-related clicks only)
+    // Content interaction (task-related clicks and key EMS UI clicks)
     document.addEventListener(
       "click",
       (event) => {
-        // Only count clicks on EMS task-relevant elements:
+        // Primary rule: clicks on EMS task-relevant elements
         // anything explicitly marked with data-ems-task or data-ems-interaction
         const target = event.target;
         const taskElement = target.closest?.(
@@ -129,6 +141,13 @@
   
         if (taskElement) {
           state.content_clicks += 1;
+        } else {
+          // Fallback: treat primary UI buttons/links inside React root as interactions
+          const root = document.getElementById("root");
+          const uiElement = target.closest?.("button, a, [role='button']");
+          if (root && uiElement && root.contains(uiElement)) {
+            state.content_clicks += 1;
+          }
         }
   
         markActivity();
@@ -150,17 +169,6 @@
       state.browser_visibility = document.visibilityState || state.browser_visibility;
       state.browser_hidden = state.browser_visibility === "hidden";
       state.task_tab_active = state.window_focus && state.browser_visibility === "visible";
-  
-      // Reset per-window counters every second (keeps counts bounded and inspectable)
-      const elapsedSinceUpdate = now - lastUpdateTs;
-      if (elapsedSinceUpdate >= SIGNAL_UPDATE_INTERVAL_MS) {
-        state.keystroke_count = 0;
-        state.mouse_events = 0;
-        state.mouse_distance = 0;
-        state.scroll_events = 0;
-        state.content_clicks = 0;
-        lastUpdateTs = now;
-      }
     }
   
     setInterval(updateState, SIGNAL_UPDATE_INTERVAL_MS);

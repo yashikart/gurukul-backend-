@@ -57,6 +57,7 @@ const AdminStudentContent = () => {
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <p className="text-red-800">{error}</p>
         <button
+          data-ems-interaction="true"
           onClick={fetchAllContent}
           className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
         >
@@ -71,6 +72,7 @@ const AdminStudentContent = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Student Generated Content</h1>
         <button
+          data-ems-interaction="true"
           onClick={fetchAllContent}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
         >
@@ -84,6 +86,7 @@ const AdminStudentContent = () => {
           {['all', 'summaries', 'flashcards', 'tests', 'subjects'].map((tab) => (
             <button
               key={tab}
+              data-ems-interaction="true"
               onClick={() => setActiveTab(tab)}
               className={`${
                 activeTab === tab

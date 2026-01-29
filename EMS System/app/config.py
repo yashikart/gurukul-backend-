@@ -27,7 +27,9 @@ class Settings(BaseSettings):
     VALIDATE_CERTS: bool = True
     
     # Frontend URL (for password setup links)
-    FRONTEND_URL: str = "http://localhost:5173"
+    # This should point to the EMS frontend, not the Gurukul app.
+    # Default to the EMS Vite dev server port (3001).
+    FRONTEND_URL: str = "http://localhost:3001"
     
     # Password token expiration (minutes)
     PASSWORD_TOKEN_EXPIRE_MINUTES: int = 30

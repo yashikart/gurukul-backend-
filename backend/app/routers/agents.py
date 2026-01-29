@@ -94,8 +94,7 @@ async def generate_financial_advice(request: FinancialRequest):
     except Exception:
         pass
 
-    # MOCK RESPONSE for stability (User just wants it "not deleted")
-    # In a real scenario I would hook up the LLM.
+    # Deterministic calculation used in both primary and fallback paths
     monthly_savings = request.monthly_income - request.monthly_expenses
     
     # Real LLM Call
@@ -105,17 +104,22 @@ async def generate_financial_advice(request: FinancialRequest):
         system_prompt = "Act as a professional financial advisor. Provide a clear, strategic financial plan based on the user's data."
         
         generated_advice = await generate_text(system_prompt, prompt, temperature=0.6)
-        
+
+        # Echo back core numeric fields so frontend can display Income / Expenses / Savings
         return {
             "financial_advice": generated_advice,
-            "monthly_savings": monthly_savings
+            "monthly_savings": monthly_savings,
+            "monthly_income": request.monthly_income,
+            "monthly_expenses": request.monthly_expenses,
         }
     except Exception as e:
         print(f"Financial LLM Failed: {e}")
-        # Fallback
+        # Fallback: still return all numeric fields for UI consistency
         return {
              "financial_advice": f"Could not generate AI advice ({str(e)}). \n\nCalculated Savings: {monthly_savings}",
-             "monthly_savings": monthly_savings
+             "monthly_savings": monthly_savings,
+             "monthly_income": request.monthly_income,
+             "monthly_expenses": request.monthly_expenses,
         }
 
 @router.post("/wellness/support")

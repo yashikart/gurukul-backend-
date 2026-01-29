@@ -65,6 +65,10 @@ class User(Base):
     parent_id = Column(String, ForeignKey("users.id"), nullable=True) # For Students to link to Parent
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # EMS Integration - Store token for one-time authentication
+    ems_token = Column(String, nullable=True)  # Stored EMS JWT token
+    ems_token_expires_at = Column(DateTime(timezone=True), nullable=True)  # Token expiration time
 
     tenant = relationship("Tenant", back_populates="users")
     cohort = relationship("Cohort", back_populates="users")

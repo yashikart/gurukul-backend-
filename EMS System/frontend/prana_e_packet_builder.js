@@ -24,12 +24,18 @@
     return {
       startTs,
       endTs: startTs,
-      // Aggregate simple counts
+      // Aggregate simple counts (per window)
       keystroke_count: 0,
       mouse_events: 0,
       scroll_events: 0,
       content_clicks: 0,
       app_switches: 0,
+      // Last seen global counters (for delta computation)
+      _last_keystroke_count: 0,
+      _last_mouse_events: 0,
+      _last_scroll_events: 0,
+      _last_content_clicks: 0,
+      _last_app_switches: 0,
       // Track extremes
       max_idle_seconds: 0,
       last_snapshot: null,
@@ -43,10 +49,30 @@
     agg.endTs = now;
     agg.last_snapshot = snapshot;
 
-    agg.keystroke_count += snapshot.keystroke_count || 0;
-    agg.mouse_events += snapshot.mouse_events || 0;
-    agg.scroll_events += snapshot.scroll_events || 0;
-    agg.content_clicks += snapshot.content_clicks || 0;
+    // EMSSignals exposes monotonic counters; use per-window deltas
+    const keys = snapshot.keystroke_count || 0;
+    const prevKeys = agg._last_keystroke_count || 0;
+    const deltaKeys = Math.max(0, keys - prevKeys);
+    agg.keystroke_count += deltaKeys;
+    agg._last_keystroke_count = keys;
+
+    const mouse = snapshot.mouse_events || 0;
+    const prevMouse = agg._last_mouse_events || 0;
+    const deltaMouse = Math.max(0, mouse - prevMouse);
+    agg.mouse_events += deltaMouse;
+    agg._last_mouse_events = mouse;
+
+    const scroll = snapshot.scroll_events || 0;
+    const prevScroll = agg._last_scroll_events || 0;
+    const deltaScroll = Math.max(0, scroll - prevScroll);
+    agg.scroll_events += deltaScroll;
+    agg._last_scroll_events = scroll;
+
+    const clicks = snapshot.content_clicks || 0;
+    const prevClicks = agg._last_content_clicks || 0;
+    const deltaClicks = Math.max(0, clicks - prevClicks);
+    agg.content_clicks += deltaClicks;
+    agg._last_content_clicks = clicks;
 
     // app_switches is monotonic in EMSSignals; we want delta per window
     const switches = snapshot.app_switches || 0;
@@ -91,6 +117,8 @@
         browser_visibility: snapshot.browser_visibility,
         task_tab_active: !!snapshot.task_tab_active,
         idle_seconds: snapshot.idle_seconds,
+        // Expose window-level max idle so integrity_score is fully recomputable from the packet
+        max_idle_seconds: agg.max_idle_seconds,
         keystroke_count: agg.keystroke_count,
         mouse_events: agg.mouse_events,
         scroll_events: agg.scroll_events,
@@ -118,6 +146,12 @@
     const task_tab_active = !!snapshot.task_tab_active;
     const idle_seconds = snapshot.idle_seconds || 0;
 
+    // Derived activity buckets for clearer reasoning
+    const hasKeystrokes = (aggregates.keystroke_count || 0) > 0;
+    const hasMouse = (aggregates.mouse_events || 0) > 0;
+    const hasScroll = (aggregates.scroll_events || 0) > 0;
+    const hasContentClicks = (aggregates.content_clicks || 0) > 0;
+
     const totalActivity =
       (aggregates.keystroke_count || 0) +
       (aggregates.mouse_events || 0) +
@@ -144,11 +178,17 @@
     }
 
     // WORKING
+    // To qualify as WORKING we require *meaningful* interaction:
+    //  - focused, visible, low idle
+    //  - the EMS task tab is actually active
+    //  - AND at least one of: keystrokes, scroll, content clicks
+    // This prevents cheap mouse-jiggler macros from being counted as honest work.
     if (
       window_focus === true &&
       browser_visibility === 'visible' &&
+      task_tab_active === true &&
       idle_seconds < 10 &&
-      totalActivity > 0
+      (hasKeystrokes || hasScroll || hasContentClicks)
     ) {
       return 'WORKING';
     }

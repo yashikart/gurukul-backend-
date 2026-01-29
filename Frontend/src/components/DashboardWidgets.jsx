@@ -126,7 +126,6 @@ export const AchievementsWidget = () => (
 );
 
 export const GoalWidget = ({ timeLeft, isActive, onStart, onStop }) => {
-    const { addKarma } = useKarma();
     const [isSetting, setIsSetting] = React.useState(false);
 
     // Split input states
@@ -147,17 +146,6 @@ export const GoalWidget = ({ timeLeft, isActive, onStart, onStop }) => {
     };
 
     const handleStopClick = () => {
-
-
-        // Check if goal was completed or abandoned
-        if (timeLeft === 0) {
-            // Goal completed!
-            addKarma(20, 'Goal completed! 🎯');
-        } else if (timeLeft > 0) {
-            // Goal abandoned
-            addKarma(-20, 'Goal abandoned 😞');
-        }
-
         if (onStop) onStop();
         setIsSetting(false);
         setHrs('00');

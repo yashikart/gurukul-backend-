@@ -98,7 +98,7 @@ async def summarize_pdf(
         try:
             # Get school_id from user if available
             school_id = getattr(current_user, 'school_id', None)
-            
+
             ems_sync_result = await ems_sync.sync_summary(
                 gurukul_id=new_summary.id,
                 student_email=current_user.email,

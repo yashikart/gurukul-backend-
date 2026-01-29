@@ -84,10 +84,13 @@ async def subject_explorer(
 
     # 2. Get YouTube Recommendations
     youtube_videos = []
+    youtube_videos_dict = []  # For database storage (JSON serializable)
     try:
         youtube_videos = await get_youtube_recommendations(request.subject, request.topic)
+        # Convert Pydantic models to dictionaries for database storage
+        youtube_videos_dict = [video.dict() if hasattr(video, 'dict') else video.model_dump() for video in youtube_videos]
     except Exception as e:
-        print(f"[API] YouTube Error: {str(e)}")
+        logger.error(f"[API] YouTube Error: {str(e)}")
     
     # 3. Save to database
     subject_data = SubjectData(
@@ -96,7 +99,7 @@ async def subject_explorer(
         topic=request.topic,
         notes=notes,
         provider=request.provider,
-        youtube_recommendations=youtube_videos
+        youtube_recommendations=youtube_videos_dict  # Use dict version for DB
     )
     db.add(subject_data)
     db.commit()
@@ -106,7 +109,7 @@ async def subject_explorer(
     try:
         # Get school_id from user if available
         school_id = getattr(current_user, 'school_id', None)
-        
+
         ems_sync_result = await ems_sync.sync_subject_data(
             gurukul_id=subject_data.id,
             student_email=current_user.email,
@@ -115,7 +118,7 @@ async def subject_explorer(
             topic=request.topic,
             notes=notes,
             provider=request.provider,
-            youtube_recommendations=youtube_videos
+            youtube_recommendations=youtube_videos_dict  # Use dict version for EMS sync
         )
         
         if ems_sync_result:
@@ -162,7 +165,7 @@ async def save_learning_summary(
     try:
         # Get school_id from user if available
         school_id = getattr(current_user, 'school_id', None)
-        
+
         ems_sync_result = await ems_sync.sync_summary(
             gurukul_id=new_summary.id,
             student_email=current_user.email,
