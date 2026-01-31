@@ -54,7 +54,7 @@ VECTOR_STORE_COLLECTION=knowledge_base
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ```
 
-## Step 4: Database & Services (Set manually with your actual values)
+## Step 4: Database & Services (Copy-paste ready - Replace values with your actual ones)
 
 ```
 DATABASE_URL=postgresql://user:password@host:port/dbname
@@ -63,7 +63,7 @@ JWT_SECRET_KEY=your-secret-key-here-change-in-production
 MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/dbname
 MONGO_URI=mongodb+srv://user:password@cluster.mongodb.net/dbname
 DB_NAME=karma-chain
-REDIS_URL=redis://default:password@host:port
+REDIS_URL=redis://default:Ijz11HrwWuUnFJnmJjxu4bAdhaPSEGsF@redis-15234.crce276.ap-south-1-3.ec2.cloud.redislabs.com:15234
 ```
 
 ## Step 5: Frontend URLs (Update after deploying static sites)
@@ -142,17 +142,17 @@ ANIMATEDIFF_NGROK_ENDPOINT=https://c7d82cf2656d.ngrok-free.app
 43. **UNIGURU_API_BASE_URL** = `` (empty)
 44. **ANIMATEDIFF_NGROK_ENDPOINT** = `https://c7d82cf2656d.ngrok-free.app`
 
-**Then add these with your actual values:**
-45. **DATABASE_URL** = `postgresql://user:password@host:port/dbname` (from Render PostgreSQL)
-46. **SECRET_KEY** = `generate-or-set-your-own-secret-key`
-47. **JWT_SECRET_KEY** = `generate-or-set-your-own-secret-key`
-48. **MONGODB_URI** = `mongodb+srv://user:password@cluster.mongodb.net/dbname` (from MongoDB Atlas)
-49. **MONGO_URI** = `mongodb+srv://user:password@cluster.mongodb.net/dbname` (same as above)
+**Then add these (replace placeholder values with your actual ones):**
+45. **DATABASE_URL** = `postgresql://user:password@host:port/dbname` (from Render PostgreSQL - REPLACE THIS)
+46. **SECRET_KEY** = `your-secret-key-here-change-in-production` (REPLACE with your secret key)
+47. **JWT_SECRET_KEY** = `your-secret-key-here-change-in-production` (REPLACE with your secret key)
+48. **MONGODB_URI** = `mongodb+srv://user:password@cluster.mongodb.net/dbname` (from MongoDB Atlas - REPLACE THIS)
+49. **MONGO_URI** = `mongodb+srv://user:password@cluster.mongodb.net/dbname` (same as MONGODB_URI - REPLACE THIS)
 50. **DB_NAME** = `karma-chain`
-51. **REDIS_URL** = `redis://default:password@host:port` (optional, if using Redis)
-52. **FRONTEND_URL** = `https://gurukul-frontend.onrender.com` (after creating static site)
-53. **EMS_FRONTEND_URL** = `https://ems-frontend.onrender.com` (after creating static site)
-54. **EMS_API_BASE_URL** = `https://ems-backend.onrender.com` (after deploying EMS backend)
+51. **REDIS_URL** = `redis://default:password@host:port` (optional, if using Redis - REPLACE THIS)
+52. **FRONTEND_URL** = `https://gurukul-frontend.onrender.com` (after creating static site - REPLACE with actual URL)
+53. **EMS_FRONTEND_URL** = `https://ems-frontend.onrender.com` (after creating static site - REPLACE with actual URL)
+54. **EMS_API_BASE_URL** = `https://ems-backend.onrender.com` (after deploying EMS backend - REPLACE with actual URL)
 
 ---
 
