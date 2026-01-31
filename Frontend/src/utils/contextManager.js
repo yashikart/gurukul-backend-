@@ -9,14 +9,78 @@ class ContextManager {
       : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
   }
 
-  // Set session context after login
+  // Extract session_id from JWT token
+  extractSessionIdFromToken(token) {
+    if (!token) return null;
+    
+    try {
+      // JWT tokens have 3 parts separated by dots: header.payload.signature
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      
+      // Decode the payload (base64url)
+      const payload = parts[1];
+      // Add padding if needed for base64 decoding
+      const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+      const decoded = JSON.parse(atob(paddedPayload.replace(/-/g, '+').replace(/_/g, '/')));
+      
+      // Get session_id from token (backend includes it in the payload)
+      return decoded.session_id || decoded.jti || null;
+    } catch (e) {
+      console.warn('[ContextManager] Failed to extract session_id from token:', e);
+      return null;
+    }
+  }
+
+  // Get or create session ID from token
+  getOrCreateSessionId() {
+    // First, try to get session_id from the current auth token
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      const sessionId = this.extractSessionIdFromToken(token);
+      if (sessionId) {
+        // Cache it in localStorage for quick access
+        localStorage.setItem('session_id', sessionId);
+        return sessionId;
+      }
+    }
+    
+    // Fallback: check if we have a cached session_id
+    const cachedSessionId = localStorage.getItem('session_id');
+    if (cachedSessionId) {
+      return cachedSessionId;
+    }
+    
+    // Last resort: generate a new session_id if token doesn't have one
+    // This can happen if user logged in before session_id was added to tokens
+    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('session_id', newSessionId);
+    console.log('[ContextManager] Generated new session_id:', newSessionId);
+    return newSessionId;
+  }
+
+  // Set session context after login (extracts from token, doesn't override)
   setSessionContext(sessionData) {
+    // Always extract from token first (token is source of truth)
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      const sessionId = this.extractSessionIdFromToken(token);
+      if (sessionId) {
+        localStorage.setItem('session_id', sessionId);
+        console.log('[ContextManager] Session context set from token:', sessionId);
+        return sessionId;
+      }
+    }
+    
+    // Fallback: use provided session_id if token extraction fails
     if (sessionData?.session_id) {
       localStorage.setItem('session_id', sessionData.session_id);
-      console.log('[ContextManager] Session context set:', sessionData.session_id);
-      return true;
+      console.log('[ContextManager] Session context set from provided data:', sessionData.session_id);
+      return sessionData.session_id;
     }
-    return false;
+    
+    // Last resort: return cached or null
+    return this.getOrCreateSessionId();
   }
 
   // Set lesson context when entering lesson
@@ -31,9 +95,12 @@ class ContextManager {
 
   // Get current context for PRANA
   getCurrentContext() {
+    // Ensure session_id exists (generate if missing)
+    const sessionId = this.getOrCreateSessionId();
+    
     return {
       user_id: this.getUserId(),
-      session_id: localStorage.getItem('session_id'),
+      session_id: sessionId,
       lesson_id: sessionStorage.getItem('current_lesson_id')
     };
   }
@@ -143,6 +210,7 @@ export default contextManager;
 
 // Export individual functions for direct use
 export const setSessionContext = (sessionData) => contextManager.setSessionContext(sessionData);
+export const getOrCreateSessionId = () => contextManager.getOrCreateSessionId();
 export const setLessonContext = (lessonId) => contextManager.setLessonContext(lessonId);
 export const getCurrentContext = () => contextManager.getCurrentContext();
 export const fetchLessonContext = (lessonId) => contextManager.fetchLessonContext(lessonId);

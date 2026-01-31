@@ -69,6 +69,12 @@ const MyLessons = () => {
   };
 
   const handleEditLesson = (lesson) => {
+    // Set lesson_id in sessionStorage for PRANA before navigation
+    sessionStorage.setItem('current_lesson_id', lesson.id.toString());
+    // Also update window context if it exists
+    if (window.EMSUserContext) {
+      window.EMSUserContext.currentLessonId = lesson.id.toString();
+    }
     navigate(`/dashboard/lessons/edit/${lesson.id}`, { state: { lesson } });
   };
 

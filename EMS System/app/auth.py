@@ -47,20 +47,28 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     """
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        print(f"[AUTH] User not found: {email}")
         return None
     
     # Check if user is active
     if not user.is_active:
+        print(f"[AUTH] User is inactive: {email}")
         return None
     
     # Check if password is set
     if user.password is None:
+        print(f"[AUTH] User has no password set: {email}")
         return None
     
     # Verify password
-    if not verify_password(password, user.password):
+    password_match = verify_password(password, user.password)
+    if not password_match:
+        print(f"[AUTH] Password mismatch for: {email}")
+        print(f"[AUTH] Password length provided: {len(password)}")
+        print(f"[AUTH] Stored hash length: {len(user.password) if user.password else 0}")
         return None
     
+    print(f"[AUTH] Successful login for: {email} (Role: {user.role.value})")
     return user
 
 

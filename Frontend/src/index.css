@@ -28,19 +28,19 @@
   --color-accent: #6B9080;     /* Calm sage green - growth & learning */
   --color-accent-secondary: #4A90A4; /* Soft ocean blue - calm & focus */
   
-  /* Calm Backgrounds */
-  --bg-primary: #1A1F2E;       /* Deep navy, less harsh than black */
-  --bg-secondary: #252B3B;     /* Soft charcoal */
-  --bg-glass: rgba(255, 255, 255, 0.05);  /* Subtle glass effect */
-  --bg-glass-hover: rgba(255, 255, 255, 0.08);
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  /* Darker Backgrounds */
+  --bg-primary: #0A0E1A;       /* Very dark navy */
+  --bg-secondary: #141824;     /* Dark charcoal */
+  --bg-glass: rgba(0, 0, 0, 0.4);  /* Darker glass effect */
+  --bg-glass-hover: rgba(0, 0, 0, 0.5);
+  --border-glass: rgba(255, 255, 255, 0.05);
+  --shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
 body {
   font-family: var(--font-primary);
-  background-color: #0f110c;
-  /* Deep earthy dark fallback */
+  background-color: #050608;
+  /* Very dark fallback */
   color: var(--color-text-main);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -76,9 +76,9 @@ body {
   width: 100%;
   height: 100%;
   background: linear-gradient(to bottom,
-      rgba(0, 0, 0, 0.3) 0%,
-      rgba(0, 0, 0, 0.1) 40%,
-      rgba(0, 0, 0, 0.6) 100%);
+      rgba(0, 0, 0, 0.7) 0%,
+      rgba(0, 0, 0, 0.5) 40%,
+      rgba(0, 0, 0, 0.8) 100%);
   pointer-events: none;
 }
 

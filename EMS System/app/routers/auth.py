@@ -1,7 +1,8 @@
 from datetime import timedelta
+from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session  # type: ignore[reportMissingImports]
 from app.database import get_db
 from app.auth import authenticate_user, create_access_token, get_password_hash
 from app.config import settings
@@ -46,13 +47,18 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Generate session_id for this login session
+    session_id = str(uuid4())
+    
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={
             "sub": str(user.id),  # JWT standard requires sub to be string
             "role": user.role.value,
-            "school_id": user.school_id
+            "school_id": user.school_id,
+            "jti": session_id,  # JWT ID claim (standard)
+            "session_id": session_id  # Custom claim for easy access
         },
         expires_delta=access_token_expires
     )
@@ -123,13 +129,18 @@ def login_json(credentials: LoginRequest, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Generate session_id for this login session
+    session_id = str(uuid4())
+    
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={
             "sub": str(user.id),
             "role": user.role.value,
-            "school_id": user.school_id
+            "school_id": user.school_id,
+            "jti": session_id,  # JWT ID claim (standard)
+            "session_id": session_id  # Custom claim for easy access
         },
         expires_delta=access_token_expires
     )
@@ -232,6 +243,7 @@ def reset_password(
 ):
     """
     Reset password using a password reset token.
+    Requires both old password and new password for security.
     This endpoint is used when a user clicks the reset link from their email.
     """
     # Validate token
@@ -245,11 +257,31 @@ def reset_password(
             detail="User not found"
         )
     
+    # Verify old password matches current password
+    if not user.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User has no password set. Please use set-password endpoint instead."
+        )
+    
+    if not verify_password(request.old_password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Old password is incorrect"
+        )
+    
     # Validate new password
     if len(request.new_password) < 6:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 6 characters long"
+        )
+    
+    # Check that new password is different from old password
+    if verify_password(request.new_password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from your current password"
         )
     
     # Hash and set new password

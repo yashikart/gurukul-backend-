@@ -34,6 +34,7 @@ const Layout = ({ children }) => {
             { id: 'parent-student-linking', label: 'Parent-Student Links', icon: '🔗', path: '/dashboard/parent-student-linking' },
             { id: 'holidays-events', label: 'Holidays & Events', icon: '🎉', path: '/dashboard/holidays-events' },
             { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
+            { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
           ];
         } else if (role === 'TEACHER') {
       return [
@@ -44,6 +45,7 @@ const Layout = ({ children }) => {
         { id: 'timetable', label: 'Timetable', icon: '📅', path: '/dashboard/timetable' },
         { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
         { id: 'attendance', label: 'Attendance', icon: '✅', path: '/dashboard/attendance' },
+        { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
       ];
     } else if (role === 'PARENT') {
       return [
@@ -52,6 +54,7 @@ const Layout = ({ children }) => {
         { id: 'grades', label: 'Grades', icon: '📝', path: '/dashboard/grades' },
         { id: 'attendance', label: 'Attendance', icon: '✅', path: '/dashboard/attendance' },
         { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
+        { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
       ];
     } else if (role === 'STUDENT') {
       return [
@@ -62,6 +65,7 @@ const Layout = ({ children }) => {
         { id: 'attendance', label: 'Attendance', icon: '✅', path: '/dashboard/attendance' },
         { id: 'schedule', label: 'Schedule', icon: '📅', path: '/dashboard/schedule' },
         { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
+        { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
       ];
     }
     
@@ -143,10 +147,15 @@ const Layout = ({ children }) => {
             <div>
               <p className="text-sm text-gray-400">Logged in as</p>
               <p className="text-sm font-semibold text-white mt-1">{getRoleDisplayName(user?.role)}</p>
+              {user?.email && (
+                <p className="text-xs text-gray-400 mt-1 truncate" title={user.email}>
+                  {user.email}
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex justify-center">
-              <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-xs font-bold">
+              <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-xs font-bold" title={user?.email || ''}>
                 {user?.role?.charAt(0) || 'A'}
               </div>
             </div>

@@ -351,7 +351,6 @@ class PranaPacket(Base):
     id = Column(Integer, primary_key=True, index=True)
     packet_id = Column(String(64), unique=True, nullable=False, index=True)
     employee_id = Column(String(255), nullable=False, index=True)
-    task_id = Column(String(255), nullable=True, index=True)
     state = Column(String(32), nullable=False, index=True)  # WORKING | IDLE | AWAY | DISTRACTED | FAKING
     integrity_score = Column(Float, nullable=False)
     active_seconds = Column(Float, nullable=False)

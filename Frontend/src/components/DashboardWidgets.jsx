@@ -22,7 +22,7 @@ export const StudyTimeWidget = ({ targetGoalSeconds, timeLeft, isActive, totalSt
     }
 
     return (
-        <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden group">
+        <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/5 relative overflow-hidden group">
             <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                 <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/20 text-blue-400">
                     <FaClock className="text-sm sm:text-base" />
@@ -66,7 +66,7 @@ export const KarmaWidget = () => {
     const level = getKarmaLevel(karma);
 
     return (
-        <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden group">
+        <div className="glass-panel p-4 sm:p-6 rounded-2xl border border-white/5 relative overflow-hidden group">
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 sm:gap-3">
                     <div className="p-1.5 sm:p-2 rounded-lg bg-purple-500/20 text-purple-400">

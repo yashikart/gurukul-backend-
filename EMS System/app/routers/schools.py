@@ -9,6 +9,9 @@ from app.models import School, User, UserRole
 from app.schemas import UserResponse
 from app.auth import get_password_hash
 from pydantic import BaseModel, EmailStr
+import secrets
+import string
+from app.email_service import generate_password_token, send_school_admin_credentials_email
 
 router = APIRouter(prefix="/schools", tags=["schools"])
 
@@ -52,57 +55,107 @@ class AdminUpdate(BaseModel):
     school_id: Optional[int] = None
 
 
+def generate_random_password(length: int = 12) -> str:
+    """
+    Generate a secure random password.
+    Uses only alphanumeric characters to avoid copy-paste issues and special character confusion.
+    """
+    # Use only letters and numbers to avoid special character issues when copying from email
+    alphabet = string.ascii_letters + string.digits
+    password = ''.join(secrets.choice(alphabet) for i in range(length))
+    return password
+
+
 @router.post("/", response_model=SchoolResponse, status_code=status.HTTP_201_CREATED)
-def create_school(
+async def create_school(
     school_data: SchoolCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_super_admin)
 ):
     """
-    Create a new school.
+    Create a new school and automatically create a school admin user.
+    Generates a random password and sends it via email along with a password reset link.
     Only SUPER_ADMIN can create schools.
     """
+    # Check if email is provided (required for creating admin)
+    if not school_data.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email address is required to create a school admin account."
+        )
+    
+    # Check if user with this email already exists
+    existing_user = db.query(User).filter(User.email == school_data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A user with this email already exists. Please use a different email."
+        )
+    
+    # Create school
     school = School(
         name=school_data.name,
         address=school_data.address,
         phone=school_data.phone,
         email=school_data.email
     )
+    
     try:
         db.add(school)
         db.commit()
         db.refresh(school)
+        
+        # Generate random password for school admin
+        generated_password = generate_random_password()
+        hashed_password = get_password_hash(generated_password)
+        
+        # Debug: Log password generation (remove in production)
+        print(f"[SCHOOL CREATION] Generated password for {school_data.email}: {generated_password}")
+        print(f"[SCHOOL CREATION] Password hash length: {len(hashed_password)}")
+        
+        # Create school admin user
+        admin_user = User(
+            name=f"{school_data.name} Admin",  # Default name, can be updated later
+            email=school_data.email,
+            password=hashed_password,
+            role=UserRole.ADMIN,
+            school_id=school.id,
+            is_active=True  # Ensure user is active
+        )
+        
+        db.add(admin_user)
+        db.commit()
+        db.refresh(admin_user)
+        
+        # Verify password was stored correctly
+        from app.auth import verify_password
+        password_verified = verify_password(generated_password, admin_user.password)
+        print(f"[SCHOOL CREATION] Password verification test: {'PASSED' if password_verified else 'FAILED'}")
+        
+        # Generate password reset token
+        password_token = generate_password_token(db, admin_user.id)
+        
+        # Send email with password and reset link
+        email_sent = await send_school_admin_credentials_email(
+            db=db,
+            user=admin_user,
+            password=generated_password,
+            password_token=password_token,
+            school_name=school_data.name
+        )
+        
+        if not email_sent:
+            # Log warning but don't fail the request
+            print(f"[WARNING] School created but failed to send email to {school_data.email}")
+        
         return school
+        
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="School with this information already exists or invalid data."
         )
-
-
-@router.get("/", response_model=List[SchoolResponse])
-def list_schools(
-    search: Optional[str] = Query(None, description="Search by name, address, email"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_super_admin)
-):
-    """
-    List all schools with optional search.
-    Only SUPER_ADMIN can view all schools.
-    """
-    query = db.query(School)
-    
-    if search:
-        search_filter = or_(
-            School.name.ilike(f"%{search}%"),
-            School.address.ilike(f"%{search}%"),
-            School.email.ilike(f"%{search}%")
-        )
-        query = query.filter(search_filter)
-    
-    schools = query.all()
-    return schools
 
 
 # Admin routes must come BEFORE {school_id} routes to avoid route conflicts

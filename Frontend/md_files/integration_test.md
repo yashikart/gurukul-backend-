@@ -5,9 +5,9 @@
 - **Setup:** Online network, bucket endpoint available
 - **Action:** Send PRANA packets via bucket bridge
 - **Expected:** 
-  - Packets batched (5 at a time)
+  - Packets processed in batches (up to 5 at a time, sent in parallel)
   - Successful POST to `/bucket/prana/ingest`
-  - Console logs show `[PRANA_SENT]` confirmation
+  - Console logs show `[PRANA][BucketBridge] success:` confirmation
   - Stats track sent count accurately
 
 ### 2. Network Offline Handling
@@ -32,68 +32,87 @@
 
 ### 4. Server Error Handling
 **Scenario:** Bucket endpoint returns HTTP error
-- **Setup:** Online network, but server returns 5xx error
+- **Setup:** Online network, but server returns error
 - **Action:** Send packet to failing endpoint
 - **Expected:**
-  - Retries up to MAX_RETRIES (3)
-  - Exponential backoff between retries
-  - Failed packets moved to offline queue
+  - 4xx errors: No retry (client error, logged and failed)
+  - 5xx errors: Retries up to MAX_RETRIES (3) with exponential backoff
+  - After max retries: Failed packets moved to offline queue
   - Stats show failed count incremented
+  - Console shows `[PRANA][BucketBridge] HTTP error:` with details
 
 ### 5. Order Preservation
 **Scenario:** Multiple packets sent in sequence
 - **Setup:** Continuous packet generation
 - **Action:** Monitor packet ordering
 - **Expected:**
-  - Packets sent in chronological order
-  - Batch processing maintains sequence
-  - No reordering during retries
+  - Packets queued in chronological order
+  - Batch processing sends packets in parallel (Promise.allSettled)
+  - Queue maintains order (FIFO)
+  - Retries preserve original packet order
 
 ### 6. Batch Processing
 **Scenario:** Multiple packets accumulate
 - **Setup:** Rapid packet generation
 - **Action:** Observe batching behavior
 - **Expected:**
-  - Groups of 5 packets sent together
-  - Efficient network usage
-  - Proper batch metadata included
+  - Groups of up to 5 packets processed together
+  - Packets sent in parallel (Promise.allSettled)
+  - Each packet sent as individual POST request
+  - Efficient network usage with parallel requests
+  - 50ms delay between batches to avoid overwhelming server
 
 ## API Endpoints
 
 ### POST /bucket/prana/ingest
-**Purpose:** Receive PRANA packets from frontend
+**Purpose:** Receive PRANA packets from frontend (single packet per request)
+
 **Headers:**
 - `Content-Type: application/json`
-- `X-PRANA-BATCH-ID: batch_timestamp`
-- `X-CLIENT-TIMESTAMP: ISO8601`
+- `X-CLIENT-TIMESTAMP: ISO8601` (client timestamp when request is sent)
 
-**Payload:**
+**Payload:** Single PRANA packet object
 ```json
 {
-  "packets": [...],
-  "batch_size": 5,
-  "sent_at": "ISO8601"
+  "user_id": "uuid",
+  "session_id": "uuid",
+  "lesson_id": null,
+  "system_type": "gurukul",
+  "role": "student",
+  "timestamp": "2026-01-15T12:45:23.456Z",
+  "cognitive_state": "ON_TASK",
+  "active_seconds": 5.0,
+  "idle_seconds": 0.0,
+  "away_seconds": 0.0,
+  "focus_score": 72,
+  "raw_signals": { ... }
 }
 ```
+
+**Note:** Backend currently accepts single packets. Batching structure exists in code but sends packets individually in parallel.
 
 ## Error Handling
 
 ### Network Errors
-- Timeout: 30 seconds
-- Retry: 3 attempts with exponential backoff
-- Fallback: Queue for later delivery
+- Timeout: 10 seconds (AbortSignal.timeout)
+- Retry: Up to 3 attempts (MAX_RETRIES) with exponential backoff
+- Exponential backoff: `base * 2^(retryCount - 1)` (1s, 2s, 4s)
+- Fallback: Move to offline queue after max retries (no data loss)
 
 ### HTTP Errors
-- 4xx: Client error, do not retry
-- 5xx: Server error, retry with backoff
-- Other: Treat as network error
+- 4xx (Client errors): No retry, logged and marked as failed
+- 5xx (Server errors): Retry with exponential backoff (up to 3 attempts)
+- Network failures: Retry with exponential backoff
+- After max retries: Packet moved to offline queue for later delivery
 
 ## Performance Metrics
 
 ### Expected Throughput
-- Batch size: 5 packets per request
+- Batch processing: Up to 5 packets processed together
+- Sending: Each packet sent as individual POST request (in parallel)
 - Frequency: Every 5 seconds (based on packet generation)
-- Efficiency: Minimize network requests
+- Efficiency: Parallel requests reduce total send time
+- Inter-batch delay: 50ms between batches to avoid overwhelming server
 
 ### Memory Usage
 - Queue size: Monitored and logged

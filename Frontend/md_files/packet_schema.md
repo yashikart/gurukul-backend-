@@ -8,23 +8,27 @@ What gets sent every 5 seconds.
 {
   user_id,           
   session_id,        
-  lesson_id,         
+  lesson_id,         // optional (null | string)
+  system_type,       // "gurukul" | "ems"
+  role,              // "student" | "employee"
   timestamp,         
   cognitive_state,   
   active_seconds,    
   idle_seconds,      
   away_seconds,      
-  focus_score,       
+  focus_score,       // 0-100, deterministic
   raw_signals        
 }
 ```
 
 ## Key Fields
 
-### Context Fields (Currently null)
-- **user_id** - From backend auth (not yet connected)
-- **session_id** - From backend session (not yet connected)  
-- **lesson_id** - From current page (not yet connected)
+### Context Fields
+- **user_id** - From backend auth (JWT token)
+- **session_id** - From backend auth (JWT token, session UUID)
+- **lesson_id** - Optional, from current lesson context (null | string)
+- **system_type** - System identifier: "gurukul" or "ems"
+- **role** - User role: "student" (Gurukul) or "employee" (EMS)
 
 ### Time Accounting (Always = 5.0 seconds)
 - **active_seconds** - Learning time
@@ -62,12 +66,14 @@ All 8 behavior signals:
 
 ## Example Packets
 
-### Active Learning
+### Active Learning (Gurukul)
 ```json
 {
-  "user_id": null,
-  "session_id": null,
-  "lesson_id": null,
+  "user_id": "d0e9e650-1ee1-49c3-b278-bd6b903b8848",
+  "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "lesson_id": "lesson_123",
+  "system_type": "gurukul",
+  "role": "student",
   "timestamp": "2026-01-15T12:45:23.456Z",
   "cognitive_state": "ON_TASK",
   "active_seconds": 5.0,
@@ -85,16 +91,25 @@ All 8 behavior signals:
 }
 ```
 
-### Tab Switched Away
+### Tab Switched Away (EMS)
 ```json
 {
+  "user_id": "employee_456",
+  "session_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "lesson_id": null,
+  "system_type": "ems",
+  "role": "employee",
+  "timestamp": "2026-01-15T12:45:28.456Z",
   "cognitive_state": "AWAY",
   "active_seconds": 1.2,
+  "idle_seconds": 0.0,
   "away_seconds": 3.8,
-  "focus_score": 18,
+  "focus_score": 0,
   "raw_signals": {
     "tab_visible": false,
-    "inactivity_ms": 3800
+    "inactivity_ms": 3800,
+    "window_focus": false,
+    "browser_visibility": "hidden"
   }
 }
 ```

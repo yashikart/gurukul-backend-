@@ -24,10 +24,25 @@ const CreateLesson = () => {
 
   useEffect(() => {
     fetchClasses();
-    if (isEditing) {
+    if (isEditing && id) {
       loadLessonData();
+      // Set lesson_id in sessionStorage for PRANA
+      const lessonId = id.toString();
+      sessionStorage.setItem('current_lesson_id', lessonId);
+      // Also update window context if it exists
+      if (window.EMSUserContext) {
+        window.EMSUserContext.currentLessonId = lessonId;
+      }
+      console.log('[CreateLesson] Set lesson_id from URL param:', lessonId);
+    } else if (!isEditing) {
+      // Clear lesson_id when creating new lesson (only if not editing)
+      sessionStorage.removeItem('current_lesson_id');
+      if (window.EMSUserContext) {
+        window.EMSUserContext.currentLessonId = null;
+      }
+      console.log('[CreateLesson] Cleared lesson_id (creating new lesson)');
     }
-  }, [id]);
+  }, [id, isEditing]);
 
   const loadLessonData = () => {
     // Try to get lesson from location state first (passed from MyLessons)
@@ -169,12 +184,30 @@ const CreateLesson = () => {
       if (isEditing) {
         await teacherAPI.updateLesson(id, lessonData);
         setSuccess(true);
+        // Keep lesson_id in sessionStorage since we're still viewing this lesson
         setTimeout(() => {
           navigate('/dashboard/lessons');
+          // Clear lesson_id when navigating back to lessons list
+          sessionStorage.removeItem('current_lesson_id');
+          if (window.EMSUserContext) {
+            window.EMSUserContext.currentLessonId = null;
+          }
         }, 1500);
       } else {
-        await teacherAPI.createLesson(lessonData);
+        const createdLesson = await teacherAPI.createLesson(lessonData);
         setSuccess(true);
+        
+        // Set lesson_id after creating new lesson (so PRANA can track it)
+        if (createdLesson && createdLesson.id) {
+          const lessonId = createdLesson.id.toString();
+          sessionStorage.setItem('current_lesson_id', lessonId);
+          if (window.EMSUserContext) {
+            window.EMSUserContext.currentLessonId = lessonId;
+          }
+          console.log('[CreateLesson] Set lesson_id after creation:', lessonId);
+        } else {
+          console.warn('[CreateLesson] Created lesson but no ID in response:', createdLesson);
+        }
         
         // Reset form
         setFormData({

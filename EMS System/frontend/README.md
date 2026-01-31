@@ -128,14 +128,14 @@ frontend/
 
 ## PRANA Telemetry System
 
-### PRANA Lifecycle Safety
+### Unified PRANA Core
 
-The PRANA telemetry system (EMS signals, PRANA-E packet builder, and Bucket bridge) is designed with strict lifecycle guarantees:
+EMS uses the unified PRANA core telemetry engine (shared with Gurukul). The system is initialized via `ems_prana.js` wrapper at app startup.
 
-- ✅ **Loads once at app startup**: PRANA modules are imported at the top level of `main.jsx` before React renders
-- ✅ **Lives outside React lifecycle**: Uses IIFEs (Immediately Invoked Function Expressions) that attach to `window` object
-- ✅ **No remounts on route changes**: PRANA modules are not React components and persist across all route navigations
-- ✅ **No cleanup on unmount**: Global event listeners (`window.addEventListener`) are never removed, ensuring continuous telemetry
+- ✅ **Loads once at app startup**: PRANA is imported at the top level of `main.jsx` before React renders
+- ✅ **Lives outside React lifecycle**: Uses singleton pattern with global `window.PRANA` namespace
+- ✅ **No remounts on route changes**: PRANA modules persist across all route navigations
+- ✅ **Unified implementation**: Same core logic as Gurukul, configured for EMS context
 
 **Important**: Do NOT:
 - ❌ Wrap PRANA modules in React components
@@ -152,7 +152,7 @@ For emergency scenarios or demos, PRANA telemetry can be disabled globally:
 window.PRANA_DISABLED = true;
 ```
 
-When enabled, all PRANA modules (`ems_signals.js`, `bucket_bridge.js`, `prana_e_packet_builder.js`) will:
+When enabled, the unified PRANA core will:
 - Exit immediately on load
 - Log a console message indicating telemetry is disabled
 - Not attach any event listeners
@@ -162,10 +162,9 @@ When enabled, all PRANA modules (`ems_signals.js`, `bucket_bridge.js`, `prana_e_
 - Set `window.PRANA_DISABLED = true` before the app loads to prevent PRANA initialization
 - Or set it in browser console after load (will prevent new intervals/listeners, but existing ones may continue until next page reload)
 
-**Files affected**:
-- `ems_signals.js` - Signal capture disabled
-- `bucket_bridge.js` - Packet sending disabled
-- `prana_e_packet_builder.js` - Packet building disabled
+**Files**:
+- `ems_prana.js` - Thin wrapper that initializes unified PRANA core with EMS context
+- `src/utils/*.js` - Wrapper re-exports from unified `prana-core/` (for compatibility)
 
 ## Troubleshooting
 

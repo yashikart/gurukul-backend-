@@ -28,10 +28,22 @@ const CreateAdmin = () => {
   const fetchSchools = async () => {
     try {
       setFetchingSchools(true);
-      const data = await schoolsAPI.getAll();
-      setSchools(data);
+      // Note: GET /schools/ endpoint has been removed
+      // Get schools by fetching all admins and then fetching each school by ID
+      const admins = await adminsAPI.getAll();
+      
+      // Extract unique school IDs from admins
+      const schoolIds = [...new Set(admins.map(admin => admin.school_id).filter(id => id !== null))];
+      
+      // Fetch each school by ID
+      const schoolsPromises = schoolIds.map(schoolId => 
+        schoolsAPI.getById(schoolId).catch(() => null)
+      );
+      const schoolsArray = (await Promise.all(schoolsPromises)).filter(school => school !== null);
+      
+      setSchools(schoolsArray);
     } catch (err) {
-      setError('Failed to load schools. Please try again.');
+      setError('Failed to load schools. Please create a school first, then admins will be available.');
       console.error('Error fetching schools:', err);
     } finally {
       setFetchingSchools(false);

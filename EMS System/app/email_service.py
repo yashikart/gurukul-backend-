@@ -99,6 +99,7 @@ async def send_login_credentials_email(
 ) -> bool:
     """
     Send login credentials email to newly created users (Teachers, Students, Parents).
+    Includes generated password and reset password link.
     
     Args:
         db: Database session
@@ -110,6 +111,9 @@ async def send_login_credentials_email(
         bool: True if email sent successfully, False otherwise
     """
     try:
+        # Generate password reset token
+        password_token = generate_password_token(db, user.id)
+        
         role_display = {
             "TEACHER": "Teacher",
             "STUDENT": "Student",
@@ -117,6 +121,7 @@ async def send_login_credentials_email(
         }.get(role, role)
         
         login_url = f"{settings.FRONTEND_URL}/login"
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={password_token.token}"
         
         # Email content
         subject = f"Your {role_display} Account Credentials - School Management System"
@@ -125,18 +130,43 @@ Hello {user.name},
 
 Your {role_display} account has been created in the School Management System.
 
-Your login credentials are:
-Email: {user.email}
+═══════════════════════════════════════════════════════════
+YOUR LOGIN CREDENTIALS:
+═══════════════════════════════════════════════════════════
+
+Email Address: {user.email}
 Password: {password}
+
+═══════════════════════════════════════════════════════════
 
 Please login at: {login_url}
 
-IMPORTANT SECURITY NOTES:
-- Please change your password after first login
+IMPORTANT SECURITY INFORMATION:
+- You can use the generated password above to log in immediately
+- The password contains only letters and numbers (no special characters)
+- We strongly recommend changing your password to something more memorable
+- Click the link below to reset your password to a new one of your choice
+
+RESET PASSWORD LINK:
+{reset_link}
+
+This reset link will expire in {settings.PASSWORD_TOKEN_EXPIRE_MINUTES} minutes.
+
+IMPORTANT: When resetting your password, you will need to provide:
+- Your CURRENT password (the generated password above)
+- Your NEW password (choose a new one)
+
+TROUBLESHOOTING:
+- Make sure you copy the password exactly as shown (case-sensitive)
+- Check for any extra spaces before or after the password
+- If login fails, use the reset password link above
+
+SECURITY NOTES:
 - Do not share your password with anyone
 - Keep your credentials secure
+- Change your password regularly
 
-If you did not expect this account, please contact your school administrator.
+If you did not expect this account, please contact your school administrator immediately.
 
 Best regards,
 School Management System
@@ -154,6 +184,7 @@ School Management System
         fm = FastMail(conf)
         await fm.send_message(message)
         print(f"[EMAIL] Successfully sent login credentials to {user.email}")
+        print(f"[EMAIL] Reset link: {reset_link}")
         return True
         
     except Exception as e:
@@ -278,6 +309,10 @@ You have requested to reset your password for your {user.role.value} account.
 Please reset your password by clicking on the following link:
 {reset_link}
 
+IMPORTANT: You will need to provide:
+- Your CURRENT password (old password)
+- Your NEW password
+
 This link will expire in {settings.PASSWORD_TOKEN_EXPIRE_MINUTES} minutes.
 
 If you did not request this password reset, please ignore this email and your password will remain unchanged.
@@ -304,6 +339,106 @@ School Management System
     except Exception as e:
         # Log error with full details
         print(f"[EMAIL ERROR] Failed to send password reset email to {user.email}")
+        print(f"[EMAIL ERROR] Error type: {type(e).__name__}")
+        print(f"[EMAIL ERROR] Error message: {str(e)}")
+        import traceback
+        print(f"[EMAIL ERROR] Traceback:")
+        traceback.print_exc()
+        return False
+
+
+async def send_school_admin_credentials_email(
+    db: Session,
+    user: User,
+    password: str,
+    password_token: PasswordToken,
+    school_name: str
+) -> bool:
+    """
+    Send school admin credentials email with generated password and reset link.
+    
+    Args:
+        db: Database session
+        user: User object (school admin)
+        password: Plain text generated password
+        password_token: PasswordToken object for reset link
+        school_name: Name of the school
+        
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        # Create password reset link
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={password_token.token}"
+        login_url = f"{settings.FRONTEND_URL}/login"
+        
+        # Email content
+        subject = f"Your School Admin Account Credentials - {school_name}"
+        body = f"""
+Hello {user.name},
+
+Your school "{school_name}" has been created in the School Management System, and you have been set up as the School Administrator.
+
+═══════════════════════════════════════════════════════════
+YOUR LOGIN CREDENTIALS:
+═══════════════════════════════════════════════════════════
+
+Email Address: {user.email}
+Password: {password}
+
+═══════════════════════════════════════════════════════════
+
+Please login at: {login_url}
+
+IMPORTANT SECURITY INFORMATION:
+- You can use the generated password above to log in immediately
+- The password contains only letters and numbers (no special characters)
+- We strongly recommend changing your password to something more memorable
+- Click the link below to reset your password to a new one of your choice
+
+RESET PASSWORD LINK:
+{reset_link}
+
+This reset link will expire in {settings.PASSWORD_TOKEN_EXPIRE_MINUTES} minutes.
+
+IMPORTANT: When resetting your password, you will need to provide:
+- Your CURRENT password (the generated password above)
+- Your NEW password (choose a new one)
+
+TROUBLESHOOTING:
+- Make sure you copy the password exactly as shown (case-sensitive)
+- Check for any extra spaces before or after the password
+- If login fails, use the reset password link above
+
+SECURITY NOTES:
+- Do not share your password with anyone
+- Keep your credentials secure
+- Change your password regularly
+
+If you did not expect this account, please contact the system administrator immediately.
+
+Best regards,
+School Management System
+        """
+        
+        # Create message
+        message = MessageSchema(
+            subject=subject,
+            recipients=[user.email],
+            body=body,
+            subtype=MessageType.plain,
+        )
+        
+        # Send email
+        fm = FastMail(conf)
+        await fm.send_message(message)
+        print(f"[EMAIL] Successfully sent school admin credentials to {user.email}")
+        print(f"[EMAIL] Reset link: {reset_link}")
+        return True
+        
+    except Exception as e:
+        # Log error with full details
+        print(f"[EMAIL ERROR] Failed to send school admin credentials to {user.email}")
         print(f"[EMAIL ERROR] Error type: {type(e).__name__}")
         print(f"[EMAIL ERROR] Error message: {str(e)}")
         import traceback

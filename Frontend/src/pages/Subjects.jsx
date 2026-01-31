@@ -6,6 +6,7 @@ import LearningSuggestions from '../components/LearningSuggestions';
 import { FaBook, FaLightbulb, FaBookOpen, FaFlipboard, FaChevronDown } from 'react-icons/fa';
 import { useModal } from '../contexts/ModalContext';
 import { useAuth } from '../contexts/AuthContext';
+import { SkeletonBox, SkeletonCard } from '../components/LoadingSkeleton';
 import { containsProfanity } from '../utils/profanityDetector';
 import { apiPost, handleApiError } from '../utils/apiClient';
 import { trackTopicStudied } from '../utils/progressTracker';
@@ -480,10 +481,19 @@ const Subjects = () => {
 
                 {/* Loading State */}
                 {loading && (
-                    <div className="flex-grow flex flex-col items-center justify-center p-6 sm:p-10">
-                        <div className="animate-spin h-12 w-12 sm:h-16 sm:w-16 border-4 border-accent border-t-transparent rounded-full mb-4 sm:mb-6 shadow-lg shadow-accent/20"></div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 animate-pulse text-center px-4">Generating your lesson...</h2>
-                        <p className="text-gray-400 text-sm sm:text-base text-center px-4">Consulting AI Knowledge Base • Curating Videos • Structuring Notes</p>
+                    <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/5 relative overflow-hidden flex flex-col gap-6 shadow-2xl">
+                        <div className="text-center mb-4">
+                            <SkeletonBox height="h-8" width="w-64" className="mx-auto mb-2" />
+                            <SkeletonBox height="h-4" width="w-96" className="mx-auto" />
+                        </div>
+                        <div className="space-y-4">
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                        </div>
+                        <div className="text-center mt-4">
+                            <p className="text-gray-400 text-sm">Generating your lesson...</p>
+                        </div>
                     </div>
                 )}
 

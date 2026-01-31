@@ -371,7 +371,7 @@ const Navbar = () => {
             <div className="relative" ref={languageMenuRef}>
               <button
                 onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all border border-white/10 text-xs sm:text-sm"
+                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-black/40 hover:bg-black/60 text-gray-300 hover:text-white transition-all border border-white/5 text-xs sm:text-sm"
                 title="Change Language"
               >
                 <FaGlobe className="text-sm sm:text-base" />
@@ -381,12 +381,12 @@ const Navbar = () => {
 
               {/* Language Dropdown */}
               {isLanguageOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 sm:w-56 bg-[#1a1c16] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar">
+                <div className="absolute right-0 top-full mt-2 w-48 sm:w-56 bg-[#0a0c08] border border-white/5 rounded-xl shadow-2xl overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar">
                   {languages.map((lang) => (
                     <button
                       key={lang.code}
                       onClick={() => handleLanguageChange(lang.code)}
-                      className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-orange-400 transition-colors flex items-center justify-between border-b border-white/5 last:border-b-0"
+                      className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-black/40 hover:text-orange-400 transition-colors flex items-center justify-between border-b border-white/5 last:border-b-0"
                     >
                       <div className="flex flex-col">
                         <span className="font-medium">{lang.native}</span>
@@ -420,7 +420,7 @@ const Navbar = () => {
                   </button>
                 </div>
               ) : (
-                <Link to="/signin" className="text-xs font-bold px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10 shadow-lg">
+                <Link to="/signin" className="text-xs font-bold px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all border border-white/5 shadow-lg">
                   Sign In
                 </Link>
               )}

@@ -1,4 +1,5 @@
-const KARMA_TRACKER_URL = import.meta.env.VITE_KARMA_TRACKER_URL || 'http://localhost:8001';
+// Karma Tracker is now integrated into backend - use same URL
+const KARMA_TRACKER_URL = import.meta.env.VITE_KARMA_TRACKER_URL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 /**
  * Send a life_event to Karma Tracker.

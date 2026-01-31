@@ -205,6 +205,10 @@ async def create_teacher(
         password = generate_unique_password(db, teacher_data.email, teacher_data.name, UserRole.TEACHER.value, school_id)
         hashed_password = get_password_hash(password)
         
+        # Debug: Log password generation (remove in production)
+        print(f"[TEACHER CREATION] Generated password for {teacher_data.email}: {password}")
+        print(f"[TEACHER CREATION] Password hash length: {len(hashed_password)}")
+        
         # Create teacher
         teacher = User(
             name=teacher_data.name,
@@ -212,13 +216,18 @@ async def create_teacher(
             password=hashed_password,
             role=UserRole.TEACHER,
             school_id=school_id,
-            is_active=True,
+            is_active=True,  # Ensure user is active
             subject=teacher_data.subject
         )
         
         db.add(teacher)
         db.commit()
         db.refresh(teacher)
+        
+        # Verify password was stored correctly
+        from app.auth import verify_password
+        password_verified = verify_password(password, teacher.password)
+        print(f"[TEACHER CREATION] Password verification test: {'PASSED' if password_verified else 'FAILED'}")
         
         # Send login credentials email
         try:
@@ -432,6 +441,10 @@ async def create_student(
     password = generate_unique_password(db, student_data.email, student_data.name, UserRole.STUDENT.value, school_id)
     hashed_password = get_password_hash(password)
     
+    # Debug: Log password generation (remove in production)
+    print(f"[STUDENT CREATION] Generated password for {student_data.email}: {password}")
+    print(f"[STUDENT CREATION] Password hash length: {len(hashed_password)}")
+    
     # Create student
     student = User(
         name=student_data.name,
@@ -439,7 +452,7 @@ async def create_student(
         password=hashed_password,
         role=UserRole.STUDENT,
         school_id=school_id,
-        is_active=True,
+        is_active=True,  # Ensure user is active
         grade=student_data.grade
     )
     
@@ -461,16 +474,25 @@ async def create_student(
             parent_password = generate_unique_password(db, student_data.parent_email, parent_name, UserRole.PARENT.value, school_id)
             parent_hashed_password = get_password_hash(parent_password)
             
+            # Debug: Log password generation for parent
+            print(f"[PARENT CREATION] Generated password for {student_data.parent_email}: {parent_password}")
+            print(f"[PARENT CREATION] Password hash length: {len(parent_hashed_password)}")
+            
             parent = User(
                 name=parent_name,
                 email=student_data.parent_email,
                 password=parent_hashed_password,
                 role=UserRole.PARENT,
                 school_id=school_id,
-                is_active=True
+                is_active=True  # Ensure user is active
             )
             db.add(parent)
             db.flush()
+            
+            # Verify password was stored correctly for parent
+            from app.auth import verify_password
+            parent_password_verified = verify_password(parent_password, parent.password)
+            print(f"[PARENT CREATION] Password verification test: {'PASSED' if parent_password_verified else 'FAILED'}")
             
             # Send login credentials email to parent
             try:
@@ -507,6 +529,11 @@ async def create_student(
     
     db.commit()
     db.refresh(student)
+    
+    # Verify password was stored correctly for student
+    from app.auth import verify_password
+    password_verified = verify_password(password, student.password)
+    print(f"[STUDENT CREATION] Password verification test: {'PASSED' if password_verified else 'FAILED'}")
     
     # Send login credentials email
     try:
@@ -748,6 +775,10 @@ async def create_parent(
     password = generate_unique_password(db, parent_data.email, parent_data.name, UserRole.PARENT.value, school_id)
     hashed_password = get_password_hash(password)
     
+    # Debug: Log password generation (remove in production)
+    print(f"[PARENT CREATION] Generated password for {parent_data.email}: {password}")
+    print(f"[PARENT CREATION] Password hash length: {len(hashed_password)}")
+    
     # Create parent
     parent = User(
         name=parent_data.name,
@@ -755,7 +786,7 @@ async def create_parent(
         password=hashed_password,
         role=UserRole.PARENT,
         school_id=school_id,
-        is_active=True
+        is_active=True  # Ensure user is active
     )
     
     db.add(parent)
@@ -779,6 +810,11 @@ async def create_parent(
     
     db.commit()
     db.refresh(parent)
+    
+    # Verify password was stored correctly
+    from app.auth import verify_password
+    password_verified = verify_password(password, parent.password)
+    print(f"[PARENT CREATION] Password verification test: {'PASSED' if password_verified else 'FAILED'}")
     
     # Send login credentials email
     try:

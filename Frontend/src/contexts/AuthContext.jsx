@@ -98,6 +98,16 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('auth_token', data.access_token);
             setToken(data.access_token);
             
+            // Extract session_id from token (backend includes it in JWT payload)
+            const contextManager = (await import('../utils/contextManager')).default;
+            const sessionId = contextManager.extractSessionIdFromToken(data.access_token);
+            if (sessionId) {
+              localStorage.setItem('session_id', sessionId);
+              console.log('[Auth] Session ID extracted from token:', sessionId);
+            } else {
+              console.warn('[Auth] No session_id found in token');
+            }
+            
             // Set user
             setUser(data.user);
             

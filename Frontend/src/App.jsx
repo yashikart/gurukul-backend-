@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import KarmaNotification from './components/KarmaNotification';
@@ -9,27 +9,39 @@ import PrivateRoute from './components/PrivateRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import NotFound from './pages/NotFound';
 import RoleGuard from './components/RoleGuard';
-import Dashboard from './pages/Dashboard';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import TeacherDashboard from './pages/teacher/TeacherDashboard';
-import ParentDashboard from './pages/parent/ParentDashboard';
 import Subjects from './pages/Subjects';
-import Summarizer from './pages/Summarizer';
-import Chatbot from './pages/Chatbot';
-import Test from './pages/Test';
-import AgentSimulator from './pages/AgentSimulator';
 import Avatar from './pages/Avatar';
 import Settings from './pages/Settings';
-import Lectures from './pages/Lectures';
-import Flashcards from './pages/Flashcards';
-import MyClasses from './pages/ems/MyClasses';
-import MySchedule from './pages/ems/MySchedule';
-import MyAnnouncements from './pages/ems/MyAnnouncements';
-import MyAttendance from './pages/ems/MyAttendance';
-import MyTeachers from './pages/ems/MyTeachers';
-import MyGrades from './pages/ems/MyGrades';
 import MyContent from './pages/MyContent';
 import DraggableAvatar from './components/DraggableAvatar';
+
+// Lazy load heavy pages for code splitting
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const TeacherDashboard = React.lazy(() => import('./pages/teacher/TeacherDashboard'));
+const ParentDashboard = React.lazy(() => import('./pages/parent/ParentDashboard'));
+const Summarizer = React.lazy(() => import('./pages/Summarizer'));
+const Chatbot = React.lazy(() => import('./pages/Chatbot'));
+const Test = React.lazy(() => import('./pages/Test'));
+const AgentSimulator = React.lazy(() => import('./pages/AgentSimulator'));
+const Lectures = React.lazy(() => import('./pages/Lectures'));
+const Flashcards = React.lazy(() => import('./pages/Flashcards'));
+const MyClasses = React.lazy(() => import('./pages/ems/MyClasses'));
+const MySchedule = React.lazy(() => import('./pages/ems/MySchedule'));
+const MyAnnouncements = React.lazy(() => import('./pages/ems/MyAnnouncements'));
+const MyAttendance = React.lazy(() => import('./pages/ems/MyAttendance'));
+const MyTeachers = React.lazy(() => import('./pages/ems/MyTeachers'));
+const MyGrades = React.lazy(() => import('./pages/ems/MyGrades'));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent mb-4"></div>
+      <p className="text-gray-400">Loading...</p>
+    </div>
+  </div>
+);
 import { KarmaProvider, useKarma } from './contexts/KarmaContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ModalProvider } from './contexts/ModalContext';
@@ -219,7 +231,7 @@ const AppContent = () => {
   return (
     <Router>
       <div className="app-background">
-        <img src={bgImage} alt="Gurukul Background" />
+        <img src={bgImage} alt="Gurukul Background" loading="lazy" />
         <div className="overlay"></div>
       </div>
 
@@ -230,7 +242,8 @@ const AppContent = () => {
 
             <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
               <ErrorBoundary>
-                <Routes>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/signin" element={<SignIn />} />
                   <Route path="/signup" element={<SignUp />} />
@@ -360,6 +373,7 @@ const AppContent = () => {
                           {/* 404 Route - Catch all unmatched routes */}
                           <Route path="*" element={<NotFound />} />
                         </Routes>
+                      </Suspense>
                       </ErrorBoundary>
                     </main>
 

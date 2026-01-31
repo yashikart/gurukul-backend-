@@ -18,11 +18,24 @@ const SchoolList = () => {
   const fetchSchools = async () => {
     try {
       setLoading(true);
-      const data = await schoolsAPI.getAll(search || null);
-      setSchools(data);
+      // Note: GET /schools/ endpoint has been removed
+      // Get schools by fetching all admins and then fetching each school by ID
+      const { adminsAPI } = await import('../services/api');
+      const admins = await adminsAPI.getAll();
+      
+      // Extract unique school IDs from admins
+      const schoolIds = [...new Set(admins.map(admin => admin.school_id).filter(id => id !== null))];
+      
+      // Fetch each school by ID
+      const schoolsPromises = schoolIds.map(schoolId => 
+        schoolsAPI.getById(schoolId).catch(() => null)
+      );
+      const schoolsArray = (await Promise.all(schoolsPromises)).filter(school => school !== null);
+      
+      setSchools(schoolsArray);
       setError('');
     } catch (err) {
-      setError('Failed to load schools. Please try again.');
+      setError('Failed to load schools. The list schools endpoint has been removed. Access schools through admins or use specific school IDs.');
       console.error('Error fetching schools:', err);
     } finally {
       setLoading(false);

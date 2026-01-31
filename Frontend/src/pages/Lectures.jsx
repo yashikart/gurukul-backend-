@@ -30,7 +30,7 @@ const Lectures = () => {
                     <LearningFlow currentStep="learn" />
                 </div>
 
-                <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-100px)]">
+                <div className="flex-grow glass-panel no-hover p-4 sm:p-6 md:p-10 rounded-3xl border border-white/5 relative overflow-hidden flex flex-col items-start justify-start shadow-2xl min-h-[calc(100vh-80px)] sm:min-h-[calc(100vh-100px)]">
 
                     {/* Header */}
                     <div className="mb-6 sm:mb-10 w-full">

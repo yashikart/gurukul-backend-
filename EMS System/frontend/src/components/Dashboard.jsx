@@ -11,6 +11,7 @@ import AdminList from './AdminList';
 import CreateAdmin from './CreateAdmin';
 import EditAdmin from './EditAdmin';
 import ViewAllUsers from './ViewAllUsers';
+import ChangePassword from './ChangePassword';
 
 // School Admin Components
 import SchoolAdminDashboard from './admin/SchoolAdminDashboard';
@@ -79,6 +80,7 @@ const Dashboard = () => {
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/parent-student-linking" element={<ParentStudentLinking />} />
             <Route path="/students/:studentId/content" element={<AdminStudentContent />} />
+            <Route path="/reset-password" element={<ChangePassword />} />
           </>
         ) : isTeacher ? (
           // Teacher Routes
@@ -94,6 +96,7 @@ const Dashboard = () => {
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/timetable" element={<MyTimetable />} />
             <Route path="/announcements" element={<MyAnnouncements />} />
+            <Route path="/reset-password" element={<ChangePassword />} />
           </>
         ) : isStudent ? (
           // Student Routes
@@ -105,6 +108,7 @@ const Dashboard = () => {
             <Route path="/attendance" element={<MyAttendance />} />
             <Route path="/schedule" element={<MySchedule />} />
             <Route path="/announcements" element={<StudentAnnouncements />} />
+            <Route path="/reset-password" element={<ChangePassword />} />
           </>
         ) : isParent ? (
           // Parent Routes
@@ -115,6 +119,7 @@ const Dashboard = () => {
             <Route path="/grades" element={<MyChildrenGrades />} />
             <Route path="/attendance" element={<MyChildrenAttendance />} />
             <Route path="/announcements" element={<ParentAnnouncements />} />
+            <Route path="/reset-password" element={<ChangePassword />} />
           </>
         ) : (
           // Super Admin Routes

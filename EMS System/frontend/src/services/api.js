@@ -44,19 +44,35 @@ export const authAPI = {
     const response = await api.post('/v1/auth/login-json', { email, password });
     return response.data;
   },
+  getMe: async () => {
+    const response = await api.get('/v1/auth/me');
+    return response.data;
+  },
   setPassword: async (token, password) => {
     const response = await api.post('/v1/auth/set-password', { token, password });
+    return response.data;
+  },
+  resetPassword: async (token, oldPassword, newPassword) => {
+    const response = await api.post('/v1/auth/reset-password', { 
+      token, 
+      old_password: oldPassword, 
+      new_password: newPassword 
+    });
+    return response.data;
+  },
+  changePassword: async (currentPassword, newPassword) => {
+    const response = await api.post('/v1/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword
+    });
     return response.data;
   },
 };
 
 // Schools API
 export const schoolsAPI = {
-  getAll: async (search = null) => {
-    const params = search ? { search } : {};
-    const response = await api.get('/schools/', { params });
-    return response.data;
-  },
+  // Note: GET /schools/ endpoint has been removed
+  // Use specific school endpoints instead
   getById: async (schoolId) => {
     const response = await api.get(`/schools/${schoolId}`);
     return response.data;

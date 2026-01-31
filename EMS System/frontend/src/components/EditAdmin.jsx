@@ -24,12 +24,18 @@ const EditAdmin = () => {
   const fetchData = async () => {
     try {
       setFetching(true);
-      const [admin, schoolsData] = await Promise.all([
-        adminsAPI.getById(id),
-        schoolsAPI.getAll()
-      ]);
+      const admin = await adminsAPI.getById(id);
       
-      setSchools(schoolsData);
+      // Get schools from admins (since GET /schools/ was removed)
+      const allAdmins = await adminsAPI.getAll();
+      const schoolIds = [...new Set(allAdmins.map(a => a.school_id).filter(id => id !== null))];
+      
+      // Fetch each school by ID
+      const schoolsPromises = schoolIds.map(schoolId => 
+        schoolsAPI.getById(schoolId).catch(() => null)
+      );
+      const schoolsArray = (await Promise.all(schoolsPromises)).filter(school => school !== null);
+      setSchools(schoolsArray);
       setFormData({
         name: admin.name || '',
         email: admin.email || '',

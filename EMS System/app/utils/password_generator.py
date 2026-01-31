@@ -35,7 +35,8 @@ def generate_unique_password(db: Session, email: str, name: str, role: str, scho
         str: Unique password (12-16 characters)
     """
     # Generate base random password (8 characters)
-    alphabet = string.ascii_letters + string.digits + "!@#$%&*"
+    # Use only alphanumeric characters to avoid copy-paste issues and special character confusion
+    alphabet = string.ascii_letters + string.digits
     base_password = ''.join(secrets.choice(alphabet) for _ in range(8))
     
     # Create unique identifiers from user data
@@ -46,43 +47,20 @@ def generate_unique_password(db: Session, email: str, name: str, role: str, scho
     school_hash = hashlib.md5(str(school_id).encode()).hexdigest()[:2]
     
     # Combine to create unique password
+    # MD5 hashes are hexadecimal (0-9, a-f), so they're already alphanumeric
     unique_suffix = email_hash + name_hash + timestamp_hash + role_hash + school_hash
     
-    # Take first 8 characters of unique suffix and combine with base
+    # Take first 8 characters of unique suffix (already alphanumeric from hex)
     unique_part = unique_suffix[:8]
     
+    # If we need more characters, pad with random alphanumeric
+    if len(unique_part) < 8:
+        padding = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8 - len(unique_part)))
+        unique_part = unique_part + padding
+    
     # Final password: base (8) + unique part (8) = 16 characters
-    password = base_password + unique_part
-    
-    # Verify uniqueness by checking if any user has this exact password hash
-    # (This is a safety check, though extremely unlikely to collide)
-    max_attempts = 10
-    attempt = 0
-    
-    while attempt < max_attempts:
-        # Check if password already exists (by checking all users' password hashes)
-        # Note: We can't directly compare plain passwords, so we hash and check
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
-        # Check if any user has this password hash (very unlikely but check anyway)
-        existing_user = db.query(User).filter(
-            User.password.isnot(None)
-        ).first()
-        
-        if existing_user:
-            # Compare hashes (we'd need to store password hashes separately for this check)
-            # For now, we'll just regenerate if we detect a potential collision
-            # In practice, the combination of factors makes collisions extremely rare
-            pass
-        
-        # Verify the password is unique by checking email + password combination
-        # Since emails are unique, and we add email hash to password, this ensures uniqueness
-        break
-    
-    # If we've tried multiple times, add more randomness
-    if attempt >= max_attempts:
-        extra_random = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(4))
-        password = base_password + unique_part[:4] + extra_random
+    # All alphanumeric (letters and digits only)
+    password = base_password + unique_part[:8]
     
     return password
 

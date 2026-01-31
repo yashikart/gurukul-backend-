@@ -11,7 +11,8 @@ export const useKarma = () => {
     return context;
 };
 
-const KARMA_TRACKER_URL = import.meta.env.VITE_KARMA_TRACKER_URL || 'http://localhost:8001';
+// Karma Tracker is now integrated into backend - use same URL
+const KARMA_TRACKER_URL = import.meta.env.VITE_KARMA_TRACKER_URL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export const KarmaProvider = ({ children }) => {
     const { user } = useAuth();
@@ -60,10 +61,17 @@ export const KarmaProvider = ({ children }) => {
 
         try {
             console.log('[Karma] Fetching karma for user:', user.id);
-            const res = await fetch(`${KARMA_TRACKER_URL}/api/v1/karma/${user.id}`);
+            const res = await fetch(`${KARMA_TRACKER_URL}/api/v1/karma/${user.id}`, {
+                signal: AbortSignal.timeout(5000) // 5 second timeout
+            });
             if (!res.ok) {
                 // Don't spam errors; just keep local value
-                console.warn('[Karma] Failed to fetch karma profile:', res.status, res.statusText);
+                // 404 means user doesn't exist in Karma Tracker yet (not an error)
+                if (res.status === 404) {
+                    console.log('[Karma] User not found in Karma Tracker (will be created on first action)');
+                } else {
+                    console.warn('[Karma] Failed to fetch karma profile:', res.status, res.statusText);
+                }
                 return;
             }
             const data = await res.json();

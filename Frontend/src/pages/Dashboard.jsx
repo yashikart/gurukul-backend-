@@ -7,6 +7,9 @@ import ReflectionModal from '../components/ReflectionModal';
 import NextStepCard from '../components/NextStepCard';
 import { apiGet, handleApiError } from '../utils/apiClient';
 import { FaHeart } from 'react-icons/fa';
+import { SkeletonGrid } from '../components/LoadingSkeleton';
+import ErrorBoundary from '../components/ErrorBoundary';
+import { usePerformanceMonitor } from '../hooks/usePerformance';
 
 const Dashboard = ({
     studyTimeSeconds,
@@ -16,6 +19,9 @@ const Dashboard = ({
     onStartGoal,
     onStopGoal
 }) => {
+    // Performance monitoring
+    usePerformanceMonitor('Dashboard');
+
     // Soul / Journey State
     const [journeyStep, setJourneyStep] = useState('improve'); // Default fallback
     const [isReflectionOpen, setIsReflectionOpen] = useState(false);
@@ -96,32 +102,44 @@ const Dashboard = ({
                 </div>
 
                 {/* Improved Grid Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                    {/* Column 1 & 2 */}
-                    <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            <StudyTimeWidget
-                                targetGoalSeconds={targetGoalSeconds}
-                                timeLeft={timeLeft}
-                                isActive={isActive}
-                                totalStudyTime={studyTimeSeconds}
-                            />
-                            <KarmaWidget />
+                <ErrorBoundary>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                        {/* Column 1 & 2 */}
+                        <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                <ErrorBoundary>
+                                    <StudyTimeWidget
+                                        targetGoalSeconds={targetGoalSeconds}
+                                        timeLeft={timeLeft}
+                                        isActive={isActive}
+                                        totalStudyTime={studyTimeSeconds}
+                                    />
+                                </ErrorBoundary>
+                                <ErrorBoundary>
+                                    <KarmaWidget />
+                                </ErrorBoundary>
+                            </div>
+                            <ErrorBoundary>
+                                <GoalWidget
+                                    timeLeft={timeLeft}
+                                    isActive={isActive}
+                                    onStart={onStartGoal}
+                                    onStop={onStopGoal}
+                                />
+                            </ErrorBoundary>
                         </div>
-                        <GoalWidget
-                            timeLeft={timeLeft}
-                            isActive={isActive}
-                            onStart={onStartGoal}
-                            onStop={onStopGoal}
-                        />
-                    </div>
 
-                    {/* Column 3 */}
-                    <div className="flex flex-col gap-4 sm:gap-6">
-                        <LearningProgress />
-                        <AchievementsWidget />
+                        {/* Column 3 */}
+                        <div className="flex flex-col gap-4 sm:gap-6">
+                            <ErrorBoundary>
+                                <LearningProgress />
+                            </ErrorBoundary>
+                            <ErrorBoundary>
+                                <AchievementsWidget />
+                            </ErrorBoundary>
+                        </div>
                     </div>
-                </div>
+                </ErrorBoundary>
             </main>
         </div>
     );

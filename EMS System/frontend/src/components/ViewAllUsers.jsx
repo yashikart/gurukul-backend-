@@ -17,17 +17,25 @@ const ViewAllUsers = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersData, schoolsData] = await Promise.all([
-        dashboardAPI.getUsers(
-          search || null,
-          roleFilter || null,
-          schoolFilter ? parseInt(schoolFilter) : null
-        ),
-        schoolsAPI.getAll()
-      ]);
+      const usersData = await dashboardAPI.getUsers(
+        search || null,
+        roleFilter || null,
+        schoolFilter ? parseInt(schoolFilter) : null
+      );
+      
+      // Get schools from admins (since GET /schools/ was removed)
+      const { adminsAPI, schoolsAPI } = await import('../services/api');
+      const allAdmins = await adminsAPI.getAll();
+      const schoolIds = [...new Set(allAdmins.map(admin => admin.school_id).filter(id => id !== null))];
+      
+      // Fetch each school by ID
+      const schoolsPromises = schoolIds.map(schoolId => 
+        schoolsAPI.getById(schoolId).catch(() => null)
+      );
+      const schoolsArray = (await Promise.all(schoolsPromises)).filter(school => school !== null);
       
       setUsers(usersData);
-      setSchools(schoolsData);
+      setSchools(schoolsArray);
       setError('');
     } catch (err) {
       setError('Failed to load users. Please try again.');

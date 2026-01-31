@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar';
 import { FaVolumeUp, FaPlus, FaHistory, FaTrashAlt, FaPaperclip, FaArrowUp, FaChevronDown } from 'react-icons/fa';
 import { useModal } from '../contexts/ModalContext';
 import { useAuth } from '../contexts/AuthContext';
+import { SkeletonBox } from '../components/LoadingSkeleton';
 
 import { containsProfanity } from '../utils/profanityDetector';
 import { apiPost, apiGet, handleApiError } from '../utils/apiClient';

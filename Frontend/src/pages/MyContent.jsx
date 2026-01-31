@@ -4,6 +4,7 @@ import API_BASE_URL from '../config';
 import { FaBookOpen, FaFlipboard, FaClipboardList, FaFileAlt, FaSpinner, FaFilter, FaSearch, FaSync } from 'react-icons/fa';
 import { handleApiError } from '../utils/apiClient';
 import { createLesson } from '../utils/contextManager';
+import { useDebounce } from '../hooks/useDebounce';
 
 const MyContent = () => {
     const { user } = useAuth();
@@ -17,6 +18,7 @@ const MyContent = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebounce(searchQuery, 300); // Debounce search by 300ms
     const [syncing, setSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState('');
 
@@ -105,17 +107,18 @@ const MyContent = () => {
     const getFilteredContent = () => {
         let filtered = [];
         
+        // Use debounced search query for filtering
         if (activeTab === 'all' || activeTab === 'summaries') {
-            filtered = [...filtered, ...filterContent(content.summaries, searchQuery).map(s => ({ ...s, type: 'summary' }))];
+            filtered = [...filtered, ...filterContent(content.summaries, debouncedSearchQuery).map(s => ({ ...s, type: 'summary' }))];
         }
         if (activeTab === 'all' || activeTab === 'flashcards') {
-            filtered = [...filtered, ...filterContent(content.flashcards, searchQuery).map(f => ({ ...f, type: 'flashcard' }))];
+            filtered = [...filtered, ...filterContent(content.flashcards, debouncedSearchQuery).map(f => ({ ...f, type: 'flashcard' }))];
         }
         if (activeTab === 'all' || activeTab === 'tests') {
-            filtered = [...filtered, ...filterContent(content.testResults, searchQuery).map(t => ({ ...t, type: 'test' }))];
+            filtered = [...filtered, ...filterContent(content.testResults, debouncedSearchQuery).map(t => ({ ...t, type: 'test' }))];
         }
         if (activeTab === 'all' || activeTab === 'subjects') {
-            filtered = [...filtered, ...filterContent(content.subjectData, searchQuery).map(s => ({ ...s, type: 'subject' }))];
+            filtered = [...filtered, ...filterContent(content.subjectData, debouncedSearchQuery).map(s => ({ ...s, type: 'subject' }))];
         }
         
         // Sort by date (newest first)

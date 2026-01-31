@@ -44,9 +44,9 @@ const ReflectionModal = ({ isOpen, onClose, onSuccess }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-[#1a1c16] border border-white/10 rounded-3xl w-full max-w-lg relative shadow-2xl overflow-hidden">
+            <div className="bg-[#0a0c08] border border-white/5 rounded-3xl w-full max-w-lg relative shadow-2xl overflow-hidden">
                 {/* Header */}
-                <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/40">
                     <h3 className="text-xl font-bold text-white flex items-center gap-3">
                         <FaHeart className="text-red-500" />
                         Daily Reflection
@@ -90,7 +90,7 @@ const ReflectionModal = ({ isOpen, onClose, onSuccess }) => {
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="I felt really focused when I..."
-                            className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-white placeholder-gray-600 focus:outline-none focus:border-accent resize-none"
+                            className="w-full h-32 bg-black/60 border border-white/5 rounded-xl p-4 text-white placeholder-gray-600 focus:outline-none focus:border-accent resize-none"
                             required
                         />
                     </div>
@@ -106,7 +106,7 @@ const ReflectionModal = ({ isOpen, onClose, onSuccess }) => {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 font-medium transition-colors"
+                            className="flex-1 py-3 rounded-xl bg-black/40 hover:bg-black/60 text-gray-400 font-medium transition-colors"
                         >
                             Cancel
                         </button>

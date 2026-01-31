@@ -45,4 +45,14 @@ accelerate>=0.24.0  # For model loading
 # Testing
 pytest>=7.4.0  # For smoke tests
 
+# Bucket integration dependencies
+redis>=5.0.0  # For packet queuing (optional, falls back to in-memory if not available)
+
+# Karma Tracker dependencies (integrated)
+pymongo>=4.6.0  # MongoDB driver for Karma Tracker
+dnspython>=2.4.0  # DNS support for MongoDB connection strings
+networkx>=3.0  # Graph algorithms for karma relationships
+matplotlib>=3.7.0  # Analytics visualization
+aiohttp>=3.9.0  # Async HTTP client
+
 

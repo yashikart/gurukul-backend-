@@ -12,8 +12,13 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Import Routers
-from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts, ems_student, lesson, sovereign, vaani
+from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts, ems_student, lesson, sovereign, vaani, bucket
 from app.routers import ems_sync_manual
+
+# Import Karma Tracker routers (integrated)
+from app.routers.karma_tracker import karma as karma_router
+from app.routers.karma_tracker import balance, redeem, policy, feedback, analytics, agami, normalization, rnanubandhan
+from app.routers.karma_tracker.v1.karma import main as karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
 
 # Initialize FastAPI
 app = FastAPI(title=settings.API_TITLE)
@@ -53,6 +58,17 @@ async def startup_event():
     except Exception as e:
         print(f"[Startup] Database initialization failed: {e}")
     
+    # Initialize Karma Tracker MongoDB connection
+    try:
+        from app.core.karma_database import get_db, get_client
+        db = get_db()
+        # Test connection
+        db.command('ping')
+        print("[Startup] ✓ Karma Tracker MongoDB connected successfully!")
+    except Exception as e:
+        print(f"[Startup] ⚠️  Karma Tracker MongoDB connection failed: {e}")
+        print("[Startup]   Karma features may not work without MongoDB")
+    
     # Try to ensure models exist (Shim to keep original behavior)
     try:
         # Assuming download_models_on_startup.py is in the root (cwd)
@@ -78,7 +94,26 @@ app.include_router(tts.router, prefix="/api/v1/tts", tags=["Text-to-Speech"])
 app.include_router(lesson.router, prefix="/api/v1/lesson", tags=["Lesson Context"])
 app.include_router(sovereign.router, prefix="/api/v1/sovereign", tags=["Sovereign Fusion Layer"])
 app.include_router(vaani.router, prefix="/api/v1/vaani", tags=["Vaani RL-TTS"])
+app.include_router(bucket.router, prefix="/api/v1", tags=["PRANA Bucket"])
 
+# Karma Tracker routes (integrated)
+app.include_router(karma_router.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(balance.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(redeem.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(policy.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(feedback.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Karma Analytics"])
+app.include_router(agami.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(normalization.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(rnanubandhan.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(karma_v1_main.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(lifecycle.router, prefix="/api/v1/karma/lifecycle", tags=["Karma Lifecycle"])
+app.include_router(stats.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(log_action.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(appeal.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(atonement.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(death.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+app.include_router(event.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
 
 # Root Health Check
 @app.get("/")

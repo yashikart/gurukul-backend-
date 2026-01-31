@@ -89,6 +89,7 @@ class ForgotPasswordResponse(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str
+    old_password: str  # Current password (required for security)
     new_password: str
 
 

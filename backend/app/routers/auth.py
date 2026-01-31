@@ -1,8 +1,8 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from sqlalchemy.orm import Session
+from jose import JWTError, jwt  # type: ignore[reportMissingModuleSource]
+from sqlalchemy.orm import Session  # type: ignore[reportMissingImports]
 from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.config import settings
@@ -19,7 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 # Password hashing
 # Using bcrypt directly to avoid passlib compatibility issues
-import bcrypt
+import bcrypt  # type: ignore[reportMissingImports]
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
@@ -54,14 +54,22 @@ def get_password_hash(password: str) -> str:
     return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create a JWT access token"""
+    """Create a JWT access token with session_id"""
+    import uuid
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
+    # Generate session_id (JWT ID) for this token
+    session_id = str(uuid.uuid4())
+    to_encode.update({
+        "exp": expire, 
+        "iat": datetime.utcnow(),
+        "jti": session_id,  # JWT ID claim (standard)
+        "session_id": session_id  # Also include as session_id for easy access
+    })
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 

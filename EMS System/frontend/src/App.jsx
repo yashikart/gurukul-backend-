@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import SetPassword from './components/SetPassword';
+import ResetPassword from './components/ResetPassword';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -57,6 +58,10 @@ function AppRoutes() {
         element={<SetPassword />}
       />
       <Route
+        path="/reset-password"
+        element={<ResetPassword />}
+      />
+      <Route
         path="/dashboard/*"
         element={
           <ProtectedRoute>
@@ -72,7 +77,12 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>

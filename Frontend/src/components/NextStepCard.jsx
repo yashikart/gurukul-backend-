@@ -59,7 +59,7 @@ const NextStepCard = ({ currentStep = 'enter' }) => {
     return (
         <div className="w-full max-w-6xl mx-auto px-4 mb-6">
             <div
-                className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-black/60 to-black/40 backdrop-blur-sm border-2 border-accent/30 p-6 sm:p-8 shadow-2xl"
+                className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-sm border-2 border-accent/20 p-6 sm:p-8 shadow-2xl"
             >
                 {/* Background Gradient */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${nextStep.color} opacity-5`}></div>

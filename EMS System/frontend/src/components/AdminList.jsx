@@ -22,9 +22,18 @@ const AdminList = () => {
       setLoading(true);
       setError('');
 
-      // Fetch schools for filter dropdown
-      const schoolsData = await schoolsAPI.getAll();
-      setSchools(schoolsData);
+      // Fetch schools for filter dropdown - get from admins
+      // Note: GET /schools/ endpoint has been removed
+      const { schoolsAPI } = await import('../services/api');
+      const adminsForSchools = await adminsAPI.getAll();
+      const schoolIds = [...new Set(adminsForSchools.map(admin => admin.school_id).filter(id => id !== null))];
+      
+      // Fetch each school by ID
+      const schoolsPromises = schoolIds.map(schoolId => 
+        schoolsAPI.getById(schoolId).catch(() => null)
+      );
+      const schoolsArray = (await Promise.all(schoolsPromises)).filter(school => school !== null);
+      setSchools(schoolsArray);
 
       // Fetch admins based on filter
       const adminsData = await adminsAPI.getAll(search || null, filterSchoolId ? parseInt(filterSchoolId) : null);
