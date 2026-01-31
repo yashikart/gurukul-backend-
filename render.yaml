@@ -1,0 +1,134 @@
+services:
+  # Gurukul Backend (includes Karma Tracker)
+  - type: web
+    name: gurukul-backend
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 10080
+      - key: ENVIRONMENT
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          type: static
+          name: gurukul-frontend
+          property: url
+      - key: EMS_FRONTEND_URL
+        fromService:
+          type: static
+          name: ems-frontend
+          property: url
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+  # EMS Backend
+  - type: web
+    name: ems-backend
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: pip install -r "EMS System/requirements.txt"
+    startCommand: cd "EMS System" && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 10080
+      - key: ENVIRONMENT
+        value: production
+      - key: FRONTEND_URL
+        fromService:
+          type: static
+          name: ems-frontend
+          property: url
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        value: noreply@schoolmanagement.com
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_SERVER
+        value: smtp.gmail.com
+      - key: MAIL_STARTTLS
+        value: "true"
+      - key: MAIL_SSL_TLS
+        value: "false"
+      - key: USE_CREDENTIALS
+        value: "true"
+      - key: PASSWORD_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+  # Bucket Consumer (Background Worker)
+  - type: worker
+    name: bucket-consumer
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python scripts/start_bucket_consumer.py --backend-url $GURUKUL_BACKEND_URL
+    envVars:
+      - key: GURUKUL_BACKEND_URL
+        fromService:
+          type: web
+          name: gurukul-backend
+          property: url
+      - key: POLL_INTERVAL_SECONDS
+        value: "5"
+      - key: BATCH_SIZE
+        value: "10"
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+  # Gurukul Frontend (Static Site)
+  - type: static
+    name: gurukul-frontend
+    region: oregon
+    buildCommand: cd Frontend && npm install && npm run build
+    staticPublishPath: Frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: gurukul-backend
+          property: url
+      - key: VITE_EMS_API_URL
+        fromService:
+          type: web
+          name: ems-backend
+          property: url
+
+  # EMS Frontend (Static Site)
+  - type: static
+    name: ems-frontend
+    region: oregon
+    buildCommand: cd "EMS System/frontend" && npm install && npm run build
+    staticPublishPath: EMS System/frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: ems-backend
+          property: url
+
