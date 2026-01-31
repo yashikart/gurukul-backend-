@@ -81,10 +81,7 @@ services:
     startCommand: cd backend && python scripts/start_bucket_consumer.py --backend-url $GURUKUL_BACKEND_URL
     envVars:
       - key: GURUKUL_BACKEND_URL
-        fromService:
-          type: web
-          name: gurukul-backend
-          property: url
+        sync: false
       - key: POLL_INTERVAL_SECONDS
         value: "5"
       - key: BATCH_SIZE
@@ -92,22 +89,33 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
 
-# NOTE: Static sites (Gurukul Frontend and EMS Frontend) cannot be defined in render.yaml
-# They must be created manually in Render Dashboard:
-# 1. Go to Dashboard > New > Static Site
-# 2. Connect your GitHub repository
-# 3. Configure as follows:
+# NOTE: After deploying, you need to manually set these environment variables:
 #
-# Gurukul Frontend:
-#   - Build Command: cd Frontend && npm install && npm run build
-#   - Publish Directory: Frontend/dist
-#   - Environment Variables:
-#     - VITE_API_URL: https://gurukul-backend.onrender.com
-#     - VITE_EMS_API_URL: https://ems-backend.onrender.com
+# 1. For bucket-consumer service:
+#    - GURUKUL_BACKEND_URL: https://gurukul-backend.onrender.com (use actual URL)
 #
-# EMS Frontend:
-#   - Build Command: cd "EMS System/frontend" && npm install && npm run build
-#   - Publish Directory: EMS System/frontend/dist
-#   - Environment Variables:
-#     - VITE_API_URL: https://ems-backend.onrender.com
+# 2. For gurukul-backend service:
+#    - FRONTEND_URL: https://gurukul-frontend.onrender.com (after creating static site)
+#    - EMS_FRONTEND_URL: https://ems-frontend.onrender.com (after creating static site)
+#
+# 3. For ems-backend service:
+#    - FRONTEND_URL: https://ems-frontend.onrender.com (after creating static site)
+#
+# 4. Static sites (Gurukul Frontend and EMS Frontend) must be created manually:
+#    - Go to Dashboard > New > Static Site
+#    - Connect your GitHub repository
+#    - Configure as follows:
+#
+#    Gurukul Frontend:
+#      - Build Command: cd Frontend && npm install && npm run build
+#      - Publish Directory: Frontend/dist
+#      - Environment Variables:
+#        - VITE_API_URL: https://gurukul-backend.onrender.com
+#        - VITE_EMS_API_URL: https://ems-backend.onrender.com
+#
+#    EMS Frontend:
+#      - Build Command: cd "EMS System/frontend" && npm install && npm run build
+#      - Publish Directory: EMS System/frontend/dist
+#      - Environment Variables:
+#        - VITE_API_URL: https://ems-backend.onrender.com
 
