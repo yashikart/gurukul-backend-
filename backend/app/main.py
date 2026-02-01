@@ -121,8 +121,14 @@ async def startup_event():
     print(f"{'='*50}\n")
     sys.stdout.flush()
     
-    # Import routers NOW (after server has started)
-    async def import_routers():
+    # Import routers NOW (after server has started) - run in thread to avoid blocking
+    def import_routers_sync():
+        """Synchronous router import function - runs in thread pool"""
+        global chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts
+        global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual
+        global karma_router, balance, redeem, policy, feedback, analytics, agami, normalization
+        global rnanubandhan, karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
+        
         try:
             print("[Startup] Importing routers (deferred from module load)...")
             sys.stdout.flush()
@@ -247,10 +253,16 @@ async def startup_event():
             print(traceback.format_exc())
             sys.stdout.flush()
     
-    # Run router imports in background (non-blocking)
-    asyncio.create_task(import_routers())
+    # Run router imports in thread pool executor to avoid blocking event loop
+    # This allows startup event to return immediately so server can bind to port
+    from concurrent.futures import ThreadPoolExecutor
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(import_routers_sync)
+    print("[Startup] Router imports started in background thread. Server will bind to port now.")
+    sys.stdout.flush()
     
     # Run blocking operations in background to avoid blocking server startup
+    # These also run in background - don't wait for them
     async def init_database():
         try:
             from app.core.database import engine, Base
@@ -298,28 +310,16 @@ async def startup_event():
             print(f"[Startup] Model download check skipped/failed: {e}")
             sys.stdout.flush()
     
-    # Run all initialization tasks concurrently with timeouts
-    # This ensures the server can start even if some operations fail
-    try:
-        await asyncio.wait_for(
-            asyncio.gather(
-                init_database(),
-                init_mongodb(),
-                init_models(),
-                return_exceptions=True
-            ),
-            timeout=30.0  # Maximum 30 seconds for all startup tasks
-        )
-    except asyncio.TimeoutError:
-        print("[Startup] ⚠️  Some startup tasks timed out, but server is starting anyway")
-        sys.stdout.flush()
-    except Exception as e:
-        print(f"[Startup] ⚠️  Startup tasks encountered errors: {e}")
-        print("[Startup] Server will continue to start...")
-        sys.stdout.flush()
+    # Run all initialization tasks in background - don't wait for them
+    # This allows startup event to return immediately so server can bind to port
+    asyncio.create_task(init_database())
+    asyncio.create_task(init_mongodb())
+    asyncio.create_task(init_models())
     
-    print("[Startup] ✓ Server startup complete!")
+    print("[Startup] ✓ Startup event complete! Server will bind to port now.")
+    print("[Startup] Background tasks (routers, DB, MongoDB, models) are running in background.")
     sys.stdout.flush()
+    # Return immediately - don't wait for any background tasks
 
 # Routers are imported and included in the startup event
 # This allows the server to start immediately without waiting for router imports
