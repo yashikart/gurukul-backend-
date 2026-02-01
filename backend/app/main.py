@@ -1,27 +1,74 @@
 
 import os
+import sys
 import uvicorn
 import logging
 import traceback
-from fastapi import FastAPI, Request, status, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from app.core.config import settings
+print("[Main] Starting Gurukul Backend...")
+print(f"[Main] Python version: {sys.version}")
+print(f"[Main] Working directory: {os.getcwd()}")
+
+try:
+    from fastapi import FastAPI, Request, status, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
+    from fastapi.exceptions import RequestValidationError
+    from app.core.config import settings
+    print("[Main] ✓ FastAPI and core imports successful")
+except Exception as e:
+    print(f"[Main] ✗ Error importing FastAPI/core modules: {e}")
+    print(traceback.format_exc())
+    sys.exit(1)
 
 logger = logging.getLogger(__name__)
 
-# Import Routers
-from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts, ems_student, lesson, sovereign, vaani, bucket
-from app.routers import ems_sync_manual
+# Import Routers with error handling
+try:
+    from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts, ems_student, lesson, sovereign, vaani, bucket
+    from app.routers import ems_sync_manual
+    print("[Import] ✓ Main routers imported successfully")
+except Exception as e:
+    print(f"[Import] ✗ Error importing main routers: {e}")
+    print(traceback.format_exc())
+    raise
 
-# Import Karma Tracker routers (integrated)
-from app.routers.karma_tracker import karma as karma_router
-from app.routers.karma_tracker import balance, redeem, policy, feedback, analytics, agami, normalization, rnanubandhan
-from app.routers.karma_tracker.v1.karma import main as karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
+# Import Karma Tracker routers (integrated) - Optional for now
+karma_router = None
+balance = None
+redeem = None
+policy = None
+feedback = None
+analytics = None
+agami = None
+normalization = None
+rnanubandhan = None
+karma_v1_main = None
+lifecycle = None
+stats = None
+log_action = None
+appeal = None
+atonement = None
+death = None
+event = None
+
+try:
+    from app.routers.karma_tracker import karma as karma_router
+    from app.routers.karma_tracker import balance, redeem, policy, feedback, analytics, agami, normalization, rnanubandhan
+    from app.routers.karma_tracker.v1.karma import main as karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
+    print("[Import] ✓ Karma Tracker routers imported successfully")
+except Exception as e:
+    print(f"[Import] ⚠️  Error importing Karma Tracker routers: {e}")
+    print(traceback.format_exc())
+    print("[Import] Continuing without Karma Tracker routers...")
 
 # Initialize FastAPI
-app = FastAPI(title=settings.API_TITLE)
+try:
+    app = FastAPI(title=settings.API_TITLE)
+    print(f"[Main] ✓ FastAPI app initialized with title: {settings.API_TITLE}")
+except Exception as e:
+    print(f"[Main] ✗ Error initializing FastAPI app: {e}")
+    print(traceback.format_exc())
+    sys.exit(1)
 
 # CORS - Allow frontend to access backend
 app.add_middleware(
@@ -96,24 +143,32 @@ app.include_router(sovereign.router, prefix="/api/v1/sovereign", tags=["Sovereig
 app.include_router(vaani.router, prefix="/api/v1/vaani", tags=["Vaani RL-TTS"])
 app.include_router(bucket.router, prefix="/api/v1", tags=["PRANA Bucket"])
 
-# Karma Tracker routes (integrated)
-app.include_router(karma_router.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(balance.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(redeem.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(policy.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(feedback.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Karma Analytics"])
-app.include_router(agami.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(normalization.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(rnanubandhan.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(karma_v1_main.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(lifecycle.router, prefix="/api/v1/karma/lifecycle", tags=["Karma Lifecycle"])
-app.include_router(stats.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(log_action.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(appeal.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(atonement.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(death.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-app.include_router(event.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+# Karma Tracker routes (integrated) - Only include if imports succeeded
+if karma_router is not None:
+    try:
+        app.include_router(karma_router.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(balance.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(redeem.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(policy.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(feedback.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Karma Analytics"])
+        app.include_router(agami.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(normalization.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(rnanubandhan.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(karma_v1_main.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(lifecycle.router, prefix="/api/v1/karma/lifecycle", tags=["Karma Lifecycle"])
+        app.include_router(stats.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(log_action.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(appeal.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(atonement.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(death.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        app.include_router(event.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+        print("[Router] ✓ Karma Tracker routes included successfully")
+    except Exception as e:
+        print(f"[Router] ⚠️  Error including Karma Tracker routes: {e}")
+        print(traceback.format_exc())
+else:
+    print("[Router] ⚠️  Karma Tracker routes not included (imports failed)")
 
 # Root Health Check
 @app.get("/")
