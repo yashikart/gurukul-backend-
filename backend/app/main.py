@@ -105,6 +105,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
+    # Startup
     import asyncio
     global chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts
     global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual
@@ -315,6 +316,7 @@ async def startup_event():
     asyncio.create_task(init_database())
     asyncio.create_task(init_mongodb())
     asyncio.create_task(init_models())
+    
     
     print("[Startup] ✓ Startup event complete! Server will bind to port now.")
     print("[Startup] Background tasks (routers, DB, MongoDB, models) are running in background.")
