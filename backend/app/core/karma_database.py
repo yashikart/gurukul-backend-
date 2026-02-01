@@ -1,28 +1,40 @@
 import os
 import threading
+import sys
 from pymongo import MongoClient
 from app.core.karma_config import MONGO_URI, DB_NAME
+
+print("[Karma DB] Module loading...", flush=True)
+sys.stdout.flush()
 
 _client_lock = threading.Lock()
 _client: MongoClient = None
 _db = None
 
 def get_client() -> MongoClient:
+    """Lazy MongoDB client - only connects when actually needed"""
     global _client
     if _client is None:
         with _client_lock:
             if _client is None:
+                print("[Karma DB] Creating MongoDB client (lazy connection)...", flush=True)
+                sys.stdout.flush()
                 max_pool = int(os.getenv("MONGO_MAX_POOL_SIZE", "100"))
                 min_pool = int(os.getenv("MONGO_MIN_POOL_SIZE", "0"))
                 server_sel_timeout = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000"))
                 connect_timeout = int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "5000"))
+                # Use connect=False to prevent blocking during construction
+                # Connection will happen on first use
                 _client = MongoClient(
                     MONGO_URI,
                     maxPoolSize=max_pool,
                     minPoolSize=min_pool,
                     serverSelectionTimeoutMS=server_sel_timeout,
                     connectTimeoutMS=connect_timeout,
+                    connect=False,  # CRITICAL: Don't connect during construction
                 )
+                print("[Karma DB] MongoDB client created (not connected yet)", flush=True)
+                sys.stdout.flush()
     return _client
 
 def get_db():

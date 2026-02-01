@@ -30,17 +30,44 @@ except Exception as e:
 
 logger = logging.getLogger(__name__)
 
-# Import Routers with error handling
+# Initialize FastAPI IMMEDIATELY - this allows the server to start listening
+# even if router imports are slow. We'll include routers after the app is created.
 try:
-    from app.routers import chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts, ems_student, lesson, sovereign, vaani, bucket
-    from app.routers import ems_sync_manual
-    print("[Import] ✓ Main routers imported successfully")
+    app = FastAPI(title=settings.API_TITLE)
+    print(f"[Main] ✓ FastAPI app initialized with title: {settings.API_TITLE}")
+    sys.stdout.flush()
 except Exception as e:
-    print(f"[Import] ✗ Error importing main routers: {e}")
+    print(f"[Main] ✗ Error initializing FastAPI app: {e}")
     print(traceback.format_exc())
-    raise
+    sys.stdout.flush()
+    sys.exit(1)
 
-# Import Karma Tracker routers (integrated) - Optional for now
+# DEFER router imports to startup event to allow server to start immediately
+# This is critical - uvicorn waits for module to fully load before starting server
+# By deferring router imports, we allow the server to start and bind to port first
+print("[Main] Router imports will be deferred to startup event for faster server start")
+sys.stdout.flush()
+
+# Placeholder variables for routers - will be imported in startup event
+chat = None
+flashcards = None
+learning = None
+ems = None
+summarizer = None
+auth = None
+soul = None
+agents = None
+quiz = None
+journey = None
+tts = None
+ems_student = None
+lesson = None
+sovereign = None
+vaani = None
+bucket = None
+ems_sync_manual = None
+
+# Karma Tracker routers
 karma_router = None
 balance = None
 redeem = None
@@ -58,25 +85,6 @@ appeal = None
 atonement = None
 death = None
 event = None
-
-try:
-    from app.routers.karma_tracker import karma as karma_router
-    from app.routers.karma_tracker import balance, redeem, policy, feedback, analytics, agami, normalization, rnanubandhan
-    from app.routers.karma_tracker.v1.karma import main as karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
-    print("[Import] ✓ Karma Tracker routers imported successfully")
-except Exception as e:
-    print(f"[Import] ⚠️  Error importing Karma Tracker routers: {e}")
-    print(traceback.format_exc())
-    print("[Import] Continuing without Karma Tracker routers...")
-
-# Initialize FastAPI
-try:
-    app = FastAPI(title=settings.API_TITLE)
-    print(f"[Main] ✓ FastAPI app initialized with title: {settings.API_TITLE}")
-except Exception as e:
-    print(f"[Main] ✗ Error initializing FastAPI app: {e}")
-    print(traceback.format_exc())
-    sys.exit(1)
 
 # CORS - Allow frontend to access backend
 app.add_middleware(
@@ -98,6 +106,10 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     import asyncio
+    global chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts
+    global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual
+    global karma_router, balance, redeem, policy, feedback, analytics, agami, normalization
+    global rnanubandhan, karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
     
     # Debug: Print port information
     port_from_env = os.getenv("PORT", "not set")
@@ -108,6 +120,135 @@ async def startup_event():
     print(f"Env: {os.getenv('ENV', 'dev')}")
     print(f"{'='*50}\n")
     sys.stdout.flush()
+    
+    # Import routers NOW (after server has started)
+    async def import_routers():
+        try:
+            print("[Startup] Importing routers (deferred from module load)...")
+            sys.stdout.flush()
+            from app.routers import chat as chat_mod, flashcards as flashcards_mod, learning as learning_mod
+            from app.routers import ems as ems_mod, summarizer as summarizer_mod, auth as auth_mod
+            from app.routers import soul as soul_mod, agents as agents_mod, quiz as quiz_mod
+            from app.routers import journey as journey_mod, tts as tts_mod, ems_student as ems_student_mod
+            from app.routers import lesson as lesson_mod, sovereign as sovereign_mod, vaani as vaani_mod
+            from app.routers import bucket as bucket_mod, ems_sync_manual as ems_sync_manual_mod
+            
+            # Assign to globals
+            chat = chat_mod
+            flashcards = flashcards_mod
+            learning = learning_mod
+            ems = ems_mod
+            summarizer = summarizer_mod
+            auth = auth_mod
+            soul = soul_mod
+            agents = agents_mod
+            quiz = quiz_mod
+            journey = journey_mod
+            tts = tts_mod
+            ems_student = ems_student_mod
+            lesson = lesson_mod
+            sovereign = sovereign_mod
+            vaani = vaani_mod
+            bucket = bucket_mod
+            ems_sync_manual = ems_sync_manual_mod
+            
+            # Include routers
+            app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
+            app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
+            app.include_router(flashcards.router, prefix="/api/v1/flashcards", tags=["Flashcards"])
+            app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
+            app.include_router(summarizer.router, prefix="/api/v1/ai", tags=["AI Utilities"])
+            app.include_router(ems.router, prefix="/api/v1/ems", tags=["Admin (EMS)"])
+            app.include_router(ems_student.router, tags=["EMS Student Integration"])
+            app.include_router(ems_sync_manual.router, tags=["EMS Manual Sync"])
+            app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul"])
+            app.include_router(agents.router, prefix="/api/v1/agent", tags=["Agents"])
+            app.include_router(quiz.router, prefix="/api/v1/quiz", tags=["Quiz"])
+            app.include_router(journey.router, prefix="/api/v1/learning", tags=["Learning Journey"])
+            app.include_router(tts.router, prefix="/api/v1/tts", tags=["Text-to-Speech"])
+            app.include_router(lesson.router, prefix="/api/v1/lesson", tags=["Lesson Context"])
+            app.include_router(sovereign.router, prefix="/api/v1/sovereign", tags=["Sovereign Fusion Layer"])
+            app.include_router(vaani.router, prefix="/api/v1/vaani", tags=["Vaani RL-TTS"])
+            app.include_router(bucket.router, prefix="/api/v1", tags=["PRANA Bucket"])
+            
+            # Legacy shims
+            app.include_router(summarizer.router, tags=["Legacy Summarizer"])
+            app.include_router(flashcards.router, prefix="/flashcards", tags=["Legacy Flashcards"])
+            app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul Alignment"])
+            
+            print("[Startup] ✓ Main routers imported and included")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"[Startup] ⚠️  Error importing main routers: {e}")
+            print(traceback.format_exc())
+            sys.stdout.flush()
+        
+        # Import Karma Tracker routers
+        try:
+            print("[Startup] Importing Karma Tracker routers...")
+            sys.stdout.flush()
+            from app.routers.karma_tracker import karma as karma_router_mod
+            from app.routers.karma_tracker import balance as balance_mod, redeem as redeem_mod
+            from app.routers.karma_tracker import policy as policy_mod, feedback as feedback_mod
+            from app.routers.karma_tracker import analytics as analytics_mod, agami as agami_mod
+            from app.routers.karma_tracker import normalization as normalization_mod
+            from app.routers.karma_tracker import rnanubandhan as rnanubandhan_mod
+            from app.routers.karma_tracker.v1.karma import main as karma_v1_main_mod
+            from app.routers.karma_tracker.v1.karma import lifecycle as lifecycle_mod
+            from app.routers.karma_tracker.v1.karma import stats as stats_mod
+            from app.routers.karma_tracker.v1.karma import log_action as log_action_mod
+            from app.routers.karma_tracker.v1.karma import appeal as appeal_mod
+            from app.routers.karma_tracker.v1.karma import atonement as atonement_mod
+            from app.routers.karma_tracker.v1.karma import death as death_mod
+            from app.routers.karma_tracker.v1.karma import event as event_mod
+            
+            # Assign to globals
+            karma_router = karma_router_mod
+            balance = balance_mod
+            redeem = redeem_mod
+            policy = policy_mod
+            feedback = feedback_mod
+            analytics = analytics_mod
+            agami = agami_mod
+            normalization = normalization_mod
+            rnanubandhan = rnanubandhan_mod
+            karma_v1_main = karma_v1_main_mod
+            lifecycle = lifecycle_mod
+            stats = stats_mod
+            log_action = log_action_mod
+            appeal = appeal_mod
+            atonement = atonement_mod
+            death = death_mod
+            event = event_mod
+            
+            # Include routers
+            app.include_router(karma_router.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(balance.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(redeem.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(policy.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(feedback.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Karma Analytics"])
+            app.include_router(agami.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(normalization.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(rnanubandhan.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(karma_v1_main.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(lifecycle.router, prefix="/api/v1/karma/lifecycle", tags=["Karma Lifecycle"])
+            app.include_router(stats.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(log_action.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(appeal.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(atonement.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(death.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            app.include_router(event.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
+            
+            print("[Startup] ✓ Karma Tracker routers imported and included")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"[Startup] ⚠️  Error importing Karma Tracker routers: {e}")
+            print(traceback.format_exc())
+            sys.stdout.flush()
+    
+    # Run router imports in background (non-blocking)
+    asyncio.create_task(import_routers())
     
     # Run blocking operations in background to avoid blocking server startup
     async def init_database():
@@ -180,51 +321,8 @@ async def startup_event():
     print("[Startup] ✓ Server startup complete!")
     sys.stdout.flush()
 
-# Include Routers
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
-app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
-app.include_router(flashcards.router, prefix="/api/v1/flashcards", tags=["Flashcards"])
-app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
-app.include_router(summarizer.router, prefix="/api/v1/ai", tags=["AI Utilities"])
-app.include_router(ems.router, prefix="/api/v1/ems", tags=["Admin (EMS)"])
-app.include_router(ems_student.router, tags=["EMS Student Integration"])  # Router already has prefix
-app.include_router(ems_sync_manual.router, tags=["EMS Manual Sync"])  # Router already has prefix
-app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul"])
-app.include_router(agents.router, prefix="/api/v1/agent", tags=["Agents"])
-app.include_router(quiz.router, prefix="/api/v1/quiz", tags=["Quiz"])
-app.include_router(journey.router, prefix="/api/v1/learning", tags=["Learning Journey"])
-app.include_router(tts.router, prefix="/api/v1/tts", tags=["Text-to-Speech"])
-app.include_router(lesson.router, prefix="/api/v1/lesson", tags=["Lesson Context"])
-app.include_router(sovereign.router, prefix="/api/v1/sovereign", tags=["Sovereign Fusion Layer"])
-app.include_router(vaani.router, prefix="/api/v1/vaani", tags=["Vaani RL-TTS"])
-app.include_router(bucket.router, prefix="/api/v1", tags=["PRANA Bucket"])
-
-# Karma Tracker routes (integrated) - Only include if imports succeeded
-if karma_router is not None:
-    try:
-        app.include_router(karma_router.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(balance.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(redeem.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(policy.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(feedback.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Karma Analytics"])
-        app.include_router(agami.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(normalization.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(rnanubandhan.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(karma_v1_main.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(lifecycle.router, prefix="/api/v1/karma/lifecycle", tags=["Karma Lifecycle"])
-        app.include_router(stats.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(log_action.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(appeal.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(atonement.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(death.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        app.include_router(event.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
-        print("[Router] ✓ Karma Tracker routes included successfully")
-    except Exception as e:
-        print(f"[Router] ⚠️  Error including Karma Tracker routes: {e}")
-        print(traceback.format_exc())
-else:
-    print("[Router] ⚠️  Karma Tracker routes not included (imports failed)")
+# Routers are imported and included in the startup event
+# This allows the server to start immediately without waiting for router imports
 
 # Root Health Check
 @app.get("/")
@@ -248,10 +346,7 @@ async def health_check():
 # So I should probably alias the old routes or mount them at root as well?
 # Let's add them at root for compatibility for now.
 
-# Legacy Shims for Frontend Compatibility
-app.include_router(summarizer.router, tags=["Legacy Summarizer"]) # Exposes /summarize-pdf
-app.include_router(flashcards.router, prefix="/flashcards", tags=["Legacy Flashcards"]) # Exposes /flashcards/generate
-app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul Alignment"]) # New Soul Router
+# Legacy shims are included in the startup event along with other routers
 
 # Global Exception Handler - Ensures CORS headers are included even on errors
 @app.exception_handler(Exception)
@@ -308,6 +403,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "Access-Control-Allow-Headers": "*",
         }
     )
+
+# Final message to confirm module is fully loaded
+print("[Main] ✓ Module fully loaded. App is ready for uvicorn to start server.")
+print(f"[Main] App object: {app}")
+sys.stdout.flush()
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=settings.RELOAD)
