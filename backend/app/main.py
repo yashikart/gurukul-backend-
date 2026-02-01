@@ -97,40 +97,88 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
+    import asyncio
+    
+    # Debug: Print port information
+    port_from_env = os.getenv("PORT", "not set")
     print(f"\n{'='*50}")
     print(f"Gurukul API v2 (Refactored) Started at http://{settings.HOST}:{settings.PORT}")
+    print(f"PORT from environment: {port_from_env}")
+    print(f"PORT from settings: {settings.PORT}")
     print(f"Env: {os.getenv('ENV', 'dev')}")
     print(f"{'='*50}\n")
+    sys.stdout.flush()
     
-    # Initialize database tables
-    try:
-        from app.core.database import engine, Base
-        from app.models import all_models
-        from app.models import rl_models  # Import RL models to register them with Base
-        print("[Startup] Creating database tables...")
-        Base.metadata.create_all(bind=engine)
-        print("[Startup] ✓ Database tables created successfully!")
-    except Exception as e:
-        print(f"[Startup] Database initialization failed: {e}")
+    # Run blocking operations in background to avoid blocking server startup
+    async def init_database():
+        try:
+            from app.core.database import engine, Base
+            from app.models import all_models
+            from app.models import rl_models  # Import RL models to register them with Base
+            print("[Startup] Creating database tables...")
+            sys.stdout.flush()
+            Base.metadata.create_all(bind=engine)
+            print("[Startup] ✓ Database tables created successfully!")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"[Startup] Database initialization failed: {e}")
+            sys.stdout.flush()
     
-    # Initialize Karma Tracker MongoDB connection
-    try:
-        from app.core.karma_database import get_db, get_client
-        db = get_db()
-        # Test connection
-        db.command('ping')
-        print("[Startup] ✓ Karma Tracker MongoDB connected successfully!")
-    except Exception as e:
-        print(f"[Startup] ⚠️  Karma Tracker MongoDB connection failed: {e}")
-        print("[Startup]   Karma features may not work without MongoDB")
+    async def init_mongodb():
+        try:
+            from app.core.karma_database import get_db, get_client
+            db = get_db()
+            # Test connection with timeout
+            print("[Startup] Testing MongoDB connection...")
+            sys.stdout.flush()
+            await asyncio.wait_for(
+                asyncio.to_thread(db.command, 'ping'),
+                timeout=5.0
+            )
+            print("[Startup] ✓ Karma Tracker MongoDB connected successfully!")
+            sys.stdout.flush()
+        except asyncio.TimeoutError:
+            print("[Startup] ⚠️  Karma Tracker MongoDB connection timed out")
+            print("[Startup]   Karma features may not work without MongoDB")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"[Startup] ⚠️  Karma Tracker MongoDB connection failed: {e}")
+            print("[Startup]   Karma features may not work without MongoDB")
+            sys.stdout.flush()
     
-    # Try to ensure models exist (Shim to keep original behavior)
+    async def init_models():
+        try:
+            # Assuming download_models_on_startup.py is in the root (cwd)
+            from download_models_on_startup import ensure_models_exist
+            print("[Startup] Checking for model files...")
+            sys.stdout.flush()
+            await asyncio.to_thread(ensure_models_exist)
+        except Exception as e:
+            print(f"[Startup] Model download check skipped/failed: {e}")
+            sys.stdout.flush()
+    
+    # Run all initialization tasks concurrently with timeouts
+    # This ensures the server can start even if some operations fail
     try:
-        # Assuming download_models_on_startup.py is in the root (cwd)
-        from download_models_on_startup import ensure_models_exist
-        ensure_models_exist()
+        await asyncio.wait_for(
+            asyncio.gather(
+                init_database(),
+                init_mongodb(),
+                init_models(),
+                return_exceptions=True
+            ),
+            timeout=30.0  # Maximum 30 seconds for all startup tasks
+        )
+    except asyncio.TimeoutError:
+        print("[Startup] ⚠️  Some startup tasks timed out, but server is starting anyway")
+        sys.stdout.flush()
     except Exception as e:
-        print(f"[Startup] Model download check skipped/failed: {e}")
+        print(f"[Startup] ⚠️  Startup tasks encountered errors: {e}")
+        print("[Startup] Server will continue to start...")
+        sys.stdout.flush()
+    
+    print("[Startup] ✓ Server startup complete!")
+    sys.stdout.flush()
 
 # Include Routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
@@ -182,6 +230,12 @@ else:
 @app.get("/")
 async def root():
     return {"message": "Gurukul Backend API v2 is running", "docs": "/docs"}
+
+# Health check endpoint for Render deployment
+@app.get("/health")
+async def health_check():
+    """Simple health check endpoint that responds immediately"""
+    return {"status": "healthy", "service": "Gurukul Backend API"}
 
 # Legacy Shim for old endpoints if needed (optional)
 # We might want to mount the old endpoints similarly or just rely on the new prefix.

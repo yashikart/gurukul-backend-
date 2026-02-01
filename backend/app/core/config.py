@@ -6,8 +6,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     API_TITLE: str = "Gurukul Backend API"
     HOST: str = "0.0.0.0"
-    PORT: int = 3000
-    RELOAD: bool = True
+    PORT: int = int(os.getenv("PORT", "3000"))  # Read PORT from environment (Render provides this)
+    RELOAD: bool = False  # Disable reload in production
     
     # API Keys
     GROQ_API_KEY: Optional[str] = None

@@ -31,15 +31,50 @@ def get_db():
         _db = get_client()[DB_NAME]
     return _db
 
-# Define separate collections for each data type
-users_col = get_db()["users"]
-transactions_col = get_db()["transactions"]
-qtable_col = get_db()["q_table"]
-appeals_col = get_db()["appeals"]
-atonements_col = get_db()["atonements"]
-death_events_col = get_db()["death_events"]
-karma_events_col = get_db()["karma_events"]  # New collection for unified events
-rnanubandhan_col = get_db()["rnanubandhan_relationships"]  # Collection for Rnanubandhan relationships
+# Lazy collection loader class to avoid blocking during import
+class LazyCollection:
+    """Lazy-loads MongoDB collections only when accessed"""
+    def __init__(self, collection_name: str):
+        self.collection_name = collection_name
+        self._collection = None
+    
+    def _ensure_collection(self):
+        """Ensure collection is loaded"""
+        if self._collection is None:
+            try:
+                self._collection = get_db()[self.collection_name]
+            except Exception as e:
+                print(f"[Karma DB] Warning: Could not access collection '{self.collection_name}': {e}")
+                raise RuntimeError(f"MongoDB collection '{self.collection_name}' is not available: {e}")
+        return self._collection
+    
+    def __getattr__(self, name):
+        return getattr(self._ensure_collection(), name)
+    
+    def __getitem__(self, key):
+        return self._ensure_collection()[key]
+    
+    def __setitem__(self, key, value):
+        self._ensure_collection()[key] = value
+    
+    def __iter__(self):
+        return iter(self._ensure_collection())
+    
+    def __len__(self):
+        return len(self._ensure_collection())
+    
+    def __call__(self, *args, **kwargs):
+        return self._ensure_collection()(*args, **kwargs)
+
+# Define separate collections for each data type - lazy loaded to avoid blocking on import
+users_col = LazyCollection("users")
+transactions_col = LazyCollection("transactions")
+qtable_col = LazyCollection("q_table")
+appeals_col = LazyCollection("appeals")
+atonements_col = LazyCollection("atonements")
+death_events_col = LazyCollection("death_events")
+karma_events_col = LazyCollection("karma_events")
+rnanubandhan_col = LazyCollection("rnanubandhan_relationships")
 
 def close_client():
     global _client, _db
