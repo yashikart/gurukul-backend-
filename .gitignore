@@ -61,3 +61,8 @@ Frontend/node_modules/
 backend/__pycache__/
 backend/.env
 
+# Sensitive files with API keys
+RENDER_ENV_VARIABLES_GURUKUL_BACKEND.md
+gurukul-backend-render.env
+gurukul-backend-render-missing.env
+
