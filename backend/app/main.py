@@ -1,12 +1,20 @@
+# Force output to stderr/stdout immediately
+import sys
+sys.stdout.flush()
+sys.stderr.flush()
+
+print("=" * 80, flush=True)
+print("[Main] FILE LOADED - Starting Gurukul Backend...", flush=True)
 
 import os
-import sys
 import uvicorn
 import logging
 import traceback
-print("[Main] Starting Gurukul Backend...")
-print(f"[Main] Python version: {sys.version}")
-print(f"[Main] Working directory: {os.getcwd()}")
+
+print(f"[Main] Python version: {sys.version}", flush=True)
+print(f"[Main] Working directory: {os.getcwd()}", flush=True)
+print(f"[Main] Python path: {sys.path[:3]}", flush=True)
+sys.stdout.flush()
 
 try:
     from fastapi import FastAPI, Request, status, HTTPException
