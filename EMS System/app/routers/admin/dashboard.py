@@ -1824,7 +1824,20 @@ def get_events(
     school_id = current_user.school_id
     
     events = db.query(Event).filter(Event.school_id == school_id).order_by(Event.event_date).all()
-    return events
+    
+    # Convert Event objects to EventResponse format
+    return [
+        EventResponse(
+            id=event.id,
+            title=event.title,
+            description=event.description,
+            event_date=event.event_date,
+            event_time=event.event_time.strftime("%H:%M") if event.event_time else None,
+            event_type=event.event_type,
+            school_id=event.school_id
+        )
+        for event in events
+    ]
 
 
 @router.post("/events", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
