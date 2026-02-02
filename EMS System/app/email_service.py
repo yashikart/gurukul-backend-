@@ -1,6 +1,6 @@
 """
 Email service for sending password setup emails.
-Supports both SendGrid API (for Render) and SMTP (for local development).
+Supports Brevo API, SendGrid API (for Render), and SMTP (for local development).
 """
 import secrets
 import asyncio
@@ -11,6 +11,7 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from fastapi import HTTPException, status
 from app.config import settings
 from app.models import User, PasswordToken
+import requests
 
 # Try to import SendGrid (optional dependency)
 try:
@@ -49,9 +50,13 @@ conf = ConnectionConfig(
     TEMPLATE_FOLDER=None,
 )
 
-# Determine email sending method
+# Determine email sending method (priority: Brevo API > SendGrid API > SMTP)
+USE_BREVO_API = settings.BREVO_API_KEY is not None
 USE_SENDGRID_API = settings.SENDGRID_API_KEY is not None and SENDGRID_AVAILABLE
-if USE_SENDGRID_API:
+
+if USE_BREVO_API:
+    print(f"[EMAIL] Using Brevo API (works on Render)")
+elif USE_SENDGRID_API:
     print(f"[EMAIL] Using SendGrid API (works on Render)")
 elif settings.SENDGRID_API_KEY and not SENDGRID_AVAILABLE:
     print(f"[EMAIL WARNING] SENDGRID_API_KEY is set but sendgrid library is not installed")
@@ -60,7 +65,89 @@ else:
     print(f"[EMAIL] Using SMTP (MAIL_SERVER: {settings.MAIL_SERVER})")
 
 
-async def _send_email_via_api(
+async def _send_email_via_brevo_api(
+    to_email: str,
+    subject: str,
+    body: str,
+    from_email: Optional[str] = None,
+    from_name: Optional[str] = None
+) -> bool:
+    """
+    Send email using Brevo HTTP API (works on Render).
+    
+    Args:
+        to_email: Recipient email address
+        subject: Email subject
+        body: Email body (plain text)
+        from_email: Sender email (defaults to settings.MAIL_FROM)
+        from_name: Sender name (defaults to settings.MAIL_FROM_NAME)
+        
+    Returns:
+        bool: True if sent successfully, False otherwise
+    """
+    if not settings.BREVO_API_KEY:
+        print(f"[EMAIL ERROR] BREVO_API_KEY not set")
+        return False
+    
+    try:
+        from_email = from_email or mail_from
+        from_name = from_name or settings.MAIL_FROM_NAME
+        
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "api-key": settings.BREVO_API_KEY,
+            "Content-Type": "application/json"
+        }
+        data = {
+            "sender": {
+                "email": from_email,
+                "name": from_name
+            },
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "textContent": body
+        }
+        
+        response = requests.post(url, json=data, headers=headers)
+        
+        if response.status_code == 201:
+            print(f"[EMAIL] Successfully sent email via Brevo API to {to_email}")
+            print(f"[EMAIL] Brevo response status: {response.status_code}")
+            return True
+        else:
+            # Log detailed error information
+            print(f"[EMAIL ERROR] Brevo API returned status {response.status_code}")
+            print(f"[EMAIL ERROR] From email: {from_email}")
+            print(f"[EMAIL ERROR] To email: {to_email}")
+            
+            try:
+                error_body = response.text
+                print(f"[EMAIL ERROR] Response body: {error_body}")
+                
+                # Check for common errors
+                if response.status_code == 401:
+                    print(f"[EMAIL ERROR] AUTHENTICATION FAILED: Check your BREVO_API_KEY")
+                elif response.status_code == 400:
+                    if "sender" in error_body.lower() or "from" in error_body.lower():
+                        print(f"[EMAIL ERROR] SENDER NOT VERIFIED: The email '{from_email}' must be verified in Brevo")
+                        print(f"[EMAIL ERROR] Action: Go to Brevo Dashboard → Settings → Sender Authentication → Verify a Single Sender")
+                elif response.status_code == 403:
+                    print(f"[EMAIL ERROR] PERMISSION DENIED: Your API key may not have 'Send Email' permissions")
+            except:
+                print(f"[EMAIL ERROR] Could not parse error response")
+            
+            return False
+            
+    except Exception as e:
+        print(f"[EMAIL ERROR] Failed to send email via Brevo API to {to_email}")
+        print(f"[EMAIL ERROR] Error type: {type(e).__name__}")
+        print(f"[EMAIL ERROR] Error message: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def _send_email_via_sendgrid_api(
     to_email: str,
     subject: str,
     body: str,
@@ -192,7 +279,7 @@ async def _send_email(
     from_name: Optional[str] = None
 ) -> bool:
     """
-    Send email using the configured method (SendGrid API or SMTP).
+    Send email using the configured method (Brevo API > SendGrid API > SMTP).
     
     Args:
         to_email: Recipient email address
@@ -204,8 +291,10 @@ async def _send_email(
     Returns:
         bool: True if sent successfully, False otherwise
     """
-    if USE_SENDGRID_API:
-        return await _send_email_via_api(to_email, subject, body, from_email, from_name)
+    if USE_BREVO_API:
+        return await _send_email_via_brevo_api(to_email, subject, body, from_email, from_name)
+    elif USE_SENDGRID_API:
+        return await _send_email_via_sendgrid_api(to_email, subject, body, from_email, from_name)
     else:
         return await _send_email_via_smtp(to_email, subject, body)
 

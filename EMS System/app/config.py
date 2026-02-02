@@ -15,7 +15,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     
     # Email Configuration
-    # Option 1: SendGrid API (works on Render - recommended for production)
+    # Option 1: Brevo API (works on Render - recommended for production)
+    BREVO_API_KEY: Optional[str] = None  # If set, uses Brevo HTTP API instead of SMTP
+    
+    # Option 2: SendGrid API (works on Render - alternative)
     SENDGRID_API_KEY: Optional[str] = None  # If set, uses SendGrid API instead of SMTP
     
     # Option 2: SMTP (for local development or services that allow SMTP)
