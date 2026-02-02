@@ -6,13 +6,17 @@ import '../../prana-core/prana_packet_builder.js';
 
 if (typeof window !== 'undefined' && window.PRANA && typeof window.PRANA.init === 'function') {
   try {
+    // Use environment variable for production, fallback to localhost for development
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const bucketEndpoint = `${API_BASE_URL}/bucket/prana/ingest`;
+    
     const pranaInstance = window.PRANA.init({
       system_type: 'ems',
       role: 'employee',
       user_id: null, // Will be provided dynamically via context provider
       session_id: null,
       lesson_id: null,
-      bucket_endpoint: 'http://localhost:8000/bucket/prana/ingest',
+      bucket_endpoint: bucketEndpoint,
     });
 
     // Register context provider that reads from EMS window globals
