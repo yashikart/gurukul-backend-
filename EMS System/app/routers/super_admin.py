@@ -7,6 +7,8 @@ from app.auth import super_admin_exists, create_super_admin
 from app.schemas import SuperAdminSetupResponse, InviteAdminRequest, InviteAdminResponse
 from app.models import User, UserRole, School
 from app.email_service import generate_password_token, send_password_setup_email
+from app.config import settings
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 
 router = APIRouter(prefix="/super", tags=["super-admin"])
 
@@ -132,3 +134,83 @@ async def invite_admin(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating admin: {str(e)}"
         )
+
+
+@router.get("/test-email-config")
+async def test_email_config(current_user: User = Depends(get_current_super_admin)):
+    """
+    Test email configuration and show current settings.
+    This helps diagnose email sending issues.
+    Only SUPER_ADMIN can access this endpoint.
+    """
+    try:
+        # Check configuration
+        config_status = {
+            "MAIL_USERNAME": settings.MAIL_USERNAME if settings.MAIL_USERNAME else "❌ NOT SET",
+            "MAIL_PASSWORD": "✅ SET" if settings.MAIL_PASSWORD else "❌ NOT SET",
+            "MAIL_FROM": settings.MAIL_FROM,
+            "MAIL_SERVER": settings.MAIL_SERVER,
+            "MAIL_PORT": settings.MAIL_PORT,
+            "MAIL_STARTTLS": settings.MAIL_STARTTLS,
+            "MAIL_SSL_TLS": settings.MAIL_SSL_TLS,
+            "USE_CREDENTIALS": settings.USE_CREDENTIALS,
+            "FRONTEND_URL": settings.FRONTEND_URL,
+        }
+        
+        # Try to create email connection config
+        try:
+            conf = ConnectionConfig(
+                MAIL_USERNAME=settings.MAIL_USERNAME,
+                MAIL_PASSWORD=settings.MAIL_PASSWORD,
+                MAIL_FROM=settings.MAIL_FROM,
+                MAIL_PORT=settings.MAIL_PORT,
+                MAIL_SERVER=settings.MAIL_SERVER,
+                MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
+                MAIL_STARTTLS=settings.MAIL_STARTTLS,
+                MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
+                USE_CREDENTIALS=settings.USE_CREDENTIALS,
+                VALIDATE_CERTS=settings.VALIDATE_CERTS,
+                TEMPLATE_FOLDER=None,
+            )
+            config_valid = True
+            config_error = None
+        except Exception as e:
+            config_valid = False
+            config_error = str(e)
+        
+        # Try to send a test email
+        test_email_sent = False
+        test_email_error = None
+        if config_valid and settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            try:
+                test_message = MessageSchema(
+                    subject="Test Email - School Management System",
+                    recipients=[settings.MAIL_USERNAME],  # Send to yourself
+                    body="This is a test email to verify SMTP configuration.",
+                    subtype=MessageType.plain,
+                )
+                fm = FastMail(conf)
+                await fm.send_message(test_message)
+                test_email_sent = True
+            except Exception as e:
+                test_email_error = {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "full_error": repr(e)
+                }
+        
+        return {
+            "status": "ok",
+            "configuration": config_status,
+            "config_valid": config_valid,
+            "config_error": config_error,
+            "test_email_sent": test_email_sent,
+            "test_email_error": test_email_error,
+            "recommendations": []
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
