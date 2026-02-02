@@ -14,7 +14,11 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"
     
-    # Email Configuration (SMTP)
+    # Email Configuration
+    # Option 1: SendGrid API (works on Render - recommended for production)
+    SENDGRID_API_KEY: Optional[str] = None  # If set, uses SendGrid API instead of SMTP
+    
+    # Option 2: SMTP (for local development or services that allow SMTP)
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""
     MAIL_FROM: str = "noreply@schoolmanagement.com"

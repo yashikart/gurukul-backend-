@@ -1,15 +1,25 @@
 """
 Email service for sending password setup emails.
+Supports both SendGrid API (for Render) and SMTP (for local development).
 """
 import secrets
 import asyncio
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from fastapi import HTTPException, status
 from app.config import settings
 from app.models import User, PasswordToken
+
+# Try to import SendGrid (optional dependency)
+try:
+    from sendgrid import SendGridAPIClient
+    from sendgrid.helpers.mail import Mail, Email, Content
+    SENDGRID_AVAILABLE = True
+except ImportError:
+    SENDGRID_AVAILABLE = False
+    print("[EMAIL] SendGrid library not installed. Install with: pip install sendgrid")
 
 
 # Email configuration
@@ -20,6 +30,7 @@ if settings.MAIL_USERNAME and settings.MAIL_FROM != settings.MAIL_USERNAME:
     print(f"[EMAIL WARNING] Using MAIL_USERNAME as MAIL_FROM for Gmail compatibility")
     mail_from = settings.MAIL_USERNAME
 
+# SMTP configuration (for local development or services that allow SMTP)
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
     MAIL_PASSWORD=settings.MAIL_PASSWORD,
@@ -33,6 +44,147 @@ conf = ConnectionConfig(
     VALIDATE_CERTS=settings.VALIDATE_CERTS,
     TEMPLATE_FOLDER=None,
 )
+
+# Determine email sending method
+USE_SENDGRID_API = settings.SENDGRID_API_KEY is not None and SENDGRID_AVAILABLE
+if USE_SENDGRID_API:
+    print(f"[EMAIL] Using SendGrid API (works on Render)")
+elif settings.SENDGRID_API_KEY and not SENDGRID_AVAILABLE:
+    print(f"[EMAIL WARNING] SENDGRID_API_KEY is set but sendgrid library is not installed")
+    print(f"[EMAIL WARNING] Falling back to SMTP. Install sendgrid: pip install sendgrid")
+else:
+    print(f"[EMAIL] Using SMTP (MAIL_SERVER: {settings.MAIL_SERVER})")
+
+
+async def _send_email_via_api(
+    to_email: str,
+    subject: str,
+    body: str,
+    from_email: Optional[str] = None,
+    from_name: Optional[str] = None
+) -> bool:
+    """
+    Send email using SendGrid API (works on Render).
+    
+    Args:
+        to_email: Recipient email address
+        subject: Email subject
+        body: Email body (plain text)
+        from_email: Sender email (defaults to settings.MAIL_FROM)
+        from_name: Sender name (defaults to settings.MAIL_FROM_NAME)
+        
+    Returns:
+        bool: True if sent successfully, False otherwise
+    """
+    if not SENDGRID_AVAILABLE:
+        print(f"[EMAIL ERROR] SendGrid library not available")
+        return False
+    
+    if not settings.SENDGRID_API_KEY:
+        print(f"[EMAIL ERROR] SENDGRID_API_KEY not set")
+        return False
+    
+    try:
+        from_email = from_email or mail_from
+        from_name = from_name or settings.MAIL_FROM_NAME
+        
+        message = Mail(
+            from_email=(from_email, from_name),
+            to_emails=to_email,
+            subject=subject,
+            plain_text_content=body
+        )
+        
+        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+        response = sg.send(message)
+        
+        if response.status_code in [200, 201, 202]:
+            print(f"[EMAIL] Successfully sent email via SendGrid API to {to_email}")
+            print(f"[EMAIL] SendGrid response status: {response.status_code}")
+            return True
+        else:
+            print(f"[EMAIL ERROR] SendGrid API returned status {response.status_code}")
+            print(f"[EMAIL ERROR] Response body: {response.body}")
+            return False
+            
+    except Exception as e:
+        print(f"[EMAIL ERROR] Failed to send email via SendGrid API to {to_email}")
+        print(f"[EMAIL ERROR] Error type: {type(e).__name__}")
+        print(f"[EMAIL ERROR] Error message: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def _send_email_via_smtp(
+    to_email: str,
+    subject: str,
+    body: str
+) -> bool:
+    """
+    Send email using SMTP (for local development).
+    
+    Args:
+        to_email: Recipient email address
+        subject: Email subject
+        body: Email body (plain text)
+        
+    Returns:
+        bool: True if sent successfully, False otherwise
+    """
+    try:
+        message = MessageSchema(
+            subject=subject,
+            recipients=[to_email],
+            body=body,
+            subtype=MessageType.plain,
+        )
+        
+        fm = FastMail(conf)
+        await asyncio.wait_for(fm.send_message(message), timeout=30.0)
+        print(f"[EMAIL] Successfully sent email via SMTP to {to_email}")
+        return True
+    except asyncio.TimeoutError:
+        print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
+        print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+        print(f"[EMAIL ERROR] Render blocks SMTP ports. Use SendGrid API instead (set SENDGRID_API_KEY)")
+        return False
+    except Exception as smtp_error:
+        print(f"[EMAIL ERROR] SMTP error when sending to {to_email}")
+        print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
+        print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
+        error_str = str(smtp_error).lower()
+        if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
+            print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+async def _send_email(
+    to_email: str,
+    subject: str,
+    body: str,
+    from_email: Optional[str] = None,
+    from_name: Optional[str] = None
+) -> bool:
+    """
+    Send email using the configured method (SendGrid API or SMTP).
+    
+    Args:
+        to_email: Recipient email address
+        subject: Email subject
+        body: Email body (plain text)
+        from_email: Sender email (optional)
+        from_name: Sender name (optional)
+        
+    Returns:
+        bool: True if sent successfully, False otherwise
+    """
+    if USE_SENDGRID_API:
+        return await _send_email_via_api(to_email, subject, body, from_email, from_name)
+    else:
+        return await _send_email_via_smtp(to_email, subject, body)
 
 
 async def send_password_setup_email(
@@ -73,50 +225,17 @@ async def send_password_setup_email(
         School Management System
         """
         
-        # Create message
-        message = MessageSchema(
+        # Send email using configured method (SendGrid API or SMTP)
+        email_sent = await _send_email(
+            to_email=user.email,
             subject=subject,
-            recipients=[user.email],
-            body=body,
-            subtype=MessageType.plain,
+            body=body
         )
         
-        # Send email with timeout
-        fm = FastMail(conf)
-        try:
-            await asyncio.wait_for(fm.send_message(message), timeout=30.0)
-            print(f"[EMAIL] Successfully sent password setup email to {user.email}")
+        if email_sent:
             print(f"[EMAIL] Setup link: {setup_link}")
-            return True
-        except asyncio.TimeoutError:
-            print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
-            print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
-            print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
-            print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
-            return False
-        except Exception as smtp_error:
-            # Log SMTP-specific errors (e.g., authentication failures, sender not verified)
-            print(f"[EMAIL ERROR] SMTP error when sending to {user.email}")
-            print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
-            print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
-            print(f"[EMAIL ERROR] SMTP Server: {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
-            print(f"[EMAIL ERROR] Sender (MAIL_FROM): {mail_from}")
-            print(f"[EMAIL ERROR] Recipient: {user.email}")
-            
-            # Check for common Brevo/SendGrid errors
-            error_str = str(smtp_error).lower()
-            if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
-                print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service (Brevo/SendGrid)")
-                print(f"[EMAIL ERROR] Action: Go to your email service dashboard and verify the sender email address")
-            elif "authentication" in error_str or "invalid credentials" in error_str:
-                print(f"[EMAIL ERROR] AUTHENTICATION FAILED: Check MAIL_USERNAME and MAIL_PASSWORD")
-            elif "550" in error_str or "553" in error_str:
-                print(f"[EMAIL ERROR] EMAIL REJECTED: The email service rejected the message (likely sender not verified)")
-            
-            import traceback
-            print(f"[EMAIL ERROR] Full traceback:")
-            traceback.print_exc()
-            return False
+        
+        return email_sent
         
     except Exception as e:
         # Log error with full details
@@ -210,38 +329,17 @@ Best regards,
 School Management System
         """
         
-        # Create message
-        message = MessageSchema(
+        # Send email using configured method (SendGrid API or SMTP)
+        email_sent = await _send_email(
+            to_email=user.email,
             subject=subject,
-            recipients=[user.email],
-            body=body,
-            subtype=MessageType.plain,
+            body=body
         )
         
-        # Send email with timeout
-        fm = FastMail(conf)
-        try:
-            await asyncio.wait_for(fm.send_message(message), timeout=30.0)
-            print(f"[EMAIL] Successfully sent login credentials to {user.email}")
+        if email_sent:
             print(f"[EMAIL] Reset link: {reset_link}")
-            return True
-        except asyncio.TimeoutError:
-            print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
-            print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
-            print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
-            print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
-            return False
-        except Exception as smtp_error:
-            # Log SMTP-specific errors
-            print(f"[EMAIL ERROR] SMTP error when sending login credentials to {user.email}")
-            print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
-            print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
-            error_str = str(smtp_error).lower()
-            if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
-                print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service")
-            import traceback
-            traceback.print_exc()
-            return False
+        
+        return email_sent
         
     except Exception as e:
         # Log error with full details
@@ -377,38 +475,17 @@ Best regards,
 School Management System
         """
         
-        # Create message
-        message = MessageSchema(
+        # Send email using configured method (SendGrid API or SMTP)
+        email_sent = await _send_email(
+            to_email=user.email,
             subject=subject,
-            recipients=[user.email],
-            body=body,
-            subtype=MessageType.plain,
+            body=body
         )
         
-        # Send email with timeout
-        fm = FastMail(conf)
-        try:
-            await asyncio.wait_for(fm.send_message(message), timeout=30.0)
-            print(f"[EMAIL] Successfully sent password reset email to {user.email}")
+        if email_sent:
             print(f"[EMAIL] Reset link: {reset_link}")
-            return True
-        except asyncio.TimeoutError:
-            print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
-            print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
-            print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
-            print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
-            return False
-        except Exception as smtp_error:
-            # Log SMTP-specific errors
-            print(f"[EMAIL ERROR] SMTP error when sending password reset to {user.email}")
-            print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
-            print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
-            error_str = str(smtp_error).lower()
-            if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
-                print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service")
-            import traceback
-            traceback.print_exc()
-            return False
+        
+        return email_sent
         
     except Exception as e:
         # Log error with full details
@@ -495,38 +572,17 @@ Best regards,
 School Management System
         """
         
-        # Create message
-        message = MessageSchema(
+        # Send email using configured method (SendGrid API or SMTP)
+        email_sent = await _send_email(
+            to_email=user.email,
             subject=subject,
-            recipients=[user.email],
-            body=body,
-            subtype=MessageType.plain,
+            body=body
         )
         
-        # Send email with timeout
-        fm = FastMail(conf)
-        try:
-            await asyncio.wait_for(fm.send_message(message), timeout=30.0)
-            print(f"[EMAIL] Successfully sent school admin credentials to {user.email}")
+        if email_sent:
             print(f"[EMAIL] Reset link: {reset_link}")
-            return True
-        except asyncio.TimeoutError:
-            print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
-            print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
-            print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
-            print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
-            return False
-        except Exception as smtp_error:
-            # Log SMTP-specific errors
-            print(f"[EMAIL ERROR] SMTP error when sending school admin credentials to {user.email}")
-            print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
-            print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
-            error_str = str(smtp_error).lower()
-            if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
-                print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service")
-            import traceback
-            traceback.print_exc()
-            return False
+        
+        return email_sent
         
     except Exception as e:
         # Log error with full details
