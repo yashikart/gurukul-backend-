@@ -23,11 +23,15 @@ except ImportError:
 
 
 # Email configuration
-# Auto-fix: If MAIL_FROM doesn't match MAIL_USERNAME, use MAIL_USERNAME (required for Gmail)
+# For SendGrid API: Only MAIL_FROM matters (must be verified in SendGrid)
+# For SMTP: MAIL_USERNAME and MAIL_FROM should match for Gmail compatibility
 mail_from = settings.MAIL_FROM
-if settings.MAIL_USERNAME and settings.MAIL_FROM != settings.MAIL_USERNAME:
+
+# Auto-fix for SMTP: If MAIL_FROM doesn't match MAIL_USERNAME, use MAIL_USERNAME (required for Gmail)
+# This only applies when using SMTP, not SendGrid API
+if not settings.SENDGRID_API_KEY and settings.MAIL_USERNAME and settings.MAIL_FROM != settings.MAIL_USERNAME:
     print(f"[EMAIL WARNING] MAIL_FROM ({settings.MAIL_FROM}) doesn't match MAIL_USERNAME ({settings.MAIL_USERNAME})")
-    print(f"[EMAIL WARNING] Using MAIL_USERNAME as MAIL_FROM for Gmail compatibility")
+    print(f"[EMAIL WARNING] Using MAIL_USERNAME as MAIL_FROM for Gmail SMTP compatibility")
     mail_from = settings.MAIL_USERNAME
 
 # SMTP configuration (for local development or services that allow SMTP)
