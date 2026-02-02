@@ -124,18 +124,42 @@ async def startup_event():
     sys.stdout.flush()
     
     # Import routers NOW (after server has started) - run in thread to avoid blocking
-    def import_routers_sync():
-        """Synchronous router import function - runs in thread pool"""
-        global chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts
+    def import_auth_router_sync():
+        """Import and register auth router first (critical for registration/login)"""
+        global auth
+        try:
+            print("[Startup] Importing auth router (critical path)...")
+            sys.stdout.flush()
+            from app.routers import auth as auth_mod
+            auth = auth_mod
+            
+            # Register auth router immediately
+            app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
+            print("[Startup] ✓ Auth router registered at /api/v1/auth")
+            
+            # Verify routes are registered
+            auth_routes = [route.path for route in app.routes if hasattr(route, 'path') and '/api/v1/auth' in route.path]
+            print(f"[Startup] Registered auth routes: {len(auth_routes)} routes")
+            if auth_routes:
+                print(f"[Startup] Sample routes: {auth_routes[:3]}")
+            sys.stdout.flush()
+            return True
+        except Exception as e:
+            print(f"[Startup] ✗ CRITICAL: Failed to import auth router: {e}")
+            print(traceback.format_exc())
+            sys.stdout.flush()
+            return False
+    
+    def import_other_routers_sync():
+        """Import other routers (non-critical, can run in background)"""
+        global chat, flashcards, learning, ems, summarizer, soul, agents, quiz, journey, tts
         global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual
-        global karma_router, balance, redeem, policy, feedback, analytics, agami, normalization
-        global rnanubandhan, karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
         
         try:
-            print("[Startup] Importing routers (deferred from module load)...")
+            print("[Startup] Importing other routers (non-critical)...")
             sys.stdout.flush()
             from app.routers import chat as chat_mod, flashcards as flashcards_mod, learning as learning_mod
-            from app.routers import ems as ems_mod, summarizer as summarizer_mod, auth as auth_mod
+            from app.routers import ems as ems_mod, summarizer as summarizer_mod
             from app.routers import soul as soul_mod, agents as agents_mod, quiz as quiz_mod
             from app.routers import journey as journey_mod, tts as tts_mod, ems_student as ems_student_mod
             from app.routers import lesson as lesson_mod, sovereign as sovereign_mod, vaani as vaani_mod
@@ -147,7 +171,6 @@ async def startup_event():
             learning = learning_mod
             ems = ems_mod
             summarizer = summarizer_mod
-            auth = auth_mod
             soul = soul_mod
             agents = agents_mod
             quiz = quiz_mod
@@ -161,10 +184,6 @@ async def startup_event():
             ems_sync_manual = ems_sync_manual_mod
             
             # Include routers
-            app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
-            print("[Startup] ✓ Auth router registered at /api/v1/auth")
-            sys.stdout.flush()
-            
             app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
             app.include_router(flashcards.router, prefix="/api/v1/flashcards", tags=["Flashcards"])
             app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
@@ -187,11 +206,14 @@ async def startup_event():
             app.include_router(flashcards.router, prefix="/flashcards", tags=["Legacy Flashcards"])
             app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul Alignment"])
             
-            # Verify auth routes are registered
-            auth_routes = [route.path for route in app.routes if hasattr(route, 'path') and '/api/v1/auth' in route.path]
-            print(f"[Startup] ✓ Main routers imported and included")
-            print(f"[Startup] Registered auth routes: {auth_routes[:5]}...")  # Show first 5 routes
+            print("[Startup] ✓ Other routers imported and included")
             sys.stdout.flush()
+            return True
+        except Exception as e:
+            print(f"[Startup] ⚠️  Error importing other routers: {e}")
+            print(traceback.format_exc())
+            sys.stdout.flush()
+            return False
         except Exception as e:
             print(f"[Startup] ⚠️  Error importing main routers: {e}")
             print(traceback.format_exc())
@@ -261,27 +283,53 @@ async def startup_event():
             print(traceback.format_exc())
             sys.stdout.flush()
     
-    # Run router imports in thread pool executor to avoid blocking event loop
-    # IMPORTANT: We wait for router imports to complete before server accepts requests
-    # This ensures all routes are registered before the server starts handling requests
+    # CRITICAL: Import auth router first and wait for it (registration/login must work)
+    # Other routers can load in background
     try:
-        # Use asyncio.to_thread to run the synchronous import function
-        # This waits for completion but doesn't block the event loop
-        await asyncio.wait_for(
-            asyncio.to_thread(import_routers_sync),
-            timeout=60.0  # Wait up to 60 seconds for router imports
-        )
-        print("[Startup] ✓ Router imports completed. All routes are now registered.")
+        print("[Startup] Importing critical auth router...")
         sys.stdout.flush()
+        # Wait for auth router with shorter timeout (should be fast)
+        auth_success = await asyncio.wait_for(
+            asyncio.to_thread(import_auth_router_sync),
+            timeout=30.0  # 30 seconds should be enough for auth router
+        )
+        if auth_success:
+            print("[Startup] ✓ Auth router registered. Registration/login endpoints are now available.")
+            sys.stdout.flush()
+        else:
+            print("[Startup] ✗ CRITICAL: Auth router failed to load!")
+            sys.stdout.flush()
     except asyncio.TimeoutError:
-        print("[Startup] ⚠️  Router import timeout after 60 seconds")
-        print("[Startup] Server will start but some routes may not be available.")
+        print("[Startup] ✗ CRITICAL: Auth router import timeout after 30 seconds")
+        print("[Startup] Registration/login will NOT work!")
         sys.stdout.flush()
     except Exception as e:
-        print(f"[Startup] ⚠️  Router import error: {e}")
+        print(f"[Startup] ✗ CRITICAL: Auth router import error: {e}")
         print(traceback.format_exc())
-        print("[Startup] Server will start but some routes may not be available.")
         sys.stdout.flush()
+    
+    # Import other routers in background (non-blocking)
+    # These can take longer and don't block server startup
+    async def import_other_routers_async():
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(import_other_routers_sync),
+                timeout=120.0  # 2 minutes for other routers
+            )
+            print("[Startup] ✓ All other routers imported and registered.")
+            sys.stdout.flush()
+        except asyncio.TimeoutError:
+            print("[Startup] ⚠️  Other routers import timeout after 2 minutes")
+            print("[Startup] Some features may not be available.")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"[Startup] ⚠️  Other routers import error: {e}")
+            sys.stdout.flush()
+    
+    # Start importing other routers in background (don't wait)
+    asyncio.create_task(import_other_routers_async())
+    print("[Startup] Other routers are loading in background...")
+    sys.stdout.flush()
     
     # Run blocking operations in background to avoid blocking server startup
     # These also run in background - don't wait for them
