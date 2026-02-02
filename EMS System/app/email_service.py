@@ -316,8 +316,8 @@ async def send_password_setup_email(
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # Create password setup link
-        setup_link = f"{settings.FRONTEND_URL}/set-password?token={password_token.token}"
+        # Create password setup link (HashRouter format: #/set-password)
+        setup_link = f"{settings.FRONTEND_URL}#/set-password?token={password_token.token}"
         
         # Email content
         subject = "Set Your Password - School Management System"
@@ -389,8 +389,8 @@ async def send_login_credentials_email(
             "PARENT": "Parent"
         }.get(role, role)
         
-        login_url = f"{settings.FRONTEND_URL}/login"
-        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={password_token.token}"
+        login_url = f"{settings.FRONTEND_URL}#/login"
+        reset_link = f"{settings.FRONTEND_URL}#/reset-password?token={password_token.token}"
         
         # Email content
         subject = f"Your {role_display} Account Credentials - School Management System"
@@ -563,7 +563,7 @@ async def send_password_reset_email(
     """
     try:
         # Create password reset link
-        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={password_token.token}"
+        reset_link = f"{settings.FRONTEND_URL}#/reset-password?token={password_token.token}"
         
         # Email content
         subject = "Reset Your Password - School Management System"
@@ -632,8 +632,8 @@ async def send_school_admin_credentials_email(
     """
     try:
         # Create password reset link
-        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={password_token.token}"
-        login_url = f"{settings.FRONTEND_URL}/login"
+        reset_link = f"{settings.FRONTEND_URL}#/reset-password?token={password_token.token}"
+        login_url = f"{settings.FRONTEND_URL}#/login"
         
         # Email content
         subject = f"Your School Admin Account Credentials - {school_name}"
