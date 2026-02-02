@@ -2,6 +2,7 @@
 Email service for sending password setup emails.
 """
 import secrets
+import asyncio
 from typing import Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
@@ -73,12 +74,17 @@ async def send_password_setup_email(
             subtype=MessageType.plain,
         )
         
-        # Send email
+        # Send email with timeout
         fm = FastMail(conf)
-        await fm.send_message(message)
-        print(f"[EMAIL] Successfully sent password setup email to {user.email}")
-        print(f"[EMAIL] Setup link: {setup_link}")
-        return True
+        try:
+            await asyncio.wait_for(fm.send_message(message), timeout=30.0)
+            print(f"[EMAIL] Successfully sent password setup email to {user.email}")
+            print(f"[EMAIL] Setup link: {setup_link}")
+            return True
+        except asyncio.TimeoutError:
+            print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
+            print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+            return False
         
     except Exception as e:
         # Log error with full details
@@ -180,12 +186,17 @@ School Management System
             subtype=MessageType.plain,
         )
         
-        # Send email
+        # Send email with timeout
         fm = FastMail(conf)
-        await fm.send_message(message)
-        print(f"[EMAIL] Successfully sent login credentials to {user.email}")
-        print(f"[EMAIL] Reset link: {reset_link}")
-        return True
+        try:
+            await asyncio.wait_for(fm.send_message(message), timeout=30.0)
+            print(f"[EMAIL] Successfully sent login credentials to {user.email}")
+            print(f"[EMAIL] Reset link: {reset_link}")
+            return True
+        except asyncio.TimeoutError:
+            print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
+            print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+            return False
         
     except Exception as e:
         # Log error with full details
@@ -329,12 +340,17 @@ School Management System
             subtype=MessageType.plain,
         )
         
-        # Send email
+        # Send email with timeout
         fm = FastMail(conf)
-        await fm.send_message(message)
-        print(f"[EMAIL] Successfully sent password reset email to {user.email}")
-        print(f"[EMAIL] Reset link: {reset_link}")
-        return True
+        try:
+            await asyncio.wait_for(fm.send_message(message), timeout=30.0)
+            print(f"[EMAIL] Successfully sent password reset email to {user.email}")
+            print(f"[EMAIL] Reset link: {reset_link}")
+            return True
+        except asyncio.TimeoutError:
+            print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
+            print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+            return False
         
     except Exception as e:
         # Log error with full details
@@ -429,12 +445,17 @@ School Management System
             subtype=MessageType.plain,
         )
         
-        # Send email
+        # Send email with timeout
         fm = FastMail(conf)
-        await fm.send_message(message)
-        print(f"[EMAIL] Successfully sent school admin credentials to {user.email}")
-        print(f"[EMAIL] Reset link: {reset_link}")
-        return True
+        try:
+            await asyncio.wait_for(fm.send_message(message), timeout=30.0)
+            print(f"[EMAIL] Successfully sent school admin credentials to {user.email}")
+            print(f"[EMAIL] Reset link: {reset_link}")
+            return True
+        except asyncio.TimeoutError:
+            print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
+            print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+            return False
         
     except Exception as e:
         # Log error with full details

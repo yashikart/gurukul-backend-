@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+import asyncio
 from app.database import get_db
 from app.dependencies import get_current_super_admin
 from app.auth import super_admin_exists, create_super_admin
@@ -178,30 +179,41 @@ async def test_email_config(current_user: User = Depends(get_current_super_admin
             config_valid = False
             config_error = str(e)
         
-        # Don't try to send test email (causes timeout if SMTP is misconfigured)
-        # Instead, just validate the configuration
-        
-        recommendations = []
-        if not settings.MAIL_USERNAME:
-            recommendations.append("❌ MAIL_USERNAME is not set")
-        if not settings.MAIL_PASSWORD:
-            recommendations.append("❌ MAIL_PASSWORD is not set")
-        if settings.MAIL_USERNAME and "@gmail.com" not in settings.MAIL_USERNAME.lower():
-            recommendations.append("⚠️ MAIL_USERNAME doesn't look like a Gmail address")
-        if settings.MAIL_SERVER != "smtp.gmail.com":
-            recommendations.append(f"⚠️ MAIL_SERVER is '{settings.MAIL_SERVER}', expected 'smtp.gmail.com'")
-        if settings.MAIL_PORT != 587:
-            recommendations.append(f"⚠️ MAIL_PORT is {settings.MAIL_PORT}, expected 587 for Gmail")
-        if not settings.MAIL_STARTTLS:
-            recommendations.append("⚠️ MAIL_STARTTLS should be true for Gmail")
+        # Try to send a test email
+        test_email_sent = False
+        test_email_error = None
+        if config_valid and settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            try:
+                test_message = MessageSchema(
+                    subject="Test Email - School Management System",
+                    recipients=[settings.MAIL_USERNAME],  # Send to yourself
+                    body="This is a test email to verify SMTP configuration.",
+                    subtype=MessageType.plain,
+                )
+                fm = FastMail(conf)
+                await asyncio.wait_for(fm.send_message(test_message), timeout=30.0)
+                test_email_sent = True
+            except asyncio.TimeoutError:
+                test_email_error = {
+                    "error_type": "TimeoutError",
+                    "error_message": f"SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds. This usually means the SMTP server is unreachable or blocking the connection.",
+                    "full_error": "TimeoutError: SMTP connection timeout"
+                }
+            except Exception as e:
+                test_email_error = {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "full_error": repr(e)
+                }
         
         return {
             "status": "ok",
             "configuration": config_status,
             "config_valid": config_valid,
             "config_error": config_error,
-            "recommendations": recommendations,
-            "note": "To test email sending, try creating an admin and check logs for [EMAIL ERROR] messages"
+            "test_email_sent": test_email_sent,
+            "test_email_error": test_email_error,
+            "recommendations": []
         }
     except Exception as e:
         return {
