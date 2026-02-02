@@ -107,8 +107,27 @@ async def _send_email_via_api(
             print(f"[EMAIL] SendGrid response status: {response.status_code}")
             return True
         else:
+            # Log detailed error information
             print(f"[EMAIL ERROR] SendGrid API returned status {response.status_code}")
-            print(f"[EMAIL ERROR] Response body: {response.body}")
+            print(f"[EMAIL ERROR] From email: {from_email}")
+            print(f"[EMAIL ERROR] To email: {to_email}")
+            
+            # Try to decode response body
+            try:
+                error_body = response.body.decode('utf-8') if response.body else "No error body"
+                print(f"[EMAIL ERROR] Response body: {error_body}")
+                
+                # Check for common errors
+                if "403" in str(response.status_code) or "unauthorized" in error_body.lower():
+                    print(f"[EMAIL ERROR] AUTHENTICATION FAILED: Check your SENDGRID_API_KEY")
+                elif "sender" in error_body.lower() or "from" in error_body.lower():
+                    print(f"[EMAIL ERROR] SENDER NOT VERIFIED: The email '{from_email}' must be verified in SendGrid")
+                    print(f"[EMAIL ERROR] Action: Go to SendGrid Dashboard → Settings → Sender Authentication → Verify a Single Sender")
+                elif "403" in str(response.status_code):
+                    print(f"[EMAIL ERROR] PERMISSION DENIED: Your API key may not have 'Mail Send' permissions")
+            except:
+                print(f"[EMAIL ERROR] Response body (raw): {response.body}")
+            
             return False
             
     except Exception as e:
