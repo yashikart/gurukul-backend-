@@ -56,7 +56,7 @@ class ErrorBoundary extends React.Component {
                                 Try Again
                             </button>
                             <button
-                                onClick={() => window.location.href = '/dashboard'}
+                                onClick={() => { window.location.hash = '#/dashboard'; }}
                                 className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl border border-white/10 transition-all"
                             >
                                 Go to Dashboard
