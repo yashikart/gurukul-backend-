@@ -13,10 +13,17 @@ from app.models import User, PasswordToken
 
 
 # Email configuration
+# Auto-fix: If MAIL_FROM doesn't match MAIL_USERNAME, use MAIL_USERNAME (required for Gmail)
+mail_from = settings.MAIL_FROM
+if settings.MAIL_USERNAME and settings.MAIL_FROM != settings.MAIL_USERNAME:
+    print(f"[EMAIL WARNING] MAIL_FROM ({settings.MAIL_FROM}) doesn't match MAIL_USERNAME ({settings.MAIL_USERNAME})")
+    print(f"[EMAIL WARNING] Using MAIL_USERNAME as MAIL_FROM for Gmail compatibility")
+    mail_from = settings.MAIL_USERNAME
+
 conf = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_USERNAME,
     MAIL_PASSWORD=settings.MAIL_PASSWORD,
-    MAIL_FROM=settings.MAIL_FROM,
+    MAIL_FROM=mail_from,
     MAIL_PORT=settings.MAIL_PORT,
     MAIL_SERVER=settings.MAIL_SERVER,
     MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
@@ -84,6 +91,8 @@ async def send_password_setup_email(
         except asyncio.TimeoutError:
             print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
             print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+            print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
+            print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
             return False
         
     except Exception as e:
@@ -196,6 +205,8 @@ School Management System
         except asyncio.TimeoutError:
             print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
             print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+            print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
+            print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
             return False
         
     except Exception as e:
@@ -350,6 +361,8 @@ School Management System
         except asyncio.TimeoutError:
             print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
             print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+            print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
+            print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
             return False
         
     except Exception as e:
@@ -455,6 +468,8 @@ School Management System
         except asyncio.TimeoutError:
             print(f"[EMAIL ERROR] Timeout: SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds")
             print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
+            print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
+            print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
             return False
         
     except Exception as e:

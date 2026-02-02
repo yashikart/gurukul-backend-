@@ -159,11 +159,16 @@ async def test_email_config(current_user: User = Depends(get_current_super_admin
         }
         
         # Try to create email connection config
+        # Auto-fix: If MAIL_FROM doesn't match MAIL_USERNAME, use MAIL_USERNAME (required for Gmail)
+        mail_from = settings.MAIL_FROM
+        if settings.MAIL_USERNAME and settings.MAIL_FROM != settings.MAIL_USERNAME:
+            mail_from = settings.MAIL_USERNAME
+        
         try:
             conf = ConnectionConfig(
                 MAIL_USERNAME=settings.MAIL_USERNAME,
                 MAIL_PASSWORD=settings.MAIL_PASSWORD,
-                MAIL_FROM=settings.MAIL_FROM,
+                MAIL_FROM=mail_from,
                 MAIL_PORT=settings.MAIL_PORT,
                 MAIL_SERVER=settings.MAIL_SERVER,
                 MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
@@ -197,7 +202,8 @@ async def test_email_config(current_user: User = Depends(get_current_super_admin
                 test_email_error = {
                     "error_type": "TimeoutError",
                     "error_message": f"SMTP connection to {settings.MAIL_SERVER} timed out after 30 seconds. This usually means the SMTP server is unreachable or blocking the connection.",
-                    "full_error": "TimeoutError: SMTP connection timeout"
+                    "full_error": "TimeoutError: SMTP connection timeout",
+                    "recommendation": "Gmail SMTP often blocks connections from cloud providers like Render. Consider using SendGrid, Mailgun, or AWS SES instead."
                 }
             except Exception as e:
                 test_email_error = {
