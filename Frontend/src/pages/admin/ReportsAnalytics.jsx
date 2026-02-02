@@ -28,8 +28,8 @@ const ReportsAnalytics = () => {
             }
             
             console.log('Fetching analytics with token:', token ? 'Token exists' : 'No token');
-            console.log('API Base URL:', import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://gurukul-backend-kap2.onrender.com'));
-            console.log('Full URL will be:', `${import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://gurukul-backend-kap2.onrender.com')}/api/v1/ems/admin/analytics`);
+            console.log('API Base URL:', import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://gurukul-up9j.onrender.com'));
+            console.log('Full URL will be:', `${import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://gurukul-up9j.onrender.com')}/api/v1/ems/admin/analytics`);
             const data = await apiGet('/api/v1/ems/admin/analytics');
             setAnalytics(data);
         } catch (error) {

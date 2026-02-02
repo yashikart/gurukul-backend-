@@ -8,7 +8,7 @@ const isLocalhost = typeof window !== 'undefined' &&
 // Otherwise, use environment variable if set, or detect based on hostname
 const API_BASE_URL = (import.meta.env.DEV || isLocalhost) 
     ? 'http://localhost:3000' 
-    : (import.meta.env.VITE_API_URL || 'https://gurukul-backend-kap2.onrender.com');
+    : (import.meta.env.VITE_API_URL || 'https://gurukul-up9j.onrender.com');
 
 // Debug log in development
 if (import.meta.env.DEV) {
