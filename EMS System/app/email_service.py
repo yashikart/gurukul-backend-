@@ -94,6 +94,29 @@ async def send_password_setup_email(
             print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
             print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
             return False
+        except Exception as smtp_error:
+            # Log SMTP-specific errors (e.g., authentication failures, sender not verified)
+            print(f"[EMAIL ERROR] SMTP error when sending to {user.email}")
+            print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
+            print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
+            print(f"[EMAIL ERROR] SMTP Server: {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
+            print(f"[EMAIL ERROR] Sender (MAIL_FROM): {mail_from}")
+            print(f"[EMAIL ERROR] Recipient: {user.email}")
+            
+            # Check for common Brevo/SendGrid errors
+            error_str = str(smtp_error).lower()
+            if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
+                print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service (Brevo/SendGrid)")
+                print(f"[EMAIL ERROR] Action: Go to your email service dashboard and verify the sender email address")
+            elif "authentication" in error_str or "invalid credentials" in error_str:
+                print(f"[EMAIL ERROR] AUTHENTICATION FAILED: Check MAIL_USERNAME and MAIL_PASSWORD")
+            elif "550" in error_str or "553" in error_str:
+                print(f"[EMAIL ERROR] EMAIL REJECTED: The email service rejected the message (likely sender not verified)")
+            
+            import traceback
+            print(f"[EMAIL ERROR] Full traceback:")
+            traceback.print_exc()
+            return False
         
     except Exception as e:
         # Log error with full details
@@ -207,6 +230,17 @@ School Management System
             print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
             print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
             print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
+            return False
+        except Exception as smtp_error:
+            # Log SMTP-specific errors
+            print(f"[EMAIL ERROR] SMTP error when sending login credentials to {user.email}")
+            print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
+            print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
+            error_str = str(smtp_error).lower()
+            if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
+                print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service")
+            import traceback
+            traceback.print_exc()
             return False
         
     except Exception as e:
@@ -364,6 +398,17 @@ School Management System
             print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
             print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
             return False
+        except Exception as smtp_error:
+            # Log SMTP-specific errors
+            print(f"[EMAIL ERROR] SMTP error when sending password reset to {user.email}")
+            print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
+            print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
+            error_str = str(smtp_error).lower()
+            if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
+                print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service")
+            import traceback
+            traceback.print_exc()
+            return False
         
     except Exception as e:
         # Log error with full details
@@ -470,6 +515,17 @@ School Management System
             print(f"[EMAIL ERROR] This usually means the SMTP server is unreachable or blocking the connection")
             print(f"[EMAIL ERROR] Gmail SMTP often blocks connections from cloud providers like Render")
             print(f"[EMAIL ERROR] Consider using SendGrid, Mailgun, or AWS SES instead of Gmail SMTP")
+            return False
+        except Exception as smtp_error:
+            # Log SMTP-specific errors
+            print(f"[EMAIL ERROR] SMTP error when sending school admin credentials to {user.email}")
+            print(f"[EMAIL ERROR] Error type: {type(smtp_error).__name__}")
+            print(f"[EMAIL ERROR] Error message: {str(smtp_error)}")
+            error_str = str(smtp_error).lower()
+            if "sender" in error_str and ("not verified" in error_str or "unauthorized" in error_str):
+                print(f"[EMAIL ERROR] SENDER EMAIL NOT VERIFIED: The sender email ({mail_from}) must be verified in your email service")
+            import traceback
+            traceback.print_exc()
             return False
         
     except Exception as e:

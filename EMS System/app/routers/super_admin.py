@@ -109,16 +109,21 @@ async def invite_admin(
         
         if not email_sent:
             # Email failed, but user was created
-            # In production, you might want to log this and handle it appropriately
-            # For now, we'll still return success but note the email issue
-            db.rollback()
-            # Actually, let's not rollback - user is created, email can be resent
-            # We'll just log it
-            print(f"Warning: Failed to send email to {admin_user.email}, but user was created")
+            # Log the error for debugging
+            print(f"[ADMIN INVITE ERROR] Failed to send invitation email to {admin_user.email}")
+            print(f"[ADMIN INVITE ERROR] Admin user was created (ID: {admin_user.id}), but email could not be sent")
+            print(f"[ADMIN INVITE ERROR] Check SMTP configuration and verify sender email is authorized in email service")
+            
+            return InviteAdminResponse(
+                success=False,
+                message=f"Admin account created, but failed to send invitation email to {admin_user.email}. Please check email configuration and verify the sender email is authorized in your email service (Brevo/SendGrid/etc).",
+                admin_id=admin_user.id,
+                email=admin_user.email
+            )
         
         return InviteAdminResponse(
             success=True,
-            message=f"Admin invitation sent to {admin_user.email}. Please check your email to set your password.",
+            message=f"Admin invitation sent successfully to {admin_user.email}. Please check your email to set your password.",
             admin_id=admin_user.id,
             email=admin_user.email
         )
