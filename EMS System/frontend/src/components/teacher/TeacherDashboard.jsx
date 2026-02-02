@@ -107,7 +107,7 @@ const TeacherDashboard = () => {
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
-            onClick={() => window.location.href = '/dashboard/classes'}
+            onClick={() => window.location.hash = '#/dashboard/classes'}
             className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">📚</div>
@@ -115,7 +115,7 @@ const TeacherDashboard = () => {
             <div className="text-sm text-gray-600 mt-1">See all your assigned classes</div>
           </button>
           <button
-            onClick={() => window.location.href = '/dashboard/students'}
+            onClick={() => window.location.hash = '#/dashboard/students'}
             className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">👨‍🎓</div>
@@ -123,7 +123,7 @@ const TeacherDashboard = () => {
             <div className="text-sm text-gray-600 mt-1">Manage your students</div>
           </button>
           <button
-            onClick={() => window.location.href = '/dashboard/attendance'}
+            onClick={() => window.location.hash = '#/dashboard/attendance'}
             className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">✅</div>
@@ -131,7 +131,7 @@ const TeacherDashboard = () => {
             <div className="text-sm text-gray-600 mt-1">Take attendance for your classes</div>
           </button>
           <button
-            onClick={() => window.location.href = '/dashboard/lessons/create'}
+            onClick={() => window.location.hash = '#/dashboard/lessons/create'}
             className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">📖</div>

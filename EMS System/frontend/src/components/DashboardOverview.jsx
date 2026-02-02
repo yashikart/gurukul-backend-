@@ -112,7 +112,7 @@ const DashboardOverview = () => {
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => window.location.href = '/dashboard/create-school'}
+            onClick={() => window.location.hash = '#/dashboard/create-school'}
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">➕</div>
@@ -120,7 +120,7 @@ const DashboardOverview = () => {
             <div className="text-sm text-gray-500">Add a new school</div>
           </button>
           <button
-            onClick={() => window.location.href = '/dashboard/create-admin'}
+            onClick={() => window.location.hash = '#/dashboard/create-admin'}
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">👥</div>
@@ -128,7 +128,7 @@ const DashboardOverview = () => {
             <div className="text-sm text-gray-500">Add a new admin</div>
           </button>
           <button
-            onClick={() => window.location.href = '/dashboard/schools'}
+            onClick={() => window.location.hash = '#/dashboard/schools'}
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">🏫</div>

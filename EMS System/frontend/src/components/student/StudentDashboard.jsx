@@ -107,7 +107,7 @@ const StudentDashboard = () => {
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
-            onClick={() => window.location.href = '/dashboard/schedule'}
+            onClick={() => window.location.hash = '#/dashboard/schedule'}
             className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">📅</div>
@@ -115,7 +115,7 @@ const StudentDashboard = () => {
             <div className="text-sm text-gray-600 mt-1">See your weekly timetable</div>
           </button>
           <button
-            onClick={() => window.location.href = '/dashboard/grades'}
+            onClick={() => window.location.hash = '#/dashboard/grades'}
             className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">📝</div>
@@ -123,7 +123,7 @@ const StudentDashboard = () => {
             <div className="text-sm text-gray-600 mt-1">Check your academic performance</div>
           </button>
           <button
-            onClick={() => window.location.href = '/dashboard/attendance'}
+            onClick={() => window.location.hash = '#/dashboard/attendance'}
             className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">✅</div>
@@ -131,7 +131,7 @@ const StudentDashboard = () => {
             <div className="text-sm text-gray-600 mt-1">Check your attendance records</div>
           </button>
           <button
-            onClick={() => window.location.href = '/dashboard/announcements'}
+            onClick={() => window.location.hash = '#/dashboard/announcements'}
             className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">📢</div>

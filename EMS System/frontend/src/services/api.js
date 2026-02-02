@@ -33,7 +33,8 @@ api.interceptors.response.use(
       // Token expired or invalid, clear it and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Use window.location for HashRouter compatibility
+      window.location.hash = '#/login';
     }
     return Promise.reject(error);
   }
