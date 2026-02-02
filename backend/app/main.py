@@ -162,6 +162,9 @@ async def startup_event():
             
             # Include routers
             app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
+            print("[Startup] ✓ Auth router registered at /api/v1/auth")
+            sys.stdout.flush()
+            
             app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
             app.include_router(flashcards.router, prefix="/api/v1/flashcards", tags=["Flashcards"])
             app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
@@ -184,7 +187,10 @@ async def startup_event():
             app.include_router(flashcards.router, prefix="/flashcards", tags=["Legacy Flashcards"])
             app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul Alignment"])
             
-            print("[Startup] ✓ Main routers imported and included")
+            # Verify auth routes are registered
+            auth_routes = [route.path for route in app.routes if hasattr(route, 'path') and '/api/v1/auth' in route.path]
+            print(f"[Startup] ✓ Main routers imported and included")
+            print(f"[Startup] Registered auth routes: {auth_routes[:5]}...")  # Show first 5 routes
             sys.stdout.flush()
         except Exception as e:
             print(f"[Startup] ⚠️  Error importing main routers: {e}")
@@ -256,12 +262,26 @@ async def startup_event():
             sys.stdout.flush()
     
     # Run router imports in thread pool executor to avoid blocking event loop
-    # This allows startup event to return immediately so server can bind to port
-    from concurrent.futures import ThreadPoolExecutor
-    executor = ThreadPoolExecutor(max_workers=1)
-    executor.submit(import_routers_sync)
-    print("[Startup] Router imports started in background thread. Server will bind to port now.")
-    sys.stdout.flush()
+    # IMPORTANT: We wait for router imports to complete before server accepts requests
+    # This ensures all routes are registered before the server starts handling requests
+    try:
+        # Use asyncio.to_thread to run the synchronous import function
+        # This waits for completion but doesn't block the event loop
+        await asyncio.wait_for(
+            asyncio.to_thread(import_routers_sync),
+            timeout=60.0  # Wait up to 60 seconds for router imports
+        )
+        print("[Startup] ✓ Router imports completed. All routes are now registered.")
+        sys.stdout.flush()
+    except asyncio.TimeoutError:
+        print("[Startup] ⚠️  Router import timeout after 60 seconds")
+        print("[Startup] Server will start but some routes may not be available.")
+        sys.stdout.flush()
+    except Exception as e:
+        print(f"[Startup] ⚠️  Router import error: {e}")
+        print(traceback.format_exc())
+        print("[Startup] Server will start but some routes may not be available.")
+        sys.stdout.flush()
     
     # Run blocking operations in background to avoid blocking server startup
     # These also run in background - don't wait for them
