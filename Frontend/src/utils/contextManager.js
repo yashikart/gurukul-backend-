@@ -4,9 +4,10 @@
 class ContextManager {
   constructor() {
     // Use local backend in development, production URL in production
-    this.apiBaseUrl = (import.meta.env.DEV || typeof window === 'undefined') 
-      ? 'http://localhost:3000' 
-      : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+    this.apiBaseUrl =
+      import.meta.env.DEV || typeof window === 'undefined'
+        ? 'http://localhost:3000'
+        : import.meta.env.VITE_API_URL || 'https://gurukul-up9j.onrender.com';
   }
 
   // Extract session_id from JWT token

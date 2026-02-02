@@ -11,6 +11,13 @@ export const AuthProvider = ({ children }) => {
         return localStorage.getItem('auth_token') || null;
     });
 
+    // Log runtime API configuration to help debug connectivity issues in production
+    if (typeof window !== 'undefined') {
+        // This will run on initial render in the browser only
+        // eslint-disable-next-line no-console
+        console.log('[Auth] Runtime API_BASE_URL:', API_BASE_URL, 'hostname:', window.location.hostname);
+    }
+
     // Check if user is authenticated on mount
     useEffect(() => {
         const checkAuth = async () => {

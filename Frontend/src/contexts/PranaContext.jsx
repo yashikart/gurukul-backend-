@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { getPacketBuilder, resetPacketBuilder } from '../utils/prana_packet_builder';
 import { getCurrentContext } from '../utils/contextManager';
+import API_BASE_URL from '../config';
 
 const PranaContext = createContext();
 
@@ -31,7 +32,7 @@ export const PranaProvider = ({ children }) => {
           session_id: currentCtx.session_id || null,
           lesson_id: currentCtx.lesson_id || null,
           // Gurukul backend uses /api/v1 prefix
-          bucket_endpoint: 'http://localhost:3000/api/v1/bucket/prana/ingest',
+          bucket_endpoint: `${API_BASE_URL}/api/v1/bucket/prana/ingest`,
         });
         
         packetBuilderRef.current = pranaInstance?.packetBuilder || getPacketBuilder();

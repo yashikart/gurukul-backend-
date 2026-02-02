@@ -11,8 +11,12 @@ export const useKarma = () => {
     return context;
 };
 
-// Karma Tracker is now integrated into backend - use same URL
-const KARMA_TRACKER_URL = import.meta.env.VITE_KARMA_TRACKER_URL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Karma Tracker is now integrated into backend - use same URL.
+// In dev we use localhost, in production we default to the Gurukul backend on Render.
+const KARMA_TRACKER_URL =
+  import.meta.env.VITE_KARMA_TRACKER_URL ||
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? 'http://localhost:3000' : 'https://gurukul-up9j.onrender.com');
 
 export const KarmaProvider = ({ children }) => {
     const { user } = useAuth();
