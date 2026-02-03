@@ -16,6 +16,29 @@ export const AuthProvider = ({ children }) => {
         // This will run on initial render in the browser only
         // eslint-disable-next-line no-console
         console.log('[Auth] Runtime API_BASE_URL:', API_BASE_URL, 'hostname:', window.location.hostname);
+        
+        // Test backend connectivity on page load
+        (async () => {
+            try {
+                console.log('[Auth] Testing backend connectivity to:', `${API_BASE_URL}/health`);
+                const healthResponse = await fetch(`${API_BASE_URL}/health`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                });
+                console.log('[Auth] Backend health check status:', healthResponse.status);
+                if (healthResponse.ok) {
+                    const healthData = await healthResponse.json();
+                    console.log('[Auth] Backend is reachable! Health data:', healthData);
+                } else {
+                    console.warn('[Auth] Backend health check returned non-OK status:', healthResponse.status);
+                }
+            } catch (error) {
+                console.error('[Auth] Backend connectivity test FAILED:', error);
+                console.error('[Auth] Error type:', error.constructor.name);
+                console.error('[Auth] Error message:', error.message);
+                console.error('[Auth] This suggests the backend URL may be wrong or CORS is blocking requests');
+            }
+        })();
     }
 
     // Check if user is authenticated on mount
@@ -75,9 +98,15 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
+        const loginUrl = `${API_BASE_URL}/api/v1/auth/login`;
+        console.log('[Auth] ===== LOGIN DEBUG =====');
+        console.log('[Auth] Runtime API_BASE_URL:', API_BASE_URL);
+        console.log('[Auth] Full login URL:', loginUrl);
+        console.log('[Auth] Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
+        console.log('[Auth] Attempting login...');
+        
         try {
-            console.log('[Auth] Attempting login to:', `${API_BASE_URL}/api/v1/auth/login`);
-            const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+            const response = await fetch(loginUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,20 +115,24 @@ export const AuthProvider = ({ children }) => {
             });
             
             console.log('[Auth] Login response status:', response.status);
+            console.log('[Auth] Response OK:', response.ok);
 
             if (!response.ok) {
                 let errorMessage = 'Login failed';
                 try {
                     const error = await response.json();
                     errorMessage = error.detail || error.message || 'Login failed';
+                    console.error('[Auth] Login error response:', error);
                 } catch (e) {
                     // If response is not JSON, use status text
                     errorMessage = response.statusText || 'Login failed';
+                    console.error('[Auth] Failed to parse error response:', e);
                 }
                 throw new Error(errorMessage);
             }
 
             const data = await response.json();
+            console.log('[Auth] Login successful!');
             
             // Store token
             localStorage.setItem('auth_token', data.access_token);
@@ -120,8 +153,18 @@ export const AuthProvider = ({ children }) => {
             
             return { session: { access_token: data.access_token }, user: data.user };
         } catch (error) {
-            // Handle network errors
-            if (error instanceof TypeError && error.message.includes('fetch')) {
+            console.error('[Auth] ===== LOGIN ERROR DETAILS =====');
+            console.error('[Auth] Error type:', error.constructor.name);
+            console.error('[Auth] Error message:', error.message);
+            console.error('[Auth] Error stack:', error.stack);
+            console.error('[Auth] Full error object:', error);
+            
+            // Handle network errors with more detail
+            if (error instanceof TypeError) {
+                console.error('[Auth] TypeError detected - likely network/CORS issue');
+                console.error('[Auth] Error message contains "fetch":', error.message.includes('fetch'));
+                console.error('[Auth] Error message contains "Failed":', error.message.includes('Failed'));
+                // Still throw the generic message for user, but log everything
                 throw new Error('Unable to connect to server. Please check your internet connection.');
             }
             throw error;
@@ -129,9 +172,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     const signup = async (email, password, role, full_name) => {
+        const signupUrl = `${API_BASE_URL}/api/v1/auth/register`;
+        console.log('[Auth] ===== SIGNUP DEBUG =====');
+        console.log('[Auth] Runtime API_BASE_URL:', API_BASE_URL);
+        console.log('[Auth] Full signup URL:', signupUrl);
+        console.log('[Auth] Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
+        console.log('[Auth] Attempting registration...');
+        
         try {
-            console.log('[Auth] Attempting registration to:', `${API_BASE_URL}/api/v1/auth/register`);
-            const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+            const response = await fetch(signupUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -145,20 +194,25 @@ export const AuthProvider = ({ children }) => {
             });
             
             console.log('[Auth] Registration response status:', response.status);
+            console.log('[Auth] Response OK:', response.ok);
+            console.log('[Auth] Response headers:', Object.fromEntries(response.headers.entries()));
 
             if (!response.ok) {
                 let errorMessage = 'Registration failed';
                 try {
                     const error = await response.json();
                     errorMessage = error.detail || error.message || 'Registration failed';
+                    console.error('[Auth] Registration error response:', error);
                 } catch (e) {
                     // If response is not JSON, use status text
                     errorMessage = response.statusText || 'Registration failed';
+                    console.error('[Auth] Failed to parse error response:', e);
                 }
                 throw new Error(errorMessage);
             }
 
             const data = await response.json();
+            console.log('[Auth] Registration successful!');
             
             // Store token
             localStorage.setItem('auth_token', data.access_token);
@@ -169,8 +223,18 @@ export const AuthProvider = ({ children }) => {
             
             return { user: data.user, session: { access_token: data.access_token } };
         } catch (error) {
-            // Handle network errors
-            if (error instanceof TypeError && error.message.includes('fetch')) {
+            console.error('[Auth] ===== SIGNUP ERROR DETAILS =====');
+            console.error('[Auth] Error type:', error.constructor.name);
+            console.error('[Auth] Error message:', error.message);
+            console.error('[Auth] Error stack:', error.stack);
+            console.error('[Auth] Full error object:', error);
+            
+            // Handle network errors with more detail
+            if (error instanceof TypeError) {
+                console.error('[Auth] TypeError detected - likely network/CORS issue');
+                console.error('[Auth] Error message contains "fetch":', error.message.includes('fetch'));
+                console.error('[Auth] Error message contains "Failed":', error.message.includes('Failed'));
+                // Still throw the generic message for user, but log everything
                 throw new Error('Unable to connect to server. Please check your internet connection.');
             }
             throw error;

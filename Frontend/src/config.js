@@ -26,17 +26,15 @@ if (import.meta.env.DEV || isLocalhost) {
     import.meta.env.VITE_API_URL || 'https://gurukul-up9j.onrender.com';
 }
 
-// Debug log in development
-if (import.meta.env.DEV) {
-  console.log('API Config:', {
-    VITE_API_URL: import.meta.env.VITE_API_URL,
-    isDev: import.meta.env.DEV,
-    hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
-    isLocalhost,
-    isRenderGurukulFrontend,
-    API_BASE_URL,
-  });
-}
+// Debug log in development AND production (for troubleshooting)
+console.log('[Config] API Configuration:', {
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  isDev: import.meta.env.DEV,
+  hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
+  isLocalhost,
+  isRenderGurukulFrontend,
+  API_BASE_URL,
+});
 
 // Build version for cache busting
 export const BUILD_VERSION = '2026-01-06-v2';
