@@ -3,6 +3,59 @@ import API_BASE_URL from '../config';
 
 const AuthContext = createContext();
 
+// Helper function to retry fetch requests with exponential backoff
+// This handles Render free tier cold starts which can take 30-60 seconds
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+    const isNetworkError = (error) => {
+        return (
+            error instanceof TypeError ||
+            error.name === 'NetworkError' ||
+            error.message.includes('fetch') ||
+            error.message.includes('NetworkError') ||
+            error.message.includes('Failed to fetch')
+        );
+    };
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        let timeoutId = null;
+        try {
+            console.log(`[Auth] Fetch attempt ${attempt + 1}/${maxRetries + 1} to:`, url);
+            
+            // Increase timeout for later attempts (backend may be waking up)
+            const timeout = 30000 + (attempt * 10000); // 30s, 40s, 50s, 60s
+            const controller = new AbortController();
+            timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            
+            if (timeoutId) clearTimeout(timeoutId);
+            return response;
+        } catch (error) {
+            if (timeoutId) clearTimeout(timeoutId);
+            
+            // If it's the last attempt, throw the error
+            if (attempt === maxRetries) {
+                console.error(`[Auth] All ${maxRetries + 1} fetch attempts failed`);
+                throw error;
+            }
+            
+            // Only retry on network errors (backend sleeping)
+            if (isNetworkError(error) || error.name === 'AbortError') {
+                const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // Exponential backoff: 1s, 2s, 4s, max 10s
+                console.warn(`[Auth] Network error on attempt ${attempt + 1}, retrying in ${delay}ms... (backend may be waking up)`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            
+            // For other errors (CORS, auth, etc.), don't retry
+            throw error;
+        }
+    }
+}
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -111,14 +164,13 @@ export const AuthProvider = ({ children }) => {
         console.log('[Auth] Attempting login...');
         
         try {
-            const response = await fetch(loginUrl, {
+            const response = await fetchWithRetry(loginUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ email, password }),
-                signal: AbortSignal.timeout(30000) // 30 second timeout for Render cold starts
-            });
+            }, 3); // Retry up to 3 times (4 total attempts)
             
             console.log('[Auth] Login response status:', response.status);
             console.log('[Auth] Response OK:', response.ok);
@@ -166,15 +218,15 @@ export const AuthProvider = ({ children }) => {
             console.error('[Auth] Full error object:', error);
             
             // Handle network errors with more detail
-            if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
-                console.error('[Auth] Request timed out - backend may be waking up from sleep');
-                throw new Error('Server is taking longer than expected to respond. This may happen if the server is waking up. Please try again in a few seconds.');
-            } else if (error instanceof TypeError) {
-                console.error('[Auth] TypeError detected - likely network/CORS issue');
+            if (error.name === 'TimeoutError' || error.name === 'AbortError' || error.message.includes('timeout')) {
+                console.error('[Auth] Request timed out after all retries - backend may be taking too long to wake up');
+                throw new Error('Server is taking longer than expected to respond. This may happen if the server is waking up from sleep. Please wait a moment and try again.');
+            } else if (error instanceof TypeError || error.message.includes('NetworkError') || error.message.includes('fetch')) {
+                console.error('[Auth] Network error after all retries - backend may be unreachable');
                 console.error('[Auth] Error message contains "fetch":', error.message.includes('fetch'));
-                console.error('[Auth] Error message contains "Failed":', error.message.includes('Failed'));
+                console.error('[Auth] Error message contains "NetworkError":', error.message.includes('NetworkError'));
                 // Still throw the generic message for user, but log everything
-                throw new Error('Unable to connect to server. The server may be starting up. Please try again in a few moments.');
+                throw new Error('Unable to connect to server. The server may be starting up. Please wait a moment and try again.');
             }
             throw error;
         }
@@ -189,7 +241,7 @@ export const AuthProvider = ({ children }) => {
         console.log('[Auth] Attempting registration...');
         
         try {
-            const response = await fetch(signupUrl, {
+            const response = await fetchWithRetry(signupUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -200,8 +252,7 @@ export const AuthProvider = ({ children }) => {
                     role: role || 'STUDENT',
                     full_name: full_name || null
                 }),
-                signal: AbortSignal.timeout(30000) // 30 second timeout for Render cold starts
-            });
+            }, 3); // Retry up to 3 times (4 total attempts)
             
             console.log('[Auth] Registration response status:', response.status);
             console.log('[Auth] Response OK:', response.ok);
@@ -240,15 +291,15 @@ export const AuthProvider = ({ children }) => {
             console.error('[Auth] Full error object:', error);
             
             // Handle network errors with more detail
-            if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
-                console.error('[Auth] Request timed out - backend may be waking up from sleep');
-                throw new Error('Server is taking longer than expected to respond. This may happen if the server is waking up. Please try again in a few seconds.');
-            } else if (error instanceof TypeError) {
-                console.error('[Auth] TypeError detected - likely network/CORS issue');
+            if (error.name === 'TimeoutError' || error.name === 'AbortError' || error.message.includes('timeout')) {
+                console.error('[Auth] Request timed out after all retries - backend may be taking too long to wake up');
+                throw new Error('Server is taking longer than expected to respond. This may happen if the server is waking up from sleep. Please wait a moment and try again.');
+            } else if (error instanceof TypeError || error.message.includes('NetworkError') || error.message.includes('fetch')) {
+                console.error('[Auth] Network error after all retries - backend may be unreachable');
                 console.error('[Auth] Error message contains "fetch":', error.message.includes('fetch'));
-                console.error('[Auth] Error message contains "Failed":', error.message.includes('Failed'));
+                console.error('[Auth] Error message contains "NetworkError":', error.message.includes('NetworkError'));
                 // Still throw the generic message for user, but log everything
-                throw new Error('Unable to connect to server. The server may be starting up. Please try again in a few moments.');
+                throw new Error('Unable to connect to server. The server may be starting up. Please wait a moment and try again.');
             }
             throw error;
         }
