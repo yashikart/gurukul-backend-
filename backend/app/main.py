@@ -159,7 +159,10 @@ async def startup_event():
             print("[Startup] Importing other routers (non-critical)...")
             sys.stdout.flush()
             from app.routers import chat as chat_mod, flashcards as flashcards_mod, learning as learning_mod
-            from app.routers import ems as ems_mod, summarizer as summarizer_mod
+            from app.routers import ems as ems_mod
+            # DISABLED: summarizer uses too much memory (LED model ~300MB)
+            # from app.routers import summarizer as summarizer_mod
+            summarizer_mod = None
             from app.routers import soul as soul_mod, agents as agents_mod, quiz as quiz_mod
             from app.routers import journey as journey_mod, tts as tts_mod, ems_student as ems_student_mod
             from app.routers import lesson as lesson_mod, sovereign as sovereign_mod, vaani as vaani_mod
@@ -170,7 +173,9 @@ async def startup_event():
             flashcards = flashcards_mod
             learning = learning_mod
             ems = ems_mod
-            summarizer = summarizer_mod
+            # DISABLED: summarizer uses too much memory
+            # summarizer = summarizer_mod
+            summarizer = None
             soul = soul_mod
             agents = agents_mod
             quiz = quiz_mod
@@ -187,7 +192,8 @@ async def startup_event():
             app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
             app.include_router(flashcards.router, prefix="/api/v1/flashcards", tags=["Flashcards"])
             app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
-            app.include_router(summarizer.router, prefix="/api/v1/ai", tags=["AI Utilities"])
+            # DISABLED: summarizer uses too much memory
+            # app.include_router(summarizer.router, prefix="/api/v1/ai", tags=["AI Utilities"])
             app.include_router(ems.router, prefix="/api/v1/ems", tags=["Admin (EMS)"])
             app.include_router(ems_student.router, tags=["EMS Student Integration"])
             app.include_router(ems_sync_manual.router, tags=["EMS Manual Sync"])
@@ -202,7 +208,8 @@ async def startup_event():
             app.include_router(bucket.router, prefix="/api/v1", tags=["PRANA Bucket"])
             
             # Legacy shims
-            app.include_router(summarizer.router, tags=["Legacy Summarizer"])
+            # DISABLED: summarizer uses too much memory
+            # app.include_router(summarizer.router, tags=["Legacy Summarizer"])
             app.include_router(flashcards.router, prefix="/flashcards", tags=["Legacy Flashcards"])
             app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul Alignment"])
             
@@ -366,22 +373,24 @@ async def startup_event():
             print("[Startup]   Karma features may not work without MongoDB")
             sys.stdout.flush()
     
-    async def init_models():
-        try:
-            # Assuming download_models_on_startup.py is in the root (cwd)
-            from download_models_on_startup import ensure_models_exist
-            print("[Startup] Checking for model files...")
-            sys.stdout.flush()
-            await asyncio.to_thread(ensure_models_exist)
-        except Exception as e:
-            print(f"[Startup] Model download check skipped/failed: {e}")
-            sys.stdout.flush()
+    # DISABLED: Model loading uses too much memory (~300MB for LED model)
+    # async def init_models():
+    #     try:
+    #         from download_models_on_startup import ensure_models_exist
+    #         print("[Startup] Checking for model files...")
+    #         sys.stdout.flush()
+    #         await asyncio.to_thread(ensure_models_exist)
+    #     except Exception as e:
+    #         print(f"[Startup] Model download check skipped/failed: {e}")
+    #         sys.stdout.flush()
     
     # Run all initialization tasks in background - don't wait for them
     # This allows startup event to return immediately so server can bind to port
     asyncio.create_task(init_database())
     asyncio.create_task(init_mongodb())
-    asyncio.create_task(init_models())
+    # DISABLED: Model loading to save memory
+    # asyncio.create_task(init_models())
+    print("[Startup] ℹ️  Summarizer model loading DISABLED to save memory")
     
     
     print("[Startup] ✓ Startup event complete! Server will bind to port now.")
