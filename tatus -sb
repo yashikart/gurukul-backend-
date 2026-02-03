@@ -1,0 +1,67 @@
+[1mdiff --git a/Frontend/src/config.js b/Frontend/src/config.js[m
+[1mindex dd6ff8e..9e31073 100644[m
+[1m--- a/Frontend/src/config.js[m
+[1m+++ b/Frontend/src/config.js[m
+[36m@@ -1,28 +1,45 @@[m
+ // Automatically detect if running on localhost[m
+[31m-const isLocalhost = typeof window !== 'undefined' && [m
+[31m-    (window.location.hostname === 'localhost' || [m
+[31m-     window.location.hostname === '127.0.0.1' ||[m
+[31m-     window.location.hostname === '');[m
+[32m+[m[32mconst isLocalhost =[m
+[32m+[m[32m  typeof window !== 'undefined' &&[m
+[32m+[m[32m  (window.location.hostname === 'localhost' ||[m
+[32m+[m[32m    window.location.hostname === '127.0.0.1' ||[m
+[32m+[m[32m    window.location.hostname === '');[m
+ [m
+[31m-// In development mode (Vite), always use localhost (override env variable)[m
+[31m-// Otherwise, use environment variable if set, or detect based on hostname[m
+[31m-const API_BASE_URL = (import.meta.env.DEV || isLocalhost) [m
+[31m-    ? 'http://localhost:3000' [m
+[31m-    : (import.meta.env.VITE_API_URL || 'https://gurukul-up9j.onrender.com');[m
+[32m+[m[32m// Detect the current Render frontend hostname so we can hard-bind the correct backend.[m
+[32m+[m[32m// This makes the signup/login flow robust even if an old build or misconfigured VITE_API_URL is present.[m
+[32m+[m[32mconst isRenderGurukulFrontend =[m
+[32m+[m[32m  typeof window !== 'undefined' &&[m
+[32m+[m[32m  window.location.hostname === 'gurukul-frontend-738j.onrender.com';[m
+[32m+[m
+[32m+[m[32m// In development mode (Vite), always use localhost (override env variable).[m
+[32m+[m[32m// In production on Render, force the known backend URL so network calls never point to a dead/old service.[m
+[32m+[m[32m// Otherwise, fall back to VITE_API_URL if provided, or the official backend URL.[m
+[32m+[m[32mlet API_BASE_URL;[m
+[32m+[m
+[32m+[m[32mif (import.meta.env.DEV || isLocalhost) {[m
+[32m+[m[32m  API_BASE_URL = 'http://localhost:3000';[m
+[32m+[m[32m} else if (isRenderGurukulFrontend) {[m
+[32m+[m[32m  // Hard-bind to the live Gurukul backend on Render[m
+[32m+[m[32m  API_BASE_URL = 'https://gurukul-up9j.onrender.com';[m
+[32m+[m[32m} else {[m
+[32m+[m[32m  API_BASE_URL =[m
+[32m+[m[32m    import.meta.env.VITE_API_URL || 'https://gurukul-up9j.onrender.com';[m
+[32m+[m[32m}[m
+ [m
+ // Debug log in development[m
+ if (import.meta.env.DEV) {[m
+[31m-    console.log('API Config:', {[m
+[31m-        VITE_API_URL: import.meta.env.VITE_API_URL,[m
+[31m-        isDev: import.meta.env.DEV,[m
+[31m-        hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',[m
+[31m-        isLocalhost,[m
+[31m-        API_BASE_URL[m
+[31m-    });[m
+[32m+[m[32m  console.log('API Config:', {[m
+[32m+[m[32m    VITE_API_URL: import.meta.env.VITE_API_URL,[m
+[32m+[m[32m    isDev: import.meta.env.DEV,[m
+[32m+[m[32m    hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',[m
+[32m+[m[32m    isLocalhost,[m
+[32m+[m[32m    isRenderGurukulFrontend,[m
+[32m+[m[32m    API_BASE_URL,[m
+[32m+[m[32m  });[m
+ }[m
+ [m
+ // Build version for cache busting[m
+ export const BUILD_VERSION = '2026-01-06-v2';[m
+ [m
+[31m-// Updated: 2026-01-06 - Auto-detects localhost vs production[m
+[32m+[m[32m// Updated: 2026-01-06 - Auto-detects localhost vs production (with Render safeguard)[m
+ export default API_BASE_URL;[m

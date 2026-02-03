@@ -18,12 +18,13 @@ export const AuthProvider = ({ children }) => {
         console.log('[Auth] Runtime API_BASE_URL:', API_BASE_URL, 'hostname:', window.location.hostname);
         
         // Test backend connectivity on page load
+        // Use longer timeout for Render cold starts (free tier services can take 30+ seconds to wake up)
         (async () => {
             try {
                 console.log('[Auth] Testing backend connectivity to:', `${API_BASE_URL}/health`);
                 const healthResponse = await fetch(`${API_BASE_URL}/health`, {
                     method: 'GET',
-                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                    signal: AbortSignal.timeout(30000) // 30 second timeout for Render cold starts
                 });
                 console.log('[Auth] Backend health check status:', healthResponse.status);
                 if (healthResponse.ok) {
@@ -36,7 +37,11 @@ export const AuthProvider = ({ children }) => {
                 console.error('[Auth] Backend connectivity test FAILED:', error);
                 console.error('[Auth] Error type:', error.constructor.name);
                 console.error('[Auth] Error message:', error.message);
-                console.error('[Auth] This suggests the backend URL may be wrong or CORS is blocking requests');
+                if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
+                    console.warn('[Auth] Backend may be waking up from sleep (Render free tier). This is normal and requests will work once it\'s ready.');
+                } else {
+                    console.error('[Auth] This suggests the backend URL may be wrong or CORS is blocking requests');
+                }
             }
         })();
     }
@@ -51,8 +56,8 @@ export const AuthProvider = ({ children }) => {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
                         },
-                        // Add timeout to prevent hanging
-                        signal: AbortSignal.timeout(10000) // 10 second timeout
+                        // Add timeout to prevent hanging - longer for Render cold starts
+                        signal: AbortSignal.timeout(30000) // 30 second timeout for Render cold starts
                     });
                     
                     if (response.ok) {
@@ -112,6 +117,7 @@ export const AuthProvider = ({ children }) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ email, password }),
+                signal: AbortSignal.timeout(30000) // 30 second timeout for Render cold starts
             });
             
             console.log('[Auth] Login response status:', response.status);
@@ -160,12 +166,15 @@ export const AuthProvider = ({ children }) => {
             console.error('[Auth] Full error object:', error);
             
             // Handle network errors with more detail
-            if (error instanceof TypeError) {
+            if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
+                console.error('[Auth] Request timed out - backend may be waking up from sleep');
+                throw new Error('Server is taking longer than expected to respond. This may happen if the server is waking up. Please try again in a few seconds.');
+            } else if (error instanceof TypeError) {
                 console.error('[Auth] TypeError detected - likely network/CORS issue');
                 console.error('[Auth] Error message contains "fetch":', error.message.includes('fetch'));
                 console.error('[Auth] Error message contains "Failed":', error.message.includes('Failed'));
                 // Still throw the generic message for user, but log everything
-                throw new Error('Unable to connect to server. Please check your internet connection.');
+                throw new Error('Unable to connect to server. The server may be starting up. Please try again in a few moments.');
             }
             throw error;
         }
@@ -191,6 +200,7 @@ export const AuthProvider = ({ children }) => {
                     role: role || 'STUDENT',
                     full_name: full_name || null
                 }),
+                signal: AbortSignal.timeout(30000) // 30 second timeout for Render cold starts
             });
             
             console.log('[Auth] Registration response status:', response.status);
@@ -230,12 +240,15 @@ export const AuthProvider = ({ children }) => {
             console.error('[Auth] Full error object:', error);
             
             // Handle network errors with more detail
-            if (error instanceof TypeError) {
+            if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
+                console.error('[Auth] Request timed out - backend may be waking up from sleep');
+                throw new Error('Server is taking longer than expected to respond. This may happen if the server is waking up. Please try again in a few seconds.');
+            } else if (error instanceof TypeError) {
                 console.error('[Auth] TypeError detected - likely network/CORS issue');
                 console.error('[Auth] Error message contains "fetch":', error.message.includes('fetch'));
                 console.error('[Auth] Error message contains "Failed":', error.message.includes('Failed'));
                 // Still throw the generic message for user, but log everything
-                throw new Error('Unable to connect to server. Please check your internet connection.');
+                throw new Error('Unable to connect to server. The server may be starting up. Please try again in a few moments.');
             }
             throw error;
         }
