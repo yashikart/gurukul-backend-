@@ -83,36 +83,46 @@ async def _create_ems_student_account(user: User):
     """
     Helper function to auto-create EMS student account when student registers in Gurukul
     This is called asynchronously and failures are logged but don't block registration
+    Uses a shorter timeout to prevent blocking the signup request
     """
     if not settings.EMS_ADMIN_EMAIL or not settings.EMS_ADMIN_PASSWORD:
         logger.warning("EMS admin credentials not configured. Skipping EMS student account creation.")
         return
     
     try:
+        import asyncio
         from app.services.ems_client import ems_client
         
-        # Authenticate as admin with EMS
-        admin_token_response = await ems_client.login(
-            settings.EMS_ADMIN_EMAIL,
-            settings.EMS_ADMIN_PASSWORD
-        )
-        admin_token = admin_token_response.get("access_token")
+        # Use a shorter timeout (10 seconds) to prevent blocking signup too long
+        # If EMS is slow or down, we'll fail fast and continue with registration
+        async def _create_with_timeout():
+            # Authenticate as admin with EMS
+            admin_token_response = await ems_client.login(
+                settings.EMS_ADMIN_EMAIL,
+                settings.EMS_ADMIN_PASSWORD
+            )
+            admin_token = admin_token_response.get("access_token")
+            
+            if not admin_token:
+                logger.warning("Failed to get EMS admin token. Skipping EMS student account creation.")
+                return
+            
+            # Create student in EMS
+            student_name = user.full_name or user.email.split("@")[0]
+            await ems_client.create_student(
+                admin_token=admin_token,
+                name=student_name,
+                email=user.email,
+                grade="N/A"  # Default grade, can be updated later by admin
+            )
+            
+            logger.info(f"Successfully created EMS student account for {user.email}")
         
-        if not admin_token:
-            logger.warning("Failed to get EMS admin token. Skipping EMS student account creation.")
-            return
+        # Run with 10 second timeout - if EMS is slow, fail fast
+        await asyncio.wait_for(_create_with_timeout(), timeout=10.0)
         
-        # Create student in EMS
-        student_name = user.full_name or user.email.split("@")[0]
-        await ems_client.create_student(
-            admin_token=admin_token,
-            name=student_name,
-            email=user.email,
-            grade="N/A"  # Default grade, can be updated later by admin
-        )
-        
-        logger.info(f"Successfully created EMS student account for {user.email}")
-        
+    except asyncio.TimeoutError:
+        logger.warning(f"EMS account creation timed out for {user.email} - registration continues without EMS account")
     except Exception as e:
         # Log the error but don't fail registration
         logger.error(f"Failed to create EMS student account for {user.email}: {str(e)}")
@@ -212,8 +222,12 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     # Auto-create EMS student account if enabled and user is a student
+    # Run in background task to not block the response
     if settings.EMS_AUTO_CREATE_STUDENTS and new_user.role.upper() == "STUDENT":
-        await _create_ems_student_account(new_user)
+        import asyncio
+        # Create background task - don't await it, let it run in background
+        # This prevents EMS slowness from blocking the signup response
+        asyncio.create_task(_create_ems_student_account(new_user))
     
     # Create access token
     access_token = create_access_token(data={"sub": new_user.email})
