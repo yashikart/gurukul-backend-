@@ -208,16 +208,11 @@ async def startup_event():
             
             print("[Startup] ✓ Other routers imported and included")
             sys.stdout.flush()
-            return True
         except Exception as e:
             print(f"[Startup] ⚠️  Error importing other routers: {e}")
             print(traceback.format_exc())
             sys.stdout.flush()
-            return False
-        except Exception as e:
-            print(f"[Startup] ⚠️  Error importing main routers: {e}")
-            print(traceback.format_exc())
-            sys.stdout.flush()
+            # Continue to try loading Karma Tracker routers even if other routers fail
         
         # Import Karma Tracker routers
         try:
@@ -282,6 +277,8 @@ async def startup_event():
             print(f"[Startup] ⚠️  Error importing Karma Tracker routers: {e}")
             print(traceback.format_exc())
             sys.stdout.flush()
+        
+        return True  # Return success - individual router failures are logged but don't stop startup
     
     # CRITICAL: Import auth router first and wait for it (registration/login must work)
     # Other routers can load in background
