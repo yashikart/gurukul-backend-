@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.services.llm import call_groq_api, call_ollama_api, create_teaching_prompt, generate_text
 from app.services.youtube import get_youtube_recommendations
 from app.services.knowledge_base_helper import get_knowledge_base_context, enhance_prompt_with_context
+from app.utils.grade_helper import get_student_grade, get_grade_complexity_guidelines, get_grade_level_description
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,16 @@ async def subject_explorer(
     """
     logger.info(f"Received /subject-explorer request: {request.subject} - {request.topic}")
     
+    # Get student's grade for grade-level appropriate content
+    grade = await get_student_grade(current_user, db)
+    grade_description = get_grade_level_description(grade)
+    complexity_guidelines = get_grade_complexity_guidelines(grade)
+    
+    if grade:
+        logger.info(f"Generating content for Grade {grade} student ({current_user.email})")
+    else:
+        logger.info(f"Grade not available for {current_user.email}, using default intermediate level")
+    
     # Step 1: Try to get relevant knowledge from knowledge base
     kb_result = get_knowledge_base_context(
         query=f"{request.subject} {request.topic}",
@@ -44,8 +55,8 @@ async def subject_explorer(
     groq_used = False
     
     try:
-        # Create base teaching prompt
-        base_prompt = create_teaching_prompt(request.subject, request.topic)
+        # Create base teaching prompt with grade level
+        base_prompt = create_teaching_prompt(request.subject, request.topic, grade=grade)
         
         if kb_result["knowledge_base_used"] and kb_result["context"]:
             # Best case: Use Knowledge Base context + Groq

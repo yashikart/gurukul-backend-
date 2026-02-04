@@ -31,10 +31,20 @@ class QuizSubmitRequest(BaseModel):
     answers: Dict[str, str]  # {question_id: "A" | "B" | "C" | "D"}
 
 @router.post("/generate")
-async def generate_quiz(request: QuizGenerateRequest, current_user: User = Depends(get_current_user)):
+async def generate_quiz(request: QuizGenerateRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Generate a quiz using Knowledge Base + Groq with automatic fallback to Groq-only if KB fails
     """
+    # Get student's grade for grade-level appropriate questions
+    grade = await get_student_grade(current_user, db)
+    grade_description = get_grade_level_description(grade)
+    complexity_guidelines = get_grade_complexity_guidelines(grade)
+    
+    if grade:
+        logger.info(f"Generating quiz for Grade {grade} student ({current_user.email})")
+    else:
+        logger.info(f"Grade not available for {current_user.email}, using default intermediate level")
+    
     # Step 1: Try to get relevant knowledge from knowledge base
     kb_result = get_knowledge_base_context(
         query=f"{request.subject} {request.topic}",
@@ -46,11 +56,19 @@ async def generate_quiz(request: QuizGenerateRequest, current_user: User = Depen
     # Step 2: Build quiz generation prompt (with or without KB context)
     base_prompt = f"""Generate exactly {request.num_questions} multiple-choice quiz questions (MCQs) about {request.subject} - {request.topic}.
 
+STUDENT GRADE LEVEL: {grade_description}
+{complexity_guidelines}
+
+IMPORTANT: Adjust question complexity, vocabulary, and answer choices to be appropriate for a {grade_description} student.
+- Use age-appropriate language and terminology
+- Ensure questions are challenging but not overwhelming for this grade level
+- Answer choices should be plausible but clearly distinguishable for this grade level
+
 Requirements:
-- Difficulty level: {request.difficulty}
+- Difficulty level: {request.difficulty} (adjusted for {grade_description} level)
 - Each question must have exactly 4 options (A, B, C, D)
 - Only one option should be correct
-- Questions should test understanding of key concepts
+- Questions should test understanding of key concepts appropriate for {grade_description}
 - Format your response as JSON with this structure:
 {{
   "questions": [

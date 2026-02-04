@@ -2,9 +2,31 @@
 import requests
 from fastapi import HTTPException
 from app.core.config import settings
+from typing import Optional
 
-def create_teaching_prompt(subject: str, topic: str) -> str:
-    return f"""You are an expert teacher specializing in {subject}. Your task is to teach the topic "{topic}" to a student.
+def create_teaching_prompt(subject: str, topic: str, grade: Optional[str] = None) -> str:
+    """
+    Create a teaching prompt with optional grade-level customization.
+    
+    Args:
+        subject: Subject name
+        topic: Topic name
+        grade: Optional grade level (e.g., "3", "9", "12")
+    """
+    from app.utils.grade_helper import get_grade_level_description, get_grade_complexity_guidelines
+    
+    grade_description = get_grade_level_description(grade)
+    complexity_guidelines = get_grade_complexity_guidelines(grade)
+    
+    grade_context = f" for a {grade_description} student" if grade else ""
+    grade_instruction = f"""
+
+IMPORTANT: You are teaching a {grade_description} student. Please adjust your content accordingly:
+{complexity_guidelines}
+
+Ensure all explanations, examples, vocabulary, and practice questions are appropriate for this grade level.""" if grade else ""
+    
+    return f"""You are an expert teacher specializing in {subject}. Your task is to teach the topic "{topic}" to a student{grade_context}.
 
 Please provide comprehensive, clear, and engaging educational notes that include:
 
@@ -16,6 +38,7 @@ Please provide comprehensive, clear, and engaging educational notes that include
 6. **Practice Questions**: 2-3 questions to help reinforce learning
 
 Write in a friendly, encouraging tone as if you're speaking directly to a student. Use simple language, analogies, and examples to make complex concepts easy to understand. Structure the content with clear headings and bullet points for better readability.
+{grade_instruction}
 
 Subject: {subject}
 Topic: {topic}

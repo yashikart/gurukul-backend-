@@ -20,6 +20,7 @@ from app.services.ems_sync import ems_sync
 from app.schemas.flashcard import (
     GenerateFlashcardsRequest, Flashcard
 )
+from app.utils.grade_helper import get_student_grade, get_grade_complexity_guidelines, get_grade_level_description
 import logging
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,16 @@ async def generate_flashcards(
 ):
     """Generate flashcards from summary using LLM"""
     print(f"[Flashcards] Generating {request.question_type} from: {request.title}")
+    
+    # Get student's grade for grade-level appropriate content
+    grade = await get_student_grade(current_user, db)
+    grade_description = get_grade_level_description(grade)
+    complexity_guidelines = get_grade_complexity_guidelines(grade)
+    
+    if grade:
+        logger.info(f"Generating flashcards for Grade {grade} student ({current_user.email})")
+    else:
+        logger.info(f"Grade not available for {current_user.email}, using default intermediate level")
     
     # Construct prompt for Groq/Ollama with more specific instructions for variety
     type_instruction = ""
@@ -138,6 +149,14 @@ YOU MUST:
 ⚠️ CRITICAL: You are generating flashcards for a topic that may have been generated before. 
 You MUST create COMPLETELY DIFFERENT questions - no repetition!
 
+STUDENT GRADE LEVEL: {grade_description}
+{complexity_guidelines}
+
+IMPORTANT: Adjust question complexity, vocabulary, and examples to be appropriate for a {grade_description} student.
+- Use age-appropriate language and terminology
+- Ensure questions are challenging but not overwhelming for this grade level
+- Provide clear, grade-level appropriate answers
+
 CONTENT TO ANALYZE:
 "{content_to_use}"
 
@@ -184,8 +203,9 @@ OUTPUT FORMAT (PURE JSON array, no markdown, no backticks):
             try:
                 print("[Flashcards] Using Groq...")
                 headers = {"Authorization": f"Bearer {settings.GROQ_API_KEY}", "Content-Type": "application/json"}
-                # Create system message emphasizing variety
-                system_message = f"""You are an expert educator creating educational flashcards. 
+                # Create system message emphasizing variety and grade-level appropriateness
+                grade_context = f" for a {grade_description} student" if grade else ""
+                system_message = f"""You are an expert educator creating educational flashcards{grade_context}. 
 CRITICAL: Generate COMPLETELY DIFFERENT questions each time, even for the same topic.
 
 VARIETY REQUIREMENTS:
@@ -194,6 +214,9 @@ VARIETY REQUIREMENTS:
 - Test different concepts, applications, and perspectives
 - Use different question structures (What/How/Why/Compare/Describe/Calculate)
 - Cover different aspects of the content each time
+
+GRADE-LEVEL REQUIREMENTS:
+{complexity_guidelines}
 
 This is generation attempt #{int(time.time() % 100)} - ensure maximum variety!"""
                 

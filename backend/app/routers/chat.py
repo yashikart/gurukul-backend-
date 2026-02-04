@@ -1,17 +1,22 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 import uuid
 import logging
 from collections import defaultdict
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.database import get_db
+from app.routers.auth import get_current_user
+from app.models.all_models import User
 from app.services.knowledge_base_helper import get_knowledge_base_context, enhance_prompt_with_context
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# In-memory chat history storage (per session - resets on server restart)
+# In-memory chat history storage (per user and conversation - resets on server restart)
+# Format: {f"{user_id}:{conversation_id}": [messages]}
 # For production, this should be stored in PostgreSQL
 _chat_history: Dict[str, List[dict]] = defaultdict(list)
 
@@ -34,12 +39,17 @@ async def health():
     return {"status": "ok"}
 
 @router.post("")  # Mounts at /api/v1/chat
-async def chat_endpoint(request: ChatRequest):
+async def chat_endpoint(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user)
+):
     """
     Chat Endpoint with RAG (Retrieval Augmented Generation) support
     Uses Knowledge Base + Groq with automatic fallback to Groq-only if KB fails
     """
+    # Scope conversation_id to user to prevent cross-user access
     conversation_id = request.conversation_id or str(uuid.uuid4())
+    user_conversation_key = f"{current_user.id}:{conversation_id}"
     
     # Step 1: Try to get context from knowledge base
     kb_result = get_knowledge_base_context(
@@ -99,9 +109,9 @@ async def chat_endpoint(request: ChatRequest):
         groq_used = False
         groq_error = str(e)
     
-    # Save messages to chat history
-    _chat_history[conversation_id].append({"role": "user", "content": request.message})
-    _chat_history[conversation_id].append({"role": "assistant", "content": response_text})
+    # Save messages to chat history (scoped to user)
+    _chat_history[user_conversation_key].append({"role": "user", "content": request.message})
+    _chat_history[user_conversation_key].append({"role": "assistant", "content": response_text})
     
     return {
         "response": response_text,
@@ -115,9 +125,14 @@ async def chat_endpoint(request: ChatRequest):
     }
 
 @router.get("/history/{conversation_id}")
-async def get_chat_history(conversation_id: str):
-    """Return actual chat history for conversation"""
-    messages = _chat_history.get(conversation_id, [])
+async def get_chat_history(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Return actual chat history for conversation (user-scoped)"""
+    # Scope conversation_id to user to prevent cross-user access
+    user_conversation_key = f"{current_user.id}:{conversation_id}"
+    messages = _chat_history.get(user_conversation_key, [])
     
     if not messages:
         # Return empty list if no history found (don't return mock data)
@@ -126,10 +141,15 @@ async def get_chat_history(conversation_id: str):
     return {"messages": messages, "found": True}
 
 @router.delete("/history/{conversation_id}")
-async def delete_chat_history(conversation_id: str):
-    """Delete chat history for conversation"""
-    if conversation_id in _chat_history:
-        del _chat_history[conversation_id]
+async def delete_chat_history(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete chat history for conversation (user-scoped)"""
+    # Scope conversation_id to user to prevent cross-user access
+    user_conversation_key = f"{current_user.id}:{conversation_id}"
+    if user_conversation_key in _chat_history:
+        del _chat_history[user_conversation_key]
         return {"status": "deleted", "found": True}
     return {"status": "deleted", "found": False}
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { schoolAdminAPI } from '../../services/api';
 
 const SchoolAdminDashboard = () => {
@@ -120,30 +121,30 @@ const SchoolAdminDashboard = () => {
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <a
-            href="/dashboard/teachers"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition"
+          <Link
+            to="/dashboard/teachers"
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition block"
           >
             <div className="text-2xl mb-2">👨‍🏫</div>
             <div className="font-semibold text-gray-800">Manage Teachers</div>
             <div className="text-sm text-gray-600">Add or upload teachers</div>
-          </a>
-          <a
-            href="/dashboard/students"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition"
+          </Link>
+          <Link
+            to="/dashboard/students"
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition block"
           >
             <div className="text-2xl mb-2">👨‍🎓</div>
             <div className="font-semibold text-gray-800">Manage Students</div>
             <div className="text-sm text-gray-600">Add or upload students</div>
-          </a>
-          <a
-            href="/dashboard/parents"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition"
+          </Link>
+          <Link
+            to="/dashboard/parents"
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition block"
           >
             <div className="text-2xl mb-2">👨‍👩‍👧</div>
             <div className="font-semibold text-gray-800">Manage Parents</div>
             <div className="text-sm text-gray-600">Add or upload parents</div>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

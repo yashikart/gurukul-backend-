@@ -158,12 +158,23 @@ const StudentsManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Grade</label>
-              <input
-                type="text"
+              <select
                 value={formData.grade}
                 onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-              />
+              >
+                <option value="">Select a grade</option>
+                <option value="3">3rd Grade</option>
+                <option value="4">4th Grade</option>
+                <option value="5">5th Grade</option>
+                <option value="6">6th Grade</option>
+                <option value="7">7th Grade</option>
+                <option value="8">8th Grade</option>
+                <option value="9">9th Grade</option>
+                <option value="10">10th Grade</option>
+                <option value="11">11th Grade</option>
+                <option value="12">12th Grade</option>
+              </select>
             </div>
             {!editingStudent && (
               <>

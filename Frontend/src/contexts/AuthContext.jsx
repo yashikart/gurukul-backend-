@@ -126,6 +126,10 @@ export const AuthProvider = ({ children }) => {
                         console.warn('[Auth] Token invalid (401), logging out');
                         localStorage.removeItem('auth_token');
                         localStorage.removeItem('ems_token');
+                        // Clear chat-related data to prevent cross-user chat history access
+                        localStorage.removeItem('chatbot_conversationId');
+                        localStorage.removeItem('chatbot_chatHistory');
+                        localStorage.removeItem('gurukul_saved_chats');
                         setToken(null);
                         setUser(null);
                     } else {
@@ -310,6 +314,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('auth_token');
         // Clear EMS authentication to prevent cross-account contamination
         localStorage.removeItem('ems_token');
+        // Clear chat-related data to prevent cross-user chat history access
+        localStorage.removeItem('chatbot_conversationId');
+        localStorage.removeItem('chatbot_chatHistory');
+        localStorage.removeItem('gurukul_saved_chats');
         setToken(null);
         setUser(null);
     };
