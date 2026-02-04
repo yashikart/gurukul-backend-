@@ -65,7 +65,7 @@ export const KarmaProvider = ({ children }) => {
 
         try {
             console.log('[Karma] Fetching karma for user:', user.id);
-            const res = await fetch(`${KARMA_TRACKER_URL}/api/v1/karma/${user.id}`, {
+            const res = await fetch(`${KARMA_TRACKER_URL}/api/v1/karma/user/${user.id}`, {
                 signal: AbortSignal.timeout(5000) // 5 second timeout
             });
             if (!res.ok) {
