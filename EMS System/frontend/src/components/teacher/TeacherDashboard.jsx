@@ -26,13 +26,13 @@ const TeacherDashboard = () => {
   };
 
   const StatCard = ({ title, value, icon, color }) => (
-    <div className="bg-white rounded-lg shadow-md p-6 border-l-4" style={{ borderLeftColor: color }}>
+    <div className="bg-white rounded-lg shadow-md p-4 md:p-6 border-l-4" style={{ borderLeftColor: color }}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+          <p className="text-xs md:text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl md:text-3xl font-bold text-gray-900 mt-1 md:mt-2">{value}</p>
         </div>
-        <div className="text-4xl opacity-20" style={{ color }}>
+        <div className="text-3xl md:text-4xl opacity-20" style={{ color }}>
           {icon}
         </div>
       </div>

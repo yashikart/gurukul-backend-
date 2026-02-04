@@ -31,7 +31,6 @@ const MySchedule = React.lazy(() => import('./pages/ems/MySchedule'));
 const MyAnnouncements = React.lazy(() => import('./pages/ems/MyAnnouncements'));
 const MyAttendance = React.lazy(() => import('./pages/ems/MyAttendance'));
 const MyTeachers = React.lazy(() => import('./pages/ems/MyTeachers'));
-const MyGrades = React.lazy(() => import('./pages/ems/MyGrades'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -323,16 +322,6 @@ const AppContent = () => {
                               <PrivateRoute>
                                 <RoleGuard allowedRoles={['student']}>
                                   <MyTeachers />
-                                </RoleGuard>
-                              </PrivateRoute>
-                            }
-                          />
-                          <Route
-                            path="/ems/grades"
-                            element={
-                              <PrivateRoute>
-                                <RoleGuard allowedRoles={['student']}>
-                                  <MyGrades />
                                 </RoleGuard>
                               </PrivateRoute>
                             }

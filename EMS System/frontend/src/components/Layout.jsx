@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -6,7 +6,32 @@ const Layout = ({ children }) => {
   const { user, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Handle responsive sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setSidebarOpen(true); // Always show sidebar on desktop
+      }
+    };
+
+    // Set initial state
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close sidebar when navigating on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   // Role-based menu items
   const getMenuItems = () => {
@@ -51,7 +76,6 @@ const Layout = ({ children }) => {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
         { id: 'children', label: 'My Children', icon: '👨‍👩‍👧', path: '/dashboard/children' },
-        { id: 'grades', label: 'Grades', icon: '📝', path: '/dashboard/grades' },
         { id: 'attendance', label: 'Attendance', icon: '✅', path: '/dashboard/attendance' },
         { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
         { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
@@ -61,7 +85,6 @@ const Layout = ({ children }) => {
         { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
         { id: 'classes', label: 'My Classes', icon: '📚', path: '/dashboard/classes' },
         { id: 'teachers', label: 'My Teachers', icon: '👨‍🏫', path: '/dashboard/teachers' },
-        { id: 'grades', label: 'My Grades', icon: '📝', path: '/dashboard/grades' },
         { id: 'attendance', label: 'Attendance', icon: '✅', path: '/dashboard/attendance' },
         { id: 'schedule', label: 'Schedule', icon: '📅', path: '/dashboard/schedule' },
         { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
@@ -120,33 +143,55 @@ const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile Overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
-        } bg-gray-900 text-white transition-all duration-300 fixed h-full flex flex-col`}
+        className={`
+          ${isMobile 
+            ? `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+            : `${sidebarOpen ? 'w-64' : 'w-20'} fixed h-full transition-all duration-300`
+          }
+          bg-gray-900 text-white flex flex-col
+        `}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-gray-700 flex-shrink-0">
+        <div className="p-4 md:p-6 border-b border-gray-700 flex-shrink-0">
           <div className="flex items-center justify-between">
-            {sidebarOpen && (
-              <h1 className="text-xl font-bold text-white">School Management</h1>
+            {(sidebarOpen || isMobile) && (
+              <h1 className="text-lg md:text-xl font-bold text-white truncate">School Management</h1>
             )}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-lg hover:bg-gray-800 transition"
-            >
-              {sidebarOpen ? '◀' : '▶'}
-            </button>
+            {!isMobile && (
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 rounded-lg hover:bg-gray-800 transition"
+              >
+                {sidebarOpen ? '◀' : '▶'}
+              </button>
+            )}
+            {isMobile && (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-800 transition text-xl"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
 
         {/* User Info */}
-        <div className="p-4 border-b border-gray-700 flex-shrink-0">
-          {sidebarOpen ? (
+        <div className="p-3 md:p-4 border-b border-gray-700 flex-shrink-0">
+          {(sidebarOpen || isMobile) ? (
             <div>
-              <p className="text-sm text-gray-400">Logged in as</p>
-              <p className="text-sm font-semibold text-white mt-1">{getRoleDisplayName(user?.role)}</p>
+              <p className="text-xs md:text-sm text-gray-400">Logged in as</p>
+              <p className="text-xs md:text-sm font-semibold text-white mt-1">{getRoleDisplayName(user?.role)}</p>
               {user?.email && (
                 <p className="text-xs text-gray-400 mt-1 truncate" title={user.email}>
                   {user.email}
@@ -163,49 +208,68 @@ const Layout = ({ children }) => {
         </div>
 
         {/* Navigation Menu - Scrollable */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+        <nav className="flex-1 overflow-y-auto p-2 md:p-4 space-y-1 md:space-y-2">
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => handleNavigation(item.path)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+              onClick={() => {
+                handleNavigation(item.path);
+                if (isMobile) setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-all text-sm md:text-base ${
                 isActive(item.path)
                   ? 'bg-indigo-600 text-white'
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
             >
-              <span className="text-xl">{item.icon}</span>
-              {sidebarOpen && <span className="font-medium">{item.label}</span>}
+              <span className="text-lg md:text-xl">{item.icon}</span>
+              {(sidebarOpen || isMobile) && <span className="font-medium">{item.label}</span>}
             </button>
           ))}
         </nav>
 
         {/* Logout Button - Fixed at bottom */}
-        <div className="p-4 border-t border-gray-700 flex-shrink-0">
+        <div className="p-3 md:p-4 border-t border-gray-700 flex-shrink-0">
           <button
-            onClick={logout}
-            className="w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white transition"
+            onClick={() => {
+              logout();
+              if (isMobile) setSidebarOpen(false);
+            }}
+            className="w-full flex items-center justify-center space-x-2 md:space-x-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white transition text-sm md:text-base"
           >
             <span>🚪</span>
-            {sidebarOpen && <span className="font-medium">Logout</span>}
+            {(sidebarOpen || isMobile) && <span className="font-medium">Logout</span>}
           </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
+      <div className={`flex-1 transition-all duration-300 ${isMobile ? 'ml-0' : (sidebarOpen ? 'ml-64' : 'ml-20')}`}>
         {/* Top Header */}
-        <header className="bg-white shadow-sm border-b sticky top-0 z-10">
-          <div className="px-6 py-4">
+        <header className="bg-white shadow-sm border-b sticky top-0 z-30">
+          <div className="px-4 md:px-6 py-3 md:py-4">
             <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">{getDashboardTitle(user?.role)}</h2>
-                <p className="text-sm text-gray-600">{getDashboardSubtitle(user?.role)}</p>
+              <div className="flex items-center gap-3">
+                {/* Mobile Menu Button */}
+                {isMobile && (
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                )}
+                <div>
+                  <h2 className="text-lg md:text-2xl font-bold text-gray-800">{getDashboardTitle(user?.role)}</h2>
+                  <p className="text-xs md:text-sm text-gray-600 hidden sm:block">{getDashboardSubtitle(user?.role)}</p>
+                </div>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 md:space-x-4">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-800">{user?.email || 'User'}</p>
-                  <p className="text-xs text-gray-500">{getRoleDisplayName(user?.role)}</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-800 truncate max-w-[120px] md:max-w-none">{user?.email || 'User'}</p>
+                  <p className="text-xs text-gray-500 hidden sm:block">{getRoleDisplayName(user?.role)}</p>
                 </div>
               </div>
             </div>
@@ -213,7 +277,7 @@ const Layout = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="p-6">{children}</main>
+        <main className="p-3 md:p-6">{children}</main>
       </div>
     </div>
   );

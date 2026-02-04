@@ -17,7 +17,6 @@ import {
     FaBullhorn,
     FaCheckCircle,
     FaChalkboardTeacher,
-    FaGraduationCap,
     FaFolder
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -51,7 +50,6 @@ const Sidebar = () => {
         { icon: FaBullhorn, label: "Announcements", path: "/ems/announcements" },
         { icon: FaCheckCircle, label: "Attendance", path: "/ems/attendance" },
         { icon: FaChalkboardTeacher, label: "My Teachers", path: "/ems/teachers" },
-        { icon: FaGraduationCap, label: "My Grades", path: "/ems/grades" },
     ] : [];
 
 

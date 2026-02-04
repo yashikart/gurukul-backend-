@@ -43,14 +43,12 @@ import StudentDashboard from './student/StudentDashboard';
 import MyClasses from './student/MyClasses';
 import MyTeachers from './student/MyTeachers';
 import MySchedule from './student/MySchedule';
-import MyGrades from './student/MyGrades';
 import MyAttendance from './student/MyAttendance';
 import StudentAnnouncements from './student/MyAnnouncements';
 
 // Parent Components
 import ParentDashboard from './parent/ParentDashboard';
 import MyChildren from './parent/MyChildren';
-import MyChildrenGrades from './parent/MyChildrenGrades';
 import MyChildrenAttendance from './parent/MyChildrenAttendance';
 import ParentAnnouncements from './parent/MyAnnouncements';
 import MyChildContent from './parent/MyChildContent';
@@ -104,7 +102,6 @@ const Dashboard = () => {
             <Route index element={<StudentDashboard />} />
             <Route path="/classes" element={<MyClasses />} />
             <Route path="/teachers" element={<MyTeachers />} />
-            <Route path="/grades" element={<MyGrades />} />
             <Route path="/attendance" element={<MyAttendance />} />
             <Route path="/schedule" element={<MySchedule />} />
             <Route path="/announcements" element={<StudentAnnouncements />} />
@@ -116,7 +113,6 @@ const Dashboard = () => {
             <Route index element={<ParentDashboard />} />
             <Route path="/children" element={<MyChildren />} />
             <Route path="/children/:studentId/content" element={<MyChildContent />} />
-            <Route path="/grades" element={<MyChildrenGrades />} />
             <Route path="/attendance" element={<MyChildrenAttendance />} />
             <Route path="/announcements" element={<ParentAnnouncements />} />
             <Route path="/reset-password" element={<ChangePassword />} />

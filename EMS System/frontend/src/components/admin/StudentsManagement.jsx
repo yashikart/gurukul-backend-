@@ -8,8 +8,6 @@ const StudentsManagement = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  const [uploadResult, setUploadResult] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -49,29 +47,6 @@ const StudentsManagement = () => {
       alert('Student created successfully! Login credentials sent via email.');
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to create student');
-    }
-  };
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      alert('Please upload an Excel file (.xlsx or .xls)');
-      return;
-    }
-
-    try {
-      const result = await schoolAdminAPI.uploadStudentsExcel(file);
-      setUploadResult(result);
-      fetchStudents();
-      if (result.failed_count > 0) {
-        alert(`Upload completed with ${result.failed_count} failures. Check details below.`);
-      } else {
-        alert('All students uploaded successfully!');
-      }
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to upload file');
     }
   };
 
@@ -128,24 +103,17 @@ const StudentsManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Students Management</h1>
-          <p className="text-gray-600 mt-2">Manage all students in your school</p>
+          <h1 className="text-xl md:text-3xl font-bold text-gray-800">Students Management</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1 md:mt-2">Manage all students in your school</p>
         </div>
         <div className="flex gap-3">
           <button
             data-ems-task="true"
-            onClick={() => setShowUploadForm(!showUploadForm)}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-          >
-            📤 Upload Excel
-          </button>
-          <button
-            data-ems-task="true"
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+            className="px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm md:text-base whitespace-nowrap"
           >
             ➕ Add Student
           </button>
@@ -161,33 +129,6 @@ const StudentsManagement = () => {
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
         />
       </div>
-
-      {showUploadForm && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Upload Students from Excel</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Excel file should have columns: <strong>name</strong>, <strong>email</strong>, <strong>grade</strong> (optional), <strong>parent_email</strong> (optional)
-          </p>
-          <input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="mb-4" />
-          {uploadResult && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <p className="font-semibold">Upload Result:</p>
-              <p>✅ Success: {uploadResult.success_count}</p>
-              <p>❌ Failed: {uploadResult.failed_count}</p>
-              {uploadResult.failed_rows && uploadResult.failed_rows.length > 0 && (
-                <div className="mt-2">
-                  <p className="font-semibold">Failed Rows:</p>
-                  <ul className="list-disc list-inside text-sm">
-                    {uploadResult.failed_rows.map((row, idx) => (
-                      <li key={idx}>Row {row.row}: {row.email} - {row.reason}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {showCreateForm && (
         <div className="bg-white rounded-lg shadow-md p-6">

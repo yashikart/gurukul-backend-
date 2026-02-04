@@ -26,13 +26,13 @@ const StudentDashboard = () => {
   };
 
   const StatCard = ({ title, value, icon, color }) => (
-    <div className="bg-white rounded-lg shadow-md p-6 border-l-4" style={{ borderLeftColor: color }}>
+    <div className="bg-white rounded-lg shadow-md p-4 md:p-6 border-l-4" style={{ borderLeftColor: color }}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+          <p className="text-xs md:text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl md:text-3xl font-bold text-gray-900 mt-1 md:mt-2">{value}</p>
         </div>
-        <div className="text-4xl opacity-20" style={{ color }}>
+        <div className="text-3xl md:text-4xl opacity-20" style={{ color }}>
           {icon}
         </div>
       </div>
@@ -103,40 +103,32 @@ const StudentDashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
+        <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-3 md:mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <button
             onClick={() => window.location.hash = '#/dashboard/schedule'}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
+            className="p-3 md:p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
-            <div className="text-2xl mb-2">📅</div>
-            <div className="font-medium text-gray-800">View Schedule</div>
-            <div className="text-sm text-gray-600 mt-1">See your weekly timetable</div>
-          </button>
-          <button
-            onClick={() => window.location.hash = '#/dashboard/grades'}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
-          >
-            <div className="text-2xl mb-2">📝</div>
-            <div className="font-medium text-gray-800">View Grades</div>
-            <div className="text-sm text-gray-600 mt-1">Check your academic performance</div>
+            <div className="text-xl md:text-2xl mb-1 md:mb-2">📅</div>
+            <div className="font-medium text-gray-800 text-sm md:text-base">View Schedule</div>
+            <div className="text-xs md:text-sm text-gray-600 mt-1 hidden sm:block">See your weekly timetable</div>
           </button>
           <button
             onClick={() => window.location.hash = '#/dashboard/attendance'}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
+            className="p-3 md:p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
-            <div className="text-2xl mb-2">✅</div>
-            <div className="font-medium text-gray-800">View Attendance</div>
-            <div className="text-sm text-gray-600 mt-1">Check your attendance records</div>
+            <div className="text-xl md:text-2xl mb-1 md:mb-2">✅</div>
+            <div className="font-medium text-gray-800 text-sm md:text-base">View Attendance</div>
+            <div className="text-xs md:text-sm text-gray-600 mt-1 hidden sm:block">Check your attendance records</div>
           </button>
           <button
             onClick={() => window.location.hash = '#/dashboard/announcements'}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
+            className="p-3 md:p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
           >
-            <div className="text-2xl mb-2">📢</div>
-            <div className="font-medium text-gray-800">Announcements</div>
-            <div className="text-sm text-gray-600 mt-1">View school announcements</div>
+            <div className="text-xl md:text-2xl mb-1 md:mb-2">📢</div>
+            <div className="font-medium text-gray-800 text-sm md:text-base">Announcements</div>
+            <div className="text-xs md:text-sm text-gray-600 mt-1 hidden sm:block">View school announcements</div>
           </button>
         </div>
       </div>
