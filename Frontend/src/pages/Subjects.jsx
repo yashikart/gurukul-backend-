@@ -144,7 +144,7 @@ const Subjects = () => {
                 use_rag: false // We are providing context directly
             });
 
-            if (data.success) {
+            if (data.response) {
                 setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
             } else {
                 setChatHistory(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error responding to that.' }]);
