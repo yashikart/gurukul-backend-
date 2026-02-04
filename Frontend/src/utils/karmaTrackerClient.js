@@ -34,7 +34,7 @@ export async function sendLifeEvent({ userId, action, role = 'learner', note, co
   };
 
   try {
-    const response = await fetch(`${KARMA_TRACKER_URL}/v1/event/`, {
+    const response = await fetch(`${KARMA_TRACKER_URL}/api/v1/karma/event`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
