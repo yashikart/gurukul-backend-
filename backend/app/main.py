@@ -48,22 +48,6 @@ except Exception as e:
 print("[Main] Router imports will be deferred to startup event for faster server start")
 sys.stdout.flush()
 
-# Health check endpoint - available immediately before any routers load
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for Render and frontend connectivity tests"""
-    return {
-        "status": "healthy",
-        "service": "gurukul-backend",
-        "auth_ready": auth is not None,
-        "message": "Backend is running"
-    }
-
-@app.get("/")
-async def root():
-    """Root endpoint - confirms server is running"""
-    return {"message": "Gurukul API v2", "status": "running"}
-
 # Placeholder variables for routers - will be imported in startup event
 chat = None
 flashcards = None

@@ -18,9 +18,17 @@ groq>=0.4.0
 pyttsx3>=2.90
 gtts>=2.5.0
 
-# For pickle model loading and inference
-torch>=2.0.0
-transformers>=4.30.0
+# DISABLED - Memory hogs (512MB limit). Summarizer is disabled.
+# torch>=2.0.0
+# transformers>=4.30.0
+# sentence-transformers>=2.7.0
+# peft>=0.8.0
+# accelerate>=0.24.0
+# chromadb>=0.5.0
+# qdrant-client>=1.8.0
+# weaviate-client>=4.9.0
+# pinecone-client>=3.0.0
+
 sentencepiece>=0.1.99
 gdown>=4.7.0
 
@@ -31,28 +39,14 @@ bcrypt
 email-validator
 httpx>=0.24.0
 
-# Vector stores & embeddings
-sentence-transformers>=2.7.0
-qdrant-client>=1.8.0
-chromadb>=0.5.0
-weaviate-client>=4.9.0
-pinecone-client>=3.0.0
-
-# Sovereign Fusion Layer dependencies
-peft>=0.8.0  # For LoRA adapter loading
-accelerate>=0.24.0  # For model loading
-
 # Testing
-pytest>=7.4.0  # For smoke tests
+pytest>=7.4.0
 
-# Bucket integration dependencies
-redis>=5.0.0  # For packet queuing (optional, falls back to in-memory if not available)
+# Bucket integration
+redis>=5.0.0
 
-# Karma Tracker dependencies (integrated)
-pymongo>=4.6.0  # MongoDB driver for Karma Tracker
-dnspython>=2.4.0  # DNS support for MongoDB connection strings
-networkx>=3.0  # Graph algorithms for karma relationships
-matplotlib>=3.7.0  # Analytics visualization
-aiohttp>=3.9.0  # Async HTTP client
-
-
+# Karma Tracker
+pymongo>=4.6.0
+dnspython>=2.4.0
+networkx>=3.0
+aiohttp>=3.9.0

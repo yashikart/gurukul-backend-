@@ -410,7 +410,7 @@ const Navbar = () => {
                 <div className="flex items-center gap-2 sm:gap-4">
                   <div className="text-xs sm:text-sm text-gray-300 flex items-center gap-1 sm:gap-2">
                     <FaUserCircle className="text-base sm:text-lg" />
-                    <span className="hidden xl:inline">{user.email.split('@')[0]}</span>
+                    <span className="hidden xl:inline">{user.email?.split('@')[0] || user.full_name || 'User'}</span>
                   </div>
                   <button
                     onClick={handleLogout}

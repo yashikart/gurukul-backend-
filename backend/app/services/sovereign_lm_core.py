@@ -15,11 +15,18 @@ import pickle
 from pathlib import Path
 from typing import Optional, Dict, Any
 import logging
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
 
 logger = logging.getLogger(__name__)
+
+# Optional ML imports - may not be installed in lightweight deployment
+try:
+    import torch
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from peft import PeftModel
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    logger.warning("torch/transformers/peft not installed. Sovereign LM features disabled.")
 
 # Global model instance (lazy loaded)
 _model_instance: Optional[Any] = None

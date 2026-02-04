@@ -1,9 +1,10 @@
 """
 Vector Store Service for RAG (Retrieval Augmented Generation)
 Replaces in-memory dictionary with persistent vector database
+
+NOTE: Disabled in lightweight deployment (no sentence-transformers).
 """
 
-from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Optional, Any
 import os
 import json
@@ -11,6 +12,15 @@ from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Optional ML imports
+try:
+    from sentence_transformers import SentenceTransformer
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    SentenceTransformer = None
+    logger.warning("sentence-transformers not installed. VectorStoreService disabled.")
 
 class VectorStoreService:
     """
@@ -28,6 +38,13 @@ class VectorStoreService:
             backend: Vector database backend ("chromadb", "faiss", "qdrant")
             collection_name: Name of the collection/namespace
         """
+        if not ML_AVAILABLE:
+            logger.warning("VectorStoreService disabled - sentence-transformers not installed")
+            self.embedding_model = None
+            self.client = None
+            self.collection = None
+            return
+            
         self.backend = backend.lower()
         self.collection_name = collection_name
         

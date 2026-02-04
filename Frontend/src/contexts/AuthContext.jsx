@@ -99,38 +99,11 @@ export const AuthProvider = ({ children }) => {
         })();
     }
 
-    // Helper to decode JWT and get user info (without validation - for offline use)
-    const decodeToken = (token) => {
-        try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(
-                atob(base64)
-                    .split('')
-                    .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                    .join('')
-            );
-            return JSON.parse(jsonPayload);
-        } catch (e) {
-            console.error('[Auth] Failed to decode token:', e);
-            return null;
-        }
-    };
-
     // Check if user is authenticated on mount
     useEffect(() => {
         const checkAuth = async () => {
             const storedToken = localStorage.getItem('auth_token');
             if (storedToken) {
-                // First, try to get user from token (works offline)
-                const tokenData = decodeToken(storedToken);
-                const cachedUser = tokenData ? {
-                    id: tokenData.sub || tokenData.user_id,
-                    email: tokenData.email || localStorage.getItem('user_email'),
-                    full_name: tokenData.full_name || localStorage.getItem('user_name'),
-                    role: tokenData.role || 'STUDENT'
-                } : null;
-
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
                         headers: {
@@ -142,9 +115,6 @@ export const AuthProvider = ({ children }) => {
                     
                     if (response.ok) {
                         const userData = await response.json();
-                        // Cache user info for offline use
-                        localStorage.setItem('user_email', userData.email);
-                        localStorage.setItem('user_name', userData.full_name || '');
                         setUser({
                             id: userData.id,
                             email: userData.email,
@@ -156,31 +126,27 @@ export const AuthProvider = ({ children }) => {
                         console.warn('[Auth] Token invalid (401), logging out');
                         localStorage.removeItem('auth_token');
                         localStorage.removeItem('ems_token');
-                        localStorage.removeItem('user_email');
-                        localStorage.removeItem('user_name');
                         setToken(null);
                         setUser(null);
                     } else {
-                        // For other errors (500, 503, etc.), use cached user from token
-                        console.warn('[Auth] Auth check failed with status:', response.status, '- using cached user');
-                        if (cachedUser && cachedUser.id) {
-                            setUser(cachedUser);
-                        }
+                        // For other errors (500, 503, network issues, etc.), keep user logged in
+                        // They might have a valid token but server is temporarily unavailable
+                        console.warn('[Auth] Auth check failed with status:', response.status, '- keeping session active');
+                        // Don't clear token or logout - just don't set user state
+                        // User can still use the app, and we'll retry on next page load
                     }
                 } catch (error) {
-                    // Network errors, timeouts, CORS issues - use cached user from token
+                    // Network errors, timeouts, CORS issues - don't logout
+                    // User might have valid token but connection is temporarily unavailable
                     if (error.name === 'AbortError' || error.message.includes('timeout')) {
-                        console.warn('[Auth] Auth check timed out - using cached user');
+                        console.warn('[Auth] Auth check timed out - keeping session active');
                     } else if (error instanceof TypeError && error.message.includes('fetch')) {
-                        console.warn('[Auth] Network error during auth check - using cached user');
+                        console.warn('[Auth] Network error during auth check - keeping session active');
                     } else {
-                        console.warn('[Auth] Auth check error:', error.message, '- using cached user');
+                        console.warn('[Auth] Auth check error:', error.message, '- keeping session active');
                     }
-                    // Use cached user from token - keeps user logged in during network issues
-                    if (cachedUser && cachedUser.id) {
-                        setUser(cachedUser);
-                        console.log('[Auth] Restored user from token:', cachedUser.email);
-                    }
+                    // Don't clear token or logout on network errors
+                    // User stays logged in and can continue using the app
                 }
             }
             setLoading(false);
@@ -229,12 +195,6 @@ export const AuthProvider = ({ children }) => {
             // Store token
             localStorage.setItem('auth_token', data.access_token);
             setToken(data.access_token);
-            
-            // Cache user info for offline/network-error scenarios
-            if (data.user) {
-                localStorage.setItem('user_email', data.user.email || '');
-                localStorage.setItem('user_name', data.user.full_name || '');
-            }
             
             // Extract session_id from token (backend includes it in JWT payload)
             const contextManager = (await import('../utils/contextManager')).default;
@@ -319,12 +279,6 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('auth_token', data.access_token);
             setToken(data.access_token);
             
-            // Cache user info for offline/network-error scenarios
-            if (data.user) {
-                localStorage.setItem('user_email', data.user.email || '');
-                localStorage.setItem('user_name', data.user.full_name || '');
-            }
-            
             // Set user
             setUser(data.user);
             
@@ -356,10 +310,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('auth_token');
         // Clear EMS authentication to prevent cross-account contamination
         localStorage.removeItem('ems_token');
-        // Clear cached user info
-        localStorage.removeItem('user_email');
-        localStorage.removeItem('user_name');
-        localStorage.removeItem('session_id');
         setToken(null);
         setUser(null);
     };

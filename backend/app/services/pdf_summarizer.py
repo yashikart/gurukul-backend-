@@ -2,20 +2,37 @@
 Multi-Page PDF Summarizer using LED (Longformer Encoder-Decoder)
 Uses 'pszemraj/led-base-book-summary' for long-context summarization.
 Supports loading from pickle files (quantized) for deployment.
+
+NOTE: This module is DISABLED in lightweight deployments (no torch/transformers).
 """
 
 import os
 import pickle
 import gzip
 from typing import List, Dict
-import torch
-from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 from pathlib import Path
+
+# Optional ML imports - may not be installed in lightweight deployment
+try:
+    import torch
+    from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    torch = None
+    print("[PDF Summarizer] torch/transformers not installed. Summarizer disabled.")
 
 class PDFSummarizer:
     """PDF summarizer using LED-Base-Book-Summary (Supports long context)"""
     
     def __init__(self, model_name: str = "pszemraj/led-base-book-summary", use_pickle: bool = True):
+        if not ML_AVAILABLE:
+            print("[PDF Summarizer] DISABLED - torch/transformers not installed")
+            self.model = None
+            self.tokenizer = None
+            self.pipe = None
+            return
+            
         print("\n" + "!"*60)
         print("!!! INITIALIZING LOCAL PDF SUMMARIZER (LED MODEL) !!!")
         print("!!! This runs on your GPU/CPU. NO API KEY USED. !!!")
