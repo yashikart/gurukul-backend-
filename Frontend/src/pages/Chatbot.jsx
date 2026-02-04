@@ -228,8 +228,18 @@ const Chatbot = () => {
 
             // Transform backend messages to UI format
             // Backend sends: role, content
-            if (data.messages) {
+            if (data.messages && data.messages.length > 0) {
                 setChatHistory(data.messages.map(m => ({ role: m.role, content: m.content })));
+                setConversationId(id);
+            } else {
+                // No history found on backend (maybe server restarted)
+                // Start a fresh conversation with the same ID
+                setChatHistory([
+                    {
+                        role: 'assistant',
+                        content: "🙏 This conversation was not found on the server (it may have been lost after a restart). Starting fresh!"
+                    }
+                ]);
                 setConversationId(id);
             }
         } catch (err) {

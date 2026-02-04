@@ -1,14 +1,19 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict
 import uuid
 import logging
+from collections import defaultdict
 
 from app.core.config import settings
 from app.services.knowledge_base_helper import get_knowledge_base_context, enhance_prompt_with_context
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# In-memory chat history storage (per session - resets on server restart)
+# For production, this should be stored in PostgreSQL
+_chat_history: Dict[str, List[dict]] = defaultdict(list)
 
 # Initialize vector store service (lazy loading) - kept for backward compatibility
 _vector_store_instance = None
@@ -94,6 +99,10 @@ async def chat_endpoint(request: ChatRequest):
         groq_used = False
         groq_error = str(e)
     
+    # Save messages to chat history
+    _chat_history[conversation_id].append({"role": "user", "content": request.message})
+    _chat_history[conversation_id].append({"role": "assistant", "content": response_text})
+    
     return {
         "response": response_text,
         "conversation_id": conversation_id,
@@ -107,18 +116,22 @@ async def chat_endpoint(request: ChatRequest):
 
 @router.get("/history/{conversation_id}")
 async def get_chat_history(conversation_id: str):
-    # Mock history
-    return {
-        "messages": [
-            {"role": "user", "content": "Previous message (Mock)"},
-            {"role": "assistant", "content": "Previous response (Mock)"}
-        ]
-    }
+    """Return actual chat history for conversation"""
+    messages = _chat_history.get(conversation_id, [])
+    
+    if not messages:
+        # Return empty list if no history found (don't return mock data)
+        return {"messages": [], "found": False}
+    
+    return {"messages": messages, "found": True}
 
 @router.delete("/history/{conversation_id}")
 async def delete_chat_history(conversation_id: str):
-    # Mock delete
-    return {"status": "deleted"}
+    """Delete chat history for conversation"""
+    if conversation_id in _chat_history:
+        del _chat_history[conversation_id]
+        return {"status": "deleted", "found": True}
+    return {"status": "deleted", "found": False}
 
 class KnowledgeRequest(BaseModel):
     text: str
