@@ -21,16 +21,13 @@ export async function sendLifeEvent({ userId, action, role = 'learner', note, co
     return;
   }
 
+  // Send flat payload format expected by /api/v1/karma/ (log_action endpoint)
   const payload = {
-    type: 'life_event',
-    data: {
-      user_id: userId,
-      action,
-      role,
-      ...(context ? { context } : {}),
-      ...(note ? { note } : {})
-    },
-    source: 'gurukul-frontend'
+    user_id: userId,
+    action,
+    role,
+    ...(context ? { context } : {}),
+    ...(note ? { note } : {})
   };
 
   try {
