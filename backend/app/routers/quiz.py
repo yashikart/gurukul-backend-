@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.config import settings
 from app.services.ems_sync import ems_sync
 from app.services.knowledge_base_helper import get_knowledge_base_context, enhance_prompt_with_context
+from app.utils.grade_helper import get_student_grade, get_grade_complexity_guidelines, get_grade_level_description
 from sqlalchemy.orm import Session
 import uuid
 from datetime import datetime
