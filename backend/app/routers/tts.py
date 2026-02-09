@@ -1,6 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
+import pyttsx3
+import io
+import tempfile
+import os
 
 router = APIRouter()
 
@@ -40,7 +44,7 @@ async def get_available_voices():
 @router.post("/speak")
 async def text_to_speech(request: TTSRequest):
     """
-    Convert text to speech and return audio file
+    Convert text to speech and return audio file (Google TTS)
     """
     try:
         from app.services.tts_core_functions import text_to_speech_stream
@@ -74,4 +78,83 @@ async def text_to_speech(request: TTSRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate speech: {str(e)}"
+        )
+
+@router.post("/vaani")
+async def vaani_text_to_speech(request: TTSRequest):
+    """
+    Convert text to speech using Vaani TTS (pyttsx3 - offline)
+    Fast, offline text-to-speech using system voices
+    """
+    try:
+        if not request.text or not request.text.strip():
+            raise HTTPException(status_code=400, detail="Text is required")
+        
+        if len(request.text) > 10000:
+            raise HTTPException(status_code=400, detail="Text too long (max 10000 characters)")
+        
+        print(f"[Vaani TTS] Request received - Text length: {len(request.text)}")
+        
+        # Initialize TTS engine
+        engine = pyttsx3.init()
+        
+        # Configure TTS settings for better quality
+        voices = engine.getProperty('voices')
+        if voices:
+            # Try to use a female voice if available
+            for voice in voices:
+                if 'female' in voice.name.lower() or 'zira' in voice.name.lower():
+                    engine.setProperty('voice', voice.id)
+                    break
+        
+        # Set speech rate (words per minute)
+        engine.setProperty('rate', 180)  # Slightly slower for clarity
+        
+        # Set volume (0.0 to 1.0)
+        engine.setProperty('volume', 0.9)
+        
+        # Create temporary file for audio generation
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+            temp_filepath = temp_file.name
+        
+        try:
+            # Generate audio file
+            engine.save_to_file(request.text, temp_filepath)
+            engine.runAndWait()
+            
+            # Read the generated audio file
+            if not os.path.exists(temp_filepath):
+                raise HTTPException(status_code=500, detail="Audio generation failed - file not created")
+            
+            with open(temp_filepath, 'rb') as audio_file:
+                audio_data = audio_file.read()
+            
+            # Check if audio was generated
+            if len(audio_data) == 0:
+                raise HTTPException(status_code=500, detail="Audio generation failed - empty file")
+            
+            print(f"[Vaani TTS] Generated successfully ({len(audio_data)} bytes)")
+            
+            # Return audio file
+            return Response(
+                content=audio_data,
+                media_type="audio/wav",
+                headers={
+                    "Content-Disposition": "attachment; filename=vaani_speech.wav"
+                }
+            )
+        
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_filepath):
+                try:
+                    os.remove(temp_filepath)
+                except Exception as cleanup_error:
+                    print(f"[Vaani TTS] Warning: Failed to cleanup temp file: {cleanup_error}")
+    
+    except Exception as e:
+        print(f"[Vaani TTS] Error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate speech with Vaani TTS: {str(e)}"
         )

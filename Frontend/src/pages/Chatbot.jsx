@@ -436,28 +436,23 @@ const Chatbot = () => {
                 audioUrl = URL.createObjectURL(audioBlob);
 
             } else if (ttsProvider === 'local') {
-                // Local TTS Service
-                const formData = new FormData();
-                formData.append('text', cleanedText);
-
-                const response = await fetch('http://localhost:8007/api/generate', {
+                // Vaani TTS - Backend endpoint (no separate service needed)
+                const response = await fetch(`${API_BASE_URL}/api/v1/tts/vaani`, {
                     method: 'POST',
-                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: cleanedText,
+                        language: 'en'  // Vaani TTS only supports English
+                    }),
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to generate speech with Vaani TTS. Make sure TTS service is running on port 8007.');
+                    throw new Error('Failed to generate speech with Vaani TTS');
                 }
 
-                const data = await response.json();
-
-                // Fetch the generated audio file
-                const audioResponse = await fetch(`http://localhost:8007${data.audio_url}`);
-                if (!audioResponse.ok) {
-                    throw new Error('Failed to fetch generated audio file');
-                }
-
-                const audioBlob = await audioResponse.blob();
+                const audioBlob = await response.blob();
                 audioUrl = URL.createObjectURL(audioBlob);
             }
 
