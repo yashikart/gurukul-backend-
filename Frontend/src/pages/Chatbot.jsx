@@ -45,8 +45,11 @@ const Chatbot = () => {
 
     // TTS State
     const [isTTSLoading, setIsTTSLoading] = React.useState(false);
-    const [ttsLanguage, setTTSLanguage] = React.useState(() => 
+    const [ttsLanguage, setTTSLanguage] = React.useState(() =>
         localStorage.getItem('chatbot_tts_language') || 'en'
+    );
+    const [ttsProvider, setTTSProvider] = React.useState(() =>
+        localStorage.getItem('chatbot_tts_provider') || 'google'
     );
     const [playingAudioIndex, setPlayingAudioIndex] = React.useState(null);
     const [currentAudio, setCurrentAudio] = React.useState(null);
@@ -75,6 +78,10 @@ const Chatbot = () => {
     React.useEffect(() => {
         localStorage.setItem('chatbot_tts_language', ttsLanguage);
     }, [ttsLanguage]);
+
+    React.useEffect(() => {
+        localStorage.setItem('chatbot_tts_provider', ttsProvider);
+    }, [ttsProvider]);
 
     // Initial Load of History
     React.useEffect(() => {
@@ -204,7 +211,7 @@ const Chatbot = () => {
             setCurrentAudio(null);
             setPlayingAudioIndex(null);
         }
-        
+
         setChatHistory([
             {
                 role: 'assistant',
@@ -335,7 +342,7 @@ const Chatbot = () => {
             setCurrentAudio(null);
             setPlayingAudioIndex(null);
         }
-        
+
         setChatHistory([
             {
                 role: 'assistant',
@@ -355,7 +362,7 @@ const Chatbot = () => {
     // Remove markdown formatting from text for TTS
     const cleanTextForTTS = (text) => {
         if (!text) return '';
-        
+
         return text
             // Remove bold/italic markdown: **text** or *text* or __text__ or _text_
             .replace(/\*\*([^*]+)\*\*/g, '$1')  // **bold**
@@ -405,32 +412,62 @@ const Chatbot = () => {
 
         setIsTTSLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/tts/speak`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    text: cleanedText,
-                    language: ttsLanguage
-                }),
-            });
+            let audioUrl;
 
-            if (!response.ok) {
-                throw new Error('Failed to generate speech');
+            if (ttsProvider === 'google') {
+                // Google TTS - existing implementation
+                const response = await fetch(`${API_BASE_URL}/api/v1/tts/speak`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: cleanedText,
+                        language: ttsLanguage
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate speech with Google TTS');
+                }
+
+                // Get audio blob
+                const audioBlob = await response.blob();
+                audioUrl = URL.createObjectURL(audioBlob);
+
+            } else if (ttsProvider === 'local') {
+                // Local TTS Service
+                const formData = new FormData();
+                formData.append('text', cleanedText);
+
+                const response = await fetch('http://localhost:8007/api/generate', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate speech with Local TTS. Make sure TTS service is running on port 8007.');
+                }
+
+                const data = await response.json();
+
+                // Fetch the generated audio file
+                const audioResponse = await fetch(`http://localhost:8007${data.audio_url}`);
+                if (!audioResponse.ok) {
+                    throw new Error('Failed to fetch generated audio file');
+                }
+
+                const audioBlob = await audioResponse.blob();
+                audioUrl = URL.createObjectURL(audioBlob);
             }
 
-            // Get audio blob
-            const audioBlob = await response.blob();
-            const audioUrl = URL.createObjectURL(audioBlob);
-            
             // Create audio element and play
             const audio = new Audio(audioUrl);
             setCurrentAudio(audio);
             setPlayingAudioIndex(messageIndex);
-            
+
             audio.play();
-            
+
             // Clean up when playback ends
             audio.onended = () => {
                 URL.revokeObjectURL(audioUrl);
@@ -447,12 +484,13 @@ const Chatbot = () => {
             };
         } catch (err) {
             console.error('TTS Error:', err);
-            error('Failed to generate speech. Please try again.', 'TTS Error');
+            error(err.message || 'Failed to generate speech. Please try again.', 'TTS Error');
             setCurrentAudio(null);
             setPlayingAudioIndex(null);
         } finally {
             setIsTTSLoading(false);
         }
+
     };
 
     // Simplified Markdown Renderer
@@ -517,6 +555,16 @@ const Chatbot = () => {
                                 <option value="ko">🇰🇷 Korean</option>
                                 <option value="hi">🇮🇳 Hindi</option>
                                 <option value="ar">🇸🇦 Arabic</option>
+                            </select>
+                            {/* TTS Provider Selector */}
+                            <select
+                                value={ttsProvider}
+                                onChange={(e) => setTTSProvider(e.target.value)}
+                                className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300 hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
+                                title="Select TTS provider (Google: natural voices, Local: offline)"
+                            >
+                                <option value="google">🌐 Google TTS</option>
+                                <option value="local">💻 Local TTS</option>
                             </select>
                         </div>
                         <div className="flex items-center gap-3">
@@ -592,11 +640,10 @@ const Chatbot = () => {
                                                     <button
                                                         onClick={() => handleTTS(msg.content, index)}
                                                         disabled={isTTSLoading && playingAudioIndex !== index}
-                                                        className={`absolute top-2 right-2 p-1.5 transition-colors rounded-lg hover:bg-white/10 ${
-                                                            playingAudioIndex === index 
-                                                                ? 'text-accent' 
-                                                                : 'text-gray-600 hover:text-gray-400'
-                                                        } ${isTTSLoading && playingAudioIndex !== index ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        className={`absolute top-2 right-2 p-1.5 transition-colors rounded-lg hover:bg-white/10 ${playingAudioIndex === index
+                                                            ? 'text-accent'
+                                                            : 'text-gray-600 hover:text-gray-400'
+                                                            } ${isTTSLoading && playingAudioIndex !== index ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         title={playingAudioIndex === index ? "Stop audio" : "Convert this message to speech"}
                                                     >
                                                         <FaVolumeUp className="text-sm" />
