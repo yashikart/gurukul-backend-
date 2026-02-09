@@ -446,7 +446,7 @@ const Chatbot = () => {
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to generate speech with Local TTS. Make sure TTS service is running on port 8007.');
+                    throw new Error('Failed to generate speech with Vaani TTS. Make sure TTS service is running on port 8007.');
                 }
 
                 const data = await response.json();
@@ -561,10 +561,10 @@ const Chatbot = () => {
                                 value={ttsProvider}
                                 onChange={(e) => setTTSProvider(e.target.value)}
                                 className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300 hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
-                                title="Select TTS provider (Google: natural voices, Local: offline)"
+                                title="Select TTS provider (Google: natural voices, Vaani: offline)"
                             >
                                 <option value="google">🌐 Google TTS</option>
-                                <option value="local">💻 Local TTS</option>
+                                <option value="local">🎙️ Vaani TTS</option>
                             </select>
                         </div>
                         <div className="flex items-center gap-3">
