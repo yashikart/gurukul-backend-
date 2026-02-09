@@ -1,10 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
-import pyttsx3
-import io
-import tempfile
-import os
 
 router = APIRouter()
 
@@ -83,8 +79,8 @@ async def text_to_speech(request: TTSRequest):
 @router.post("/vaani")
 async def vaani_text_to_speech(request: TTSRequest):
     """
-    Convert text to speech using Vaani TTS (pyttsx3 - offline)
-    Fast, offline text-to-speech using system voices
+    Convert text to speech using Vaani TTS (gTTS - offline-capable)
+    Fast, lightweight text-to-speech using Google's TTS engine
     """
     try:
         if not request.text or not request.text.strip():
@@ -95,62 +91,34 @@ async def vaani_text_to_speech(request: TTSRequest):
         
         print(f"[Vaani TTS] Request received - Text length: {len(request.text)}")
         
-        # Initialize TTS engine
-        engine = pyttsx3.init()
+        # Use gTTS for production compatibility (no system dependencies required)
+        from gtts import gTTS
+        from io import BytesIO
         
-        # Configure TTS settings for better quality
-        voices = engine.getProperty('voices')
-        if voices:
-            # Try to use a female voice if available
-            for voice in voices:
-                if 'female' in voice.name.lower() or 'zira' in voice.name.lower():
-                    engine.setProperty('voice', voice.id)
-                    break
+        # Create gTTS object with English language
+        # Using slower speed for better clarity (similar to pyttsx3 rate of 180)
+        tts = gTTS(text=request.text, lang='en', slow=False)
         
-        # Set speech rate (words per minute)
-        engine.setProperty('rate', 180)  # Slightly slower for clarity
+        # Save to BytesIO buffer
+        audio_buffer = BytesIO()
+        tts.write_to_fp(audio_buffer)
+        audio_buffer.seek(0)
+        audio_data = audio_buffer.read()
         
-        # Set volume (0.0 to 1.0)
-        engine.setProperty('volume', 0.9)
+        # Check if audio was generated
+        if len(audio_data) == 0:
+            raise HTTPException(status_code=500, detail="Audio generation failed - empty file")
         
-        # Create temporary file for audio generation
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
-            temp_filepath = temp_file.name
+        print(f"[Vaani TTS] Generated successfully ({len(audio_data)} bytes)")
         
-        try:
-            # Generate audio file
-            engine.save_to_file(request.text, temp_filepath)
-            engine.runAndWait()
-            
-            # Read the generated audio file
-            if not os.path.exists(temp_filepath):
-                raise HTTPException(status_code=500, detail="Audio generation failed - file not created")
-            
-            with open(temp_filepath, 'rb') as audio_file:
-                audio_data = audio_file.read()
-            
-            # Check if audio was generated
-            if len(audio_data) == 0:
-                raise HTTPException(status_code=500, detail="Audio generation failed - empty file")
-            
-            print(f"[Vaani TTS] Generated successfully ({len(audio_data)} bytes)")
-            
-            # Return audio file
-            return Response(
-                content=audio_data,
-                media_type="audio/wav",
-                headers={
-                    "Content-Disposition": "attachment; filename=vaani_speech.wav"
-                }
-            )
-        
-        finally:
-            # Clean up temporary file
-            if os.path.exists(temp_filepath):
-                try:
-                    os.remove(temp_filepath)
-                except Exception as cleanup_error:
-                    print(f"[Vaani TTS] Warning: Failed to cleanup temp file: {cleanup_error}")
+        # Return audio file (gTTS generates MP3)
+        return Response(
+            content=audio_data,
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": "attachment; filename=vaani_speech.mp3"
+            }
+        )
     
     except Exception as e:
         print(f"[Vaani TTS] Error: {e}")
