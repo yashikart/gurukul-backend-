@@ -13,7 +13,7 @@ const LearningFlow = ({ currentStep = null }) => {
     const steps = [
         {
             id: 'enter',
-            label: 'Enter',
+            label: 'Subject Explorer',
             description: 'Choose your subject and topic',
             icon: FaBookOpen,
             path: '/subjects',

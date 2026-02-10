@@ -327,9 +327,19 @@ const Flashcards = () => {
                                 </div>
 
                                 {/* Pending Reviews */}
-                                <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/30">
+                                <div
+                                    onClick={() => {
+                                        loadPendingReviews();
+                                        loadStats();
+                                        setReviewedCount(0);
+                                    }}
+                                    className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/30 cursor-pointer hover:bg-orange-500/20 transition-all group"
+                                >
                                     <div className="flex justify-between items-center">
-                                        <span className="text-orange-300 text-sm">Pending Reviews</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-orange-300 text-sm">Pending Reviews</span>
+                                            <span className="text-[10px] text-orange-400/60 group-hover:text-orange-400/80">Click to refresh</span>
+                                        </div>
                                         <span className="text-2xl font-bold text-orange-400">{stats.pending_reviews || 0}</span>
                                     </div>
                                 </div>

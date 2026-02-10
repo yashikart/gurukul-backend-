@@ -69,18 +69,34 @@ async def chat_endpoint(
             context=kb_result["context"],
             include_context_instruction=True
         )
-        user_message = request.message
         logger.info(f"Using Knowledge Base + Groq: {len(kb_result['context'])} chars context")
     else:
         # Fallback: Use Groq only (KB failed or disabled)
         system_message = base_system_message
-        user_message = request.message
         if kb_result["error"]:
             logger.warning(f"Knowledge Base unavailable, using Groq only: {kb_result['error']}")
         else:
             logger.info("Knowledge Base disabled or empty, using Groq only")
     
-    # Step 3: Always call Groq (with or without context)
+    # Step 3: Build message history for context
+    # Retrieve previous messages from this conversation
+    previous_messages = _chat_history.get(user_conversation_key, [])
+    
+    # Build messages array with conversation history
+    messages = [{"role": "system", "content": system_message}]
+    
+    # Add previous conversation history (limit to last 10 messages to avoid token limits)
+    max_history = 10
+    if len(previous_messages) > max_history:
+        # Keep the most recent messages
+        messages.extend(previous_messages[-max_history:])
+    else:
+        messages.extend(previous_messages)
+    
+    # Add current user message
+    messages.append({"role": "user", "content": request.message})
+    
+    # Step 4: Call Groq with conversation history
     try:
         from groq import Groq
         
@@ -88,10 +104,7 @@ async def chat_endpoint(
         
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message}
-            ],
+            messages=messages,
             temperature=0.7,
             max_tokens=1024,
             top_p=1,
@@ -121,7 +134,8 @@ async def chat_endpoint(
         "context_length": len(kb_result["context"]) if kb_result["context"] else 0,
         "fallback_used": not kb_result["knowledge_base_used"] and request.use_rag,
         "kb_error": kb_result["error"] if not kb_result["knowledge_base_used"] else None,
-        "groq_error": groq_error
+        "groq_error": groq_error,
+        "history_messages_used": len(previous_messages)
     }
 
 @router.get("/history/{conversation_id}")

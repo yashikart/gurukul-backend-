@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { SkeletonBox } from '../components/LoadingSkeleton';
 
 import { containsProfanity } from '../utils/profanityDetector';
-import { apiPost, apiGet, handleApiError } from '../utils/apiClient';
+import { apiPost, apiGet, apiDelete, handleApiError } from '../utils/apiClient';
 import { sendLifeEvent } from '../utils/karmaTrackerClient';
 import API_BASE_URL from '../config';
 
@@ -38,10 +38,7 @@ const Chatbot = () => {
         return localStorage.getItem('chatbot_hasReceivedChatKarma') === 'true';
     });
 
-    // RAG / Knowledge State
-    const [knowledgeModalOpen, setKnowledgeModalOpen] = React.useState(false);
-    const [knowledgeText, setKnowledgeText] = React.useState("");
-    const [knowledgeLoading, setKnowledgeLoading] = React.useState(false);
+
 
     // TTS State
     const [isTTSLoading, setIsTTSLoading] = React.useState(false);
@@ -274,11 +271,7 @@ const Chatbot = () => {
         }
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/chat/history/${conversationId}`, { method: 'DELETE' });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete conversation');
-            }
+            await apiDelete(`/api/v1/chat/history/${conversationId}`);
 
             // Remove from local list
             const updated = savedChats.filter(c => c.id !== conversationId);
@@ -287,9 +280,11 @@ const Chatbot = () => {
 
             handleNewChat();
             setShowDeleteMenu(false);
-        } catch (error) {
-            console.error("Delete error:", error);
-            error("Failed to delete chat: " + error.message, "Error");
+            success("Chat deleted successfully", "Success");
+        } catch (err) {
+            console.error("Delete error:", err);
+            const errorInfo = handleApiError(err, { operation: 'delete chat' });
+            error(errorInfo.message, errorInfo.title);
             setShowDeleteMenu(false);
         }
     };
@@ -311,28 +306,7 @@ const Chatbot = () => {
         setShowDeleteMenu(false);
     };
 
-    const handleTeachAgent = async () => {
-        if (!knowledgeText.trim()) return;
-        setKnowledgeLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/chat/knowledge`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text: knowledgeText,
-                    metadata: { source: 'user_input', date: new Date().toISOString() }
-                })
-            });
-            if (!response.ok) throw new Error("Failed to add knowledge");
-            success("Success! I have learned this new information.", "Knowledge Added");
-            setKnowledgeText("");
-            setKnowledgeModalOpen(false);
-        } catch (error) {
-            error("Failed to teach agent: " + error.message, "Error");
-        } finally {
-            setKnowledgeLoading(false);
-        }
-    };
+
 
     const handleClearChat = () => {
         // Stop any playing audio
@@ -444,7 +418,7 @@ const Chatbot = () => {
                     },
                     body: JSON.stringify({
                         text: cleanedText,
-                        language: 'en'  // Vaani TTS only supports English
+                        language: ttsLanguage  // Use selected language
                     }),
                 });
 
@@ -563,12 +537,6 @@ const Chatbot = () => {
                             </select>
                         </div>
                         <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setKnowledgeModalOpen(true)}
-                                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-accent/10 hover:bg-accent/20 rounded-lg text-sm text-accent transition-colors border border-accent/20"
-                            >
-                                <span className="text-lg">🧠</span> <span className="hidden md:inline">Teach</span>
-                            </button>
                             <button
                                 onClick={handleNewChat}
                                 className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-gray-300 transition-colors border border-white/5"
@@ -754,38 +722,7 @@ const Chatbot = () => {
                     </div>
                 )}
 
-                {/* Teach Agent / Knowledge Modal */}
-                {knowledgeModalOpen && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                        <div className="bg-[#151515] w-full max-w-lg rounded-2xl border border-white/10 p-6 shadow-2xl animate-fade-in-up">
-                            <h2 className="text-2xl font-bold font-heading text-white mb-2">Teach Gurukul 🧠</h2>
-                            <p className="text-sm text-gray-400 mb-4">Add knowledge to the agent. It will remember this context and use it for future answers.</p>
 
-                            <textarea
-                                value={knowledgeText}
-                                onChange={(e) => setKnowledgeText(e.target.value)}
-                                placeholder="Paste text, notes, or knowledge here..."
-                                className="w-full h-40 bg-black/50 border border-white/10 rounded-xl p-4 text-gray-300 focus:border-accent/50 outline-none resize-none mb-4 custom-scrollbar"
-                            />
-
-                            <div className="flex justify-end gap-3">
-                                <button
-                                    onClick={() => setKnowledgeModalOpen(false)}
-                                    className="px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleTeachAgent}
-                                    disabled={knowledgeLoading || !knowledgeText.trim()}
-                                    className="px-6 py-2 bg-accent text-black font-semibold rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
-                                >
-                                    {knowledgeLoading ? 'Teaching...' : 'Add Knowledge'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
             </main>
         </div>

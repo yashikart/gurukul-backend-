@@ -7,6 +7,7 @@ import { useModal } from '../contexts/ModalContext';
 import { useAuth } from '../contexts/AuthContext';
 import { containsProfanity } from '../utils/profanityDetector';
 import { sendLifeEvent } from '../utils/karmaTrackerClient';
+import { apiPost } from '../utils/apiClient';
 import API_BASE_URL from '../config';
 
 const AGENTS = [
@@ -499,19 +500,12 @@ ${generatedSupport.overall_assessment}
 User Question: ${userMsg.content}`;
             }
 
-            const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: finalMessage,
-                    conversation_id: conversationId,
-                    provider: 'auto',
-                    use_rag: true
-                })
+            const data = await apiPost('/api/v1/chat', {
+                message: finalMessage,
+                conversation_id: conversationId,
+                provider: 'auto',
+                use_rag: true
             });
-
-            if (!response.ok) throw new Error("Chat failed");
-            const data = await response.json();
 
             // Store conversation_id for subsequent messages
             if (data.conversation_id) {
