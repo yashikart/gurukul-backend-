@@ -419,7 +419,7 @@ const AgentSimulator = () => {
             // Initialize conversation with backend by sending the lesson context
             // This ensures the AI remembers the lesson throughout the conversation
             try {
-                const contextMessage = `I have generated a comprehensive lesson on ${config.subject} - ${config.topic}. Here is the lesson content:\n\n${lessonContent.substring(0, 3000)}${lessonContent.length > 3000 ? '...' : ''}\n\nI'm ready to answer any questions about this lesson.`;
+                const contextMessage = `I have generated a comprehensive lesson on ${config.subject} - ${config.topic}. Here is the lesson content:\n\n${lessonContent}\n\nI'm ready to answer any questions about this lesson.`;
 
                 const chatData = await apiPost('/api/v1/chat', {
                     message: contextMessage,
@@ -578,7 +578,7 @@ const AgentSimulator = () => {
 
             // Initialize conversation with backend
             try {
-                const contextMessage = `I have analyzed the financial profile for ${financialConfig.name}. Monthly Income: ₹${financialConfig.monthly_income}, Monthly Savings: ₹${data.monthly_savings}, Financial Goal: ${financialConfig.financial_goal}. Here is my financial advice:\n\n${data.financial_advice.substring(0, 2500)}${data.financial_advice.length > 2500 ? '...' : ''}\n\nI'm ready to answer questions about this advice.`;
+                const contextMessage = `I have analyzed the financial profile for ${financialConfig.name}. Monthly Income: ₹${financialConfig.monthly_income}, Monthly Savings: ₹${data.monthly_savings}, Financial Goal: ${financialConfig.financial_goal}. Here is my financial advice:\n\n${data.financial_advice}\n\nI'm ready to answer questions about this advice.`;
 
                 const chatData = await apiPost('/api/v1/chat', {
                     message: contextMessage,
@@ -636,7 +636,7 @@ const AgentSimulator = () => {
 
             // Initialize conversation with backend
             try {
-                const contextMessage = `I have prepared personalized wellness support based on these scores: Emotional Wellness: ${wellnessConfig.emotional_wellness_score}/10, Financial Wellness: ${wellnessConfig.financial_wellness_score}/10, Current Mood: ${wellnessConfig.current_mood_score}/10, Stress Level: ${wellnessConfig.stress_level}/10. Overall Assessment:\n\n${data.overall_assessment.substring(0, 2000)}${data.overall_assessment.length > 2000 ? '...' : ''}\n\nI'm here to support you with any questions.`;
+                const contextMessage = `I have prepared personalized wellness support based on these scores: Emotional Wellness: ${wellnessConfig.emotional_wellness_score}/10, Financial Wellness: ${wellnessConfig.financial_wellness_score}/10, Current Mood: ${wellnessConfig.current_mood_score}/10, Stress Level: ${wellnessConfig.stress_level}/10. Overall Assessment:\n\n${data.overall_assessment}\n\nI'm here to support you with any questions.`;
 
                 const chatData = await apiPost('/api/v1/chat', {
                     message: contextMessage,
