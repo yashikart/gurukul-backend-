@@ -412,15 +412,43 @@ const AgentSimulator = () => {
             if (!response.ok) throw new Error('Generation failed');
 
             const data = await response.json();
-            setGeneratedLesson(data.lesson_content);
+            const lessonContent = data.lesson_content;
+            setGeneratedLesson(lessonContent);
             setLastGenConfig({ ...config }); // Store the config we just used
-            setIsChatEnabled(true);
 
-            // Add system message to chat history to show start
-            setChatHistory([{
-                role: 'assistant',
-                content: `✅ I have generated a lesson on **${config.topic}**. Using this as context, what questions do you have?`
-            }]);
+            // Initialize conversation with backend by sending the lesson context
+            // This ensures the AI remembers the lesson throughout the conversation
+            try {
+                const contextMessage = `I have generated a comprehensive lesson on ${config.subject} - ${config.topic}. Here is the lesson content:\n\n${lessonContent.substring(0, 3000)}${lessonContent.length > 3000 ? '...' : ''}\n\nI'm ready to answer any questions about this lesson.`;
+
+                const chatData = await apiPost('/api/v1/chat', {
+                    message: contextMessage,
+                    conversation_id: null,
+                    provider: 'auto',
+                    use_rag: true
+                });
+
+                // Store the conversation ID
+                if (chatData.conversation_id) {
+                    setConversationId(chatData.conversation_id);
+                }
+
+                // Show user-friendly message in chat
+                setChatHistory([{
+                    role: 'assistant',
+                    content: `✅ I have generated a lesson on **${config.topic}**. Using this as context, what questions do you have?`
+                }]);
+
+                setIsChatEnabled(true);
+            } catch (chatError) {
+                console.error('Failed to initialize conversation:', chatError);
+                // Fallback: still enable chat even if context initialization fails
+                setChatHistory([{
+                    role: 'assistant',
+                    content: `✅ I have generated a lesson on **${config.topic}**. Using this as context, what questions do you have?`
+                }]);
+                setIsChatEnabled(true);
+            }
 
         } catch (error) {
             console.error(error);
@@ -464,44 +492,8 @@ const AgentSimulator = () => {
         }
 
         try {
-            let finalMessage = userMsg.content;
-
-            if (generatedLesson && !conversationId) {
-                finalMessage = `Context: The user has just generated the following lesson on ${config.subject} - ${config.topic}. Please answer their following question based on this context:\n\n${generatedLesson.substring(0, 2000)}...\n\nUser Question: ${userMsg.content}`;
-            }
-
-            // FinancialCrew context injection
-            if (generatedAdvice && !conversationId) {
-                finalMessage = `Context: The user has received financial advice based on their profile:
-- Name: ${financialConfig.name}
-- Monthly Income: ₹${financialConfig.monthly_income}
-- Monthly Savings: ₹${generatedAdvice.monthly_savings}
-- Financial Goal: ${financialConfig.financial_goal}
-- Risk Level: ${financialConfig.risk_level}
-
-Financial Advice Summary:
-${generatedAdvice.financial_advice.substring(0, 1500)}...
-
-User Question: ${userMsg.content}`;
-            }
-
-            // WellnessBot context injection
-            if (generatedSupport && !conversationId) {
-                finalMessage = `Context: The user has received wellness support based on their scores:
-- Emotional Wellness: ${wellnessConfig.emotional_wellness_score}/10
-- Financial Wellness: ${wellnessConfig.financial_wellness_score}/10
-- Current Mood: ${wellnessConfig.current_mood_score}/10
-- Stress Level: ${wellnessConfig.stress_level}/10
-- Concerns: ${wellnessConfig.concerns || 'None'}
-
-Overall Assessment:
-${generatedSupport.overall_assessment}
-
-User Question: ${userMsg.content}`;
-            }
-
             const data = await apiPost('/api/v1/chat', {
-                message: finalMessage,
+                message: userMsg.content,
                 conversation_id: conversationId,
                 provider: 'auto',
                 use_rag: true
@@ -583,12 +575,36 @@ User Question: ${userMsg.content}`;
             const data = await response.json();
             setGeneratedAdvice(data);
             setLastFinancialConfig({ ...financialConfig });
-            setIsChatEnabled(true);
 
-            setChatHistory([{
-                role: 'assistant',
-                content: `✅ I've analyzed your financial profile for **${financialConfig.name}**. What questions do you have about the advice?`
-            }]);
+            // Initialize conversation with backend
+            try {
+                const contextMessage = `I have analyzed the financial profile for ${financialConfig.name}. Monthly Income: ₹${financialConfig.monthly_income}, Monthly Savings: ₹${data.monthly_savings}, Financial Goal: ${financialConfig.financial_goal}. Here is my financial advice:\n\n${data.financial_advice.substring(0, 2500)}${data.financial_advice.length > 2500 ? '...' : ''}\n\nI'm ready to answer questions about this advice.`;
+
+                const chatData = await apiPost('/api/v1/chat', {
+                    message: contextMessage,
+                    conversation_id: null,
+                    provider: 'auto',
+                    use_rag: true
+                });
+
+                if (chatData.conversation_id) {
+                    setConversationId(chatData.conversation_id);
+                }
+
+                setChatHistory([{
+                    role: 'assistant',
+                    content: `✅ I've analyzed your financial profile for **${financialConfig.name}**. What questions do you have about the advice?`
+                }]);
+
+                setIsChatEnabled(true);
+            } catch (chatError) {
+                console.error('Failed to initialize conversation:', chatError);
+                setChatHistory([{
+                    role: 'assistant',
+                    content: `✅ I've analyzed your financial profile for **${financialConfig.name}**. What questions do you have about the advice?`
+                }]);
+                setIsChatEnabled(true);
+            }
 
         } catch (error) {
             console.error(error);
@@ -617,12 +633,36 @@ User Question: ${userMsg.content}`;
             const data = await response.json();
             setGeneratedSupport(data);
             setLastWellnessConfig({ ...wellnessConfig });
-            setIsChatEnabled(true);
 
-            setChatHistory([{
-                role: 'assistant',
-                content: `✨ I've prepared personalized wellness support for you. How can I help you further?`
-            }]);
+            // Initialize conversation with backend
+            try {
+                const contextMessage = `I have prepared personalized wellness support based on these scores: Emotional Wellness: ${wellnessConfig.emotional_wellness_score}/10, Financial Wellness: ${wellnessConfig.financial_wellness_score}/10, Current Mood: ${wellnessConfig.current_mood_score}/10, Stress Level: ${wellnessConfig.stress_level}/10. Overall Assessment:\n\n${data.overall_assessment.substring(0, 2000)}${data.overall_assessment.length > 2000 ? '...' : ''}\n\nI'm here to support you with any questions.`;
+
+                const chatData = await apiPost('/api/v1/chat', {
+                    message: contextMessage,
+                    conversation_id: null,
+                    provider: 'auto',
+                    use_rag: true
+                });
+
+                if (chatData.conversation_id) {
+                    setConversationId(chatData.conversation_id);
+                }
+
+                setChatHistory([{
+                    role: 'assistant',
+                    content: `✨ I've prepared personalized wellness support for you. How can I help you further?`
+                }]);
+
+                setIsChatEnabled(true);
+            } catch (chatError) {
+                console.error('Failed to initialize conversation:', chatError);
+                setChatHistory([{
+                    role: 'assistant',
+                    content: `✨ I've prepared personalized wellness support for you. How can I help you further?`
+                }]);
+                setIsChatEnabled(true);
+            }
 
         } catch (error) {
             console.error(error);
