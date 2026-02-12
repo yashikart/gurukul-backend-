@@ -47,8 +47,10 @@
         }
       } catch (error) {
         // Suppress Google Translate initialization errors
-        if (!error.message || (!error.message.includes('insertBefore') && !error.message.includes('Node.insertBefore'))) {
-          console.error('Error initializing Google Translate:', error);
+        if (process.env.NODE_ENV === 'development') {
+          if (!error.message || (!error.message.includes('insertBefore') && !error.message.includes('Node.insertBefore'))) {
+            console.error('Error initializing Google Translate:', error);
+          }
         }
       }
     };
@@ -56,6 +58,7 @@
     // Hide only the Google Translate top bar ("Translated into X" / "Show original"), not the dropdown
     function hideTranslateBanner() {
       try {
+        // Hide banner iframe
         var frames = document.querySelectorAll('iframe.goog-te-banner-frame');
         for (var i = 0; i < frames.length; i++) {
           var f = frames[i];
@@ -66,13 +69,33 @@
           f.style.setProperty('position', 'absolute', 'important');
           f.style.setProperty('left', '-9999px', 'important');
         }
-      } catch (e) {}
+        // Also hide any banner divs
+        var banners = document.querySelectorAll('.goog-te-banner-frame, .skiptranslate');
+        for (var j = 0; j < banners.length; j++) {
+          var b = banners[j];
+          if (b.tagName === 'IFRAME' || b.classList.contains('goog-te-banner-frame')) {
+            b.style.setProperty('display', 'none', 'important');
+            b.style.setProperty('visibility', 'hidden', 'important');
+            b.style.setProperty('height', '0', 'important');
+          }
+        }
+      } catch (e) {
+        // Silent fail - Google Translate may not be loaded yet
+      }
     }
+    
+    var bannerInterval;
+    var mouseupTimeout;
+    
     document.addEventListener('DOMContentLoaded', function() {
       hideTranslateBanner();
-      setInterval(hideTranslateBanner, 500);
+      // Use setInterval with cleanup tracking
+      bannerInterval = setInterval(hideTranslateBanner, 500);
+      
       document.addEventListener('mouseup', function(e) {
-        setTimeout(function() {
+        // Clear previous timeout
+        if (mouseupTimeout) clearTimeout(mouseupTimeout);
+        mouseupTimeout = setTimeout(function() {
           try {
             var tooltip = document.querySelector('.goog-tooltip');
             if (tooltip) {
@@ -81,9 +104,17 @@
               tooltip.style.setProperty('opacity', '0', 'important');
             }
             hideTranslateBanner();
-          } catch (e) {}
+          } catch (e) {
+            // Silent fail
+          }
         }, 10);
       }, true);
+    });
+    
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+      if (bannerInterval) clearInterval(bannerInterval);
+      if (mouseupTimeout) clearTimeout(mouseupTimeout);
     });
   </script>
   <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" defer></script>

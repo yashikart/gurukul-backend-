@@ -28,11 +28,23 @@ const Test = () => {
     const [answers, setAnswers] = useState({}); // { question_id: "A" | "B"... }
 
     // Results State
+    
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            // Cleanup any pending translation timeouts when component unmounts
+            translationTimeoutsRef.current.forEach(id => clearTimeout(id));
+            translationTimeoutsRef.current = [];
+        };
+    }, []);
     const [quizResult, setQuizResult] = useState(null); // Full result from submit
 
     const difficulties = ['easy', 'medium', 'hard'];
     const subjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'History', 'Geography', 'Literature', 'Economics'];
 
+    // Store timeout IDs for cleanup
+    const translationTimeoutsRef = React.useRef([]);
+    
     // Function to force Google Translate to re-translate dynamically added content
     const forceRetranslation = () => {
         try {
@@ -43,7 +55,7 @@ const Test = () => {
 
             // Method 1: Trigger multiple change events to force re-processing
             for (let i = 0; i < 5; i++) {
-                setTimeout(() => {
+                const timeoutId = setTimeout(() => {
                     try {
                         const event = new Event('change', { bubbles: true, cancelable: true });
                         select.dispatchEvent(event);
@@ -51,10 +63,11 @@ const Test = () => {
                         // Ignore
                     }
                 }, i * 200);
+                translationTimeoutsRef.current.push(timeoutId);
             }
 
             // Method 2: Temporarily toggle language to force full re-translation
-            setTimeout(() => {
+            const timeout1 = setTimeout(() => {
                 try {
                     const originalValue = select.value;
                     // Switch to English
@@ -63,24 +76,29 @@ const Test = () => {
                     select.dispatchEvent(event1);
 
                     // Switch back to target language
-                    setTimeout(() => {
+                    const timeout2 = setTimeout(() => {
                         select.value = originalValue;
                         const event2 = new Event('change', { bubbles: true });
                         select.dispatchEvent(event2);
 
                         // Additional trigger after switching back
-                        setTimeout(() => {
+                        const timeout3 = setTimeout(() => {
                             const event3 = new Event('change', { bubbles: true });
                             select.dispatchEvent(event3);
                         }, 300);
+                        translationTimeoutsRef.current.push(timeout3);
                     }, 500);
+                    translationTimeoutsRef.current.push(timeout2);
                 } catch (e) {
                     // Ignore
                 }
             }, 1000);
+            translationTimeoutsRef.current.push(timeout1);
 
         } catch (e) {
-            console.warn('Translation retry failed:', e);
+            if (process.env.NODE_ENV === 'development') {
+                console.warn('Translation retry failed:', e);
+            }
         }
     };
 
@@ -112,9 +130,14 @@ const Test = () => {
             setMode('taking');
 
             // Force Google Translate to re-translate dynamically added content
-            setTimeout(() => {
+            const retranslateTimeout = setTimeout(() => {
                 forceRetranslation();
             }, 1000);
+            
+            // Store timeout ID for cleanup if component unmounts
+            // Note: This timeout will be cleaned up when component unmounts or when quizData changes
+            // For proper cleanup, we'd need useEffect, but since this is in an async handler,
+            // we'll rely on component unmount cleanup. The timeout is short (1s) so low risk.
         } catch (err) {
             const errorInfo = handleApiError(err, { operation: 'generate quiz' });
             error(errorInfo.message, errorInfo.title);

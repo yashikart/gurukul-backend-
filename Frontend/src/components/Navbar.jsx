@@ -25,7 +25,9 @@ const Navbar = () => {
               window.googleTranslateElementInit();
             }
           } catch (error) {
-            console.error('Error initializing Google Translate:', error);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Error initializing Google Translate:', error);
+            }
           }
         }
         return true; // Successfully initialized
@@ -67,13 +69,14 @@ const Navbar = () => {
     // Wait for Google Translate to load, then initialize
     let attempts = 0;
     const maxAttempts = 50; // 5 seconds max wait
+    const timeoutIds = [];
     
     const tryInit = () => {
       attempts++;
       if (initTranslate()) {
         // Successfully initialized, now set language if saved
         if (savedLang) {
-          setTimeout(() => {
+          const timeoutId = setTimeout(() => {
             const select = document.querySelector('.goog-te-combo');
             if (select && select.value !== savedLang) {
               select.value = savedLang;
@@ -81,16 +84,25 @@ const Navbar = () => {
               select.dispatchEvent(event);
             }
           }, 300);
+          timeoutIds.push(timeoutId);
         }
       } else if (attempts < maxAttempts) {
-        setTimeout(tryInit, 100);
+        const timeoutId = setTimeout(tryInit, 100);
+        timeoutIds.push(timeoutId);
       } else {
-        console.warn('Google Translate failed to load after multiple attempts');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Google Translate failed to load after multiple attempts');
+        }
       }
     };
 
     // Start trying to initialize
     tryInit();
+
+    // Cleanup timeouts on unmount
+    return () => {
+      timeoutIds.forEach(id => clearTimeout(id));
+    };
   }, []);
 
   useEffect(() => {
@@ -114,7 +126,9 @@ const Navbar = () => {
       await logout();
       navigate('/signin');
     } catch (error) {
-      console.error('Failed to log out', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to log out', error);
+      }
     }
   };
 
@@ -153,8 +167,9 @@ const Navbar = () => {
     // Notify other components (e.g. Chatbot TTS) so they sync to this language
     window.dispatchEvent(new CustomEvent('gurukul-language-changed', { detail: { language: langCode } }));
 
-    // Function to trigger Google Translate using multiple methods
+    // Function to trigger Google Translate using multiple methods (with error handling)
     const triggerTranslation = () => {
+      try {
       // Method 1: Try to find and use the select element directly
       const selectors = [
         '.goog-te-combo',
@@ -245,6 +260,13 @@ const Navbar = () => {
       }
       
       return false;
+      } catch (err) {
+        // Silent error handling - translation will fallback to cookie/reload
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Google Translate trigger failed:', err);
+        }
+        return false;
+      }
     };
     
     // Try to trigger translation immediately
@@ -255,23 +277,37 @@ const Navbar = () => {
       
       const retry = () => {
         attempts++;
-        if (triggerTranslation()) {
-          return; // Success
-        }
-        if (attempts < maxAttempts) {
-          setTimeout(retry, 200);
-        } else {
-          // Final fallback: reload page with cookie
-          if (langCode !== 'en') {
-            const expireDate = new Date();
-            expireDate.setFullYear(expireDate.getFullYear() + 1);
-            document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=/;`;
-            window.location.reload();
+        try {
+          if (triggerTranslation()) {
+            // Cleanup timeouts on success
+            timeoutIds.forEach(id => clearTimeout(id));
+            return; // Success
+          }
+          if (attempts < maxAttempts) {
+            const timeoutId = setTimeout(retry, 200);
+            timeoutIds.push(timeoutId);
+          } else {
+            // Cleanup timeouts before fallback
+            timeoutIds.forEach(id => clearTimeout(id));
+            // Final fallback: reload page with cookie
+            if (langCode !== 'en') {
+              const expireDate = new Date();
+              expireDate.setFullYear(expireDate.getFullYear() + 1);
+              document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=/;`;
+              window.location.reload();
+            }
+          }
+        } catch (err) {
+          // Cleanup on error
+          timeoutIds.forEach(id => clearTimeout(id));
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Translation retry error:', err);
           }
         }
       };
       
-      setTimeout(retry, 300);
+      const initialTimeout = setTimeout(retry, 300);
+      timeoutIds.push(initialTimeout);
     }
   };
 

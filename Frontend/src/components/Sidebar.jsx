@@ -139,8 +139,8 @@ const Sidebar = () => {
 
                     {/* Footer Actions */}
                     <div className="pt-3 border-t border-white/10 mt-2 space-y-2">
-                        {/* Settings */}
-                        <NavLink
+                        {/* Settings - Hidden for demo */}
+                        {/* <NavLink
                             to="/settings"
                             onClick={closeSidebar}
                             className={({ isActive }) => `
@@ -152,7 +152,7 @@ const Sidebar = () => {
                         >
                             <FaCog className="text-lg opacity-80 group-hover:opacity-100" />
                             <span className="text-sm font-medium tracking-wide">Settings</span>
-                        </NavLink>
+                        </NavLink> */}
 
                         {/* Mobile User Section */}
                         {user && (

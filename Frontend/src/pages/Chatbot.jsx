@@ -91,12 +91,36 @@ const Chatbot = () => {
     // Sync TTS language with website language when user changes language in dashboard (same tab or other tab)
     React.useEffect(() => {
         const onLanguageChanged = (e) => {
-            const code = e.detail?.language ?? e.newValue;
-            if (code) setTTSLanguage(websiteLangToTTS(code) || 'en');
+            try {
+                const code = e.detail?.language ?? e.newValue;
+                if (code) {
+                    const ttsCode = websiteLangToTTS(code);
+                    if (ttsCode) {
+                        setTTSLanguage(ttsCode);
+                    } else {
+                        setTTSLanguage('en'); // Fallback to English
+                    }
+                }
+            } catch (err) {
+                // Silent fallback on error
+                setTTSLanguage('en');
+            }
         };
-        const onCustom = (e) => onLanguageChanged({ detail: e.detail });
+        const onCustom = (e) => {
+            try {
+                onLanguageChanged({ detail: e.detail });
+            } catch (err) {
+                setTTSLanguage('en'); // Fallback
+            }
+        };
         const onStorage = (e) => {
-            if (e.key === 'selected_language' && e.newValue != null) onLanguageChanged({ newValue: e.newValue });
+            try {
+                if (e.key === 'selected_language' && e.newValue != null) {
+                    onLanguageChanged({ newValue: e.newValue });
+                }
+            } catch (err) {
+                setTTSLanguage('en'); // Fallback
+            }
         };
         window.addEventListener('gurukul-language-changed', onCustom);
         window.addEventListener('storage', onStorage);
@@ -192,6 +216,17 @@ const Chatbot = () => {
         setMessage('');
         setLoading(true);
 
+        // Timeout handling: Show error if loading takes too long (60s max)
+        const timeoutId = setTimeout(() => {
+            if (loading) {
+                setLoading(false);
+                setChatHistory(prev => [...prev, {
+                    role: 'assistant',
+                    content: "I apologize, but the request is taking longer than expected. Please try again."
+                }]);
+            }
+        }, 60000);
+
         // First chat message in this conversation → solving doubts (positive)
         if (!hasReceivedChatKarma && !conversationId) {
             setHasReceivedChatKarma(true);
@@ -213,6 +248,9 @@ const Chatbot = () => {
                 use_rag: true
             });
 
+            // Clear timeout on success
+            clearTimeout(timeoutId);
+
             if (data.conversation_id) {
                 setConversationId(data.conversation_id);
                 // If this is the start of a clean conversation, save it
@@ -224,6 +262,7 @@ const Chatbot = () => {
             const botMsg = { role: 'assistant', content: data.response };
             setChatHistory(prev => [...prev, botMsg]);
         } catch (err) {
+            clearTimeout(timeoutId); // Clear timeout on error
             const errorInfo = handleApiError(err, { operation: 'chat' });
             setChatHistory(prev => [...prev, {
                 role: 'assistant',
@@ -232,6 +271,7 @@ const Chatbot = () => {
                     : "I apologize, but I encountered an error. Please try again."
             }]);
         } finally {
+            clearTimeout(timeoutId); // Ensure timeout is cleared
             setLoading(false);
         }
     };
@@ -318,7 +358,9 @@ const Chatbot = () => {
             setShowDeleteMenu(false);
             success("Chat deleted successfully", "Success");
         } catch (err) {
-            console.error("Delete error:", err);
+            if (process.env.NODE_ENV === 'development') {
+                console.error("Delete error:", err);
+            }
             const errorInfo = handleApiError(err, { operation: 'delete chat' });
             error(errorInfo.message, errorInfo.title);
             setShowDeleteMenu(false);
@@ -421,21 +463,32 @@ const Chatbot = () => {
         const cleanedText = cleanTextForTTS(messageContent);
 
         setIsTTSLoading(true);
+        let timeoutId;
         try {
+            // Timeout handling: 30s max for TTS generation
+            const timeoutPromise = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    reject(new Error('TTS request timed out. Please try again.'));
+                }, 30000);
+            });
+
             let audioUrl;
 
             if (ttsProvider === 'google') {
                 // Google TTS - existing implementation
-                const response = await fetch(`${API_BASE_URL}/api/v1/tts/speak`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        text: cleanedText,
-                        language: ttsLanguage
+                const response = await Promise.race([
+                    fetch(`${API_BASE_URL}/api/v1/tts/speak`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            text: cleanedText,
+                            language: ttsLanguage
+                        }),
                     }),
-                });
+                    timeoutPromise
+                ]);
 
                 if (!response.ok) {
                     throw new Error('Failed to generate speech with Google TTS');
@@ -447,16 +500,19 @@ const Chatbot = () => {
 
             } else if (ttsProvider === 'local') {
                 // Vaani TTS - Backend endpoint (no separate service needed)
-                const response = await fetch(`${API_BASE_URL}/api/v1/tts/vaani`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        text: cleanedText,
-                        language: ttsLanguage  // Use selected language
+                const response = await Promise.race([
+                    fetch(`${API_BASE_URL}/api/v1/tts/vaani`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            text: cleanedText,
+                            language: ttsLanguage  // Use selected language
+                        }),
                     }),
-                });
+                    timeoutPromise
+                ]);
 
                 if (!response.ok) {
                     throw new Error('Failed to generate speech with Vaani TTS');
@@ -466,7 +522,12 @@ const Chatbot = () => {
                 audioUrl = URL.createObjectURL(audioBlob);
             }
 
+            clearTimeout(timeoutId);
+
             // Create audio element and play
+            if (!audioUrl) {
+                throw new Error('No audio URL generated');
+            }
             const audio = new Audio(audioUrl);
             setCurrentAudio(audio);
             setPlayingAudioIndex(messageIndex);
@@ -488,11 +549,15 @@ const Chatbot = () => {
                 error('Failed to play audio', 'TTS Error');
             };
         } catch (err) {
-            console.error('TTS Error:', err);
+            if (timeoutId) clearTimeout(timeoutId);
+            if (process.env.NODE_ENV === 'development') {
+                console.error('TTS Error:', err);
+            }
             error(err.message || 'Failed to generate speech. Please try again.', 'TTS Error');
             setCurrentAudio(null);
             setPlayingAudioIndex(null);
         } finally {
+            if (timeoutId) clearTimeout(timeoutId);
             setIsTTSLoading(false);
         }
 
