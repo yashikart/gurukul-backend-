@@ -76,11 +76,26 @@ async def text_to_speech(request: TTSRequest):
             detail=f"Failed to generate speech: {str(e)}"
         )
 
+def _gtts_lang_code(lang: str) -> str:
+    """Map frontend language code to gTTS lang code. gTTS uses ISO 639-1 (e.g. zh-cn, pt-br)."""
+    if not lang or not lang.strip():
+        return "en"
+    lang = lang.strip().lower()
+    # gTTS uses zh-cn / zh-tw for Chinese
+    if lang in ("zh", "zh-cn", "zh_cn"):
+        return "zh-cn"
+    if lang == "zh-tw":
+        return "zh-tw"
+    # Other codes (en, hi, ja, ko, ar, fr, es, etc.) are used as-is by gTTS
+    return lang if len(lang) >= 2 else "en"
+
+
 @router.post("/vaani")
 async def vaani_text_to_speech(request: TTSRequest):
     """
     Convert text to speech using Vaani TTS (gTTS - offline-capable)
-    Fast, lightweight text-to-speech using Google's TTS engine
+    Fast, lightweight text-to-speech using Google's TTS engine.
+    Supports multiple languages via request.language (e.g. en, hi, ja, zh, ar).
     """
     try:
         if not request.text or not request.text.strip():
@@ -89,15 +104,22 @@ async def vaani_text_to_speech(request: TTSRequest):
         if len(request.text) > 10000:
             raise HTTPException(status_code=400, detail="Text too long (max 10000 characters)")
         
-        print(f"[Vaani TTS] Request received - Text length: {len(request.text)}")
+        lang = _gtts_lang_code(request.language)
+        print(f"[Vaani TTS] Request received - Language: {request.language} -> gTTS {lang}, Text length: {len(request.text)}")
         
         # Use gTTS for production compatibility (no system dependencies required)
         from gtts import gTTS
         from io import BytesIO
         
-        # Create gTTS object with English language
-        # Using slower speed for better clarity (similar to pyttsx3 rate of 180)
-        tts = gTTS(text=request.text, lang='en', slow=False)
+        # Create gTTS object with requested language (fallback to en if unsupported)
+        try:
+            tts = gTTS(text=request.text, lang=lang, slow=False)
+        except Exception as e:
+            if lang != "en":
+                print(f"[Vaani TTS] Language {lang} not supported by gTTS ({e}), falling back to en")
+                tts = gTTS(text=request.text, lang="en", slow=False)
+            else:
+                raise
         
         # Save to BytesIO buffer
         audio_buffer = BytesIO()
@@ -109,7 +131,7 @@ async def vaani_text_to_speech(request: TTSRequest):
         if len(audio_data) == 0:
             raise HTTPException(status_code=500, detail="Audio generation failed - empty file")
         
-        print(f"[Vaani TTS] Generated successfully ({len(audio_data)} bytes)")
+        print(f"[Vaani TTS] Generated successfully ({len(audio_data)} bytes, lang={lang})")
         
         # Return audio file (gTTS generates MP3)
         return Response(
