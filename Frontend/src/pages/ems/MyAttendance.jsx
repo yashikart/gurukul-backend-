@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import emsApi from '../../services/emsApi';
 import { handleApiError } from '../../utils/apiClient';
+import Sidebar from '../../components/Sidebar';
 import { FaCheckCircle, FaTimesCircle, FaClock, FaSpinner, FaRedo, FaCalendarAlt } from 'react-icons/fa';
 import EMSAuthentication from '../../components/EMSAuthentication';
 
@@ -115,10 +116,13 @@ const MyAttendance = () => {
 
     if (loading && attendance.length === 0 && classes.length === 0) {
         return (
-            <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 justify-center items-center">
-                <div className="text-center">
-                    <FaSpinner className="animate-spin text-4xl text-orange-400 mx-auto mb-4" />
-                    <p className="text-gray-300 text-lg">Loading attendance...</p>
+            <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-20">
+                <Sidebar />
+                <div className="flex-grow flex justify-center items-center">
+                    <div className="text-center">
+                        <FaSpinner className="animate-spin text-4xl text-orange-400 mx-auto mb-4" />
+                        <p className="text-gray-300 text-lg">Loading attendance...</p>
+                    </div>
                 </div>
             </div>
         );
@@ -126,6 +130,8 @@ const MyAttendance = () => {
 
     return (
         <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-20">
+            <Sidebar />
+            <div className="flex-grow">
             <div className="w-full max-w-7xl mx-auto">
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
@@ -248,6 +254,7 @@ const MyAttendance = () => {
                         </div>
                     )}
                 </div>
+            </div>
             </div>
         </div>
     );

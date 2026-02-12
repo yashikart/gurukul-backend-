@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import emsApi from '../../services/emsApi';
 import { handleApiError } from '../../utils/apiClient';
+import Sidebar from '../../components/Sidebar';
 import { FaBookOpen, FaRedo, FaSpinner } from 'react-icons/fa';
 import EMSAuthentication from '../../components/EMSAuthentication';
 
@@ -61,10 +62,13 @@ const MyClasses = () => {
 
     if (loading) {
         return (
-            <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 justify-center items-center">
-                <div className="text-center">
-                    <FaSpinner className="animate-spin text-4xl text-orange-400 mx-auto mb-4" />
-                    <p className="text-gray-300 text-lg">Loading your classes...</p>
+            <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-20">
+                <Sidebar />
+                <div className="flex-grow flex justify-center items-center">
+                    <div className="text-center">
+                        <FaSpinner className="animate-spin text-4xl text-orange-400 mx-auto mb-4" />
+                        <p className="text-gray-300 text-lg">Loading your classes...</p>
+                    </div>
                 </div>
             </div>
         );
@@ -76,18 +80,21 @@ const MyClasses = () => {
 
     if (error && !classes.length) {
         return (
-            <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4">
-                <div className="w-full max-w-4xl mx-auto mt-8">
-                    <div className="glass-panel border border-red-500/30 bg-red-500/10 p-6 rounded-2xl">
-                        <p className="text-red-300 text-center mb-4">{error}</p>
-                        {emsToken && (
-                            <button
-                                onClick={handleRefresh}
-                                className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium"
-                            >
-                                Retry
-                            </button>
-                        )}
+            <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-20">
+                <Sidebar />
+                <div className="flex-grow flex justify-center items-start pt-8">
+                    <div className="w-full max-w-4xl mx-auto">
+                        <div className="glass-panel border border-red-500/30 bg-red-500/10 p-6 rounded-2xl">
+                            <p className="text-red-300 text-center mb-4">{error}</p>
+                            {emsToken && (
+                                <button
+                                    onClick={handleRefresh}
+                                    className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium"
+                                >
+                                    Retry
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -96,6 +103,8 @@ const MyClasses = () => {
 
     return (
         <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-20">
+            <Sidebar />
+            <div className="flex-grow">
             <div className="w-full max-w-7xl mx-auto">
                 <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
@@ -165,6 +174,7 @@ const MyClasses = () => {
                         ))}
                     </div>
                 )}
+            </div>
             </div>
         </div>
     );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import API_BASE_URL from '../config';
+import Sidebar from '../components/Sidebar';
 import { FaBookOpen, FaFlipboard, FaClipboardList, FaFileAlt, FaSpinner, FaFilter, FaSearch, FaSync } from 'react-icons/fa';
 import { handleApiError } from '../utils/apiClient';
 import { createLesson } from '../utils/contextManager';
@@ -208,10 +209,13 @@ const MyContent = () => {
 
     if (loading) {
         return (
-            <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 justify-center items-center">
-                <div className="text-center">
-                    <FaSpinner className="animate-spin text-4xl text-orange-400 mx-auto mb-4" />
-                    <p className="text-gray-300 text-lg">Loading your content...</p>
+            <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-20">
+                <Sidebar />
+                <div className="flex-grow flex justify-center items-center">
+                    <div className="text-center">
+                        <FaSpinner className="animate-spin text-4xl text-orange-400 mx-auto mb-4" />
+                        <p className="text-gray-300 text-lg">Loading your content...</p>
+                    </div>
                 </div>
             </div>
         );
@@ -219,6 +223,8 @@ const MyContent = () => {
 
     return (
         <div className="flex pt-20 sm:pt-24 min-h-screen container mx-auto px-2 sm:px-4 gap-3 sm:gap-6 pb-20">
+            <Sidebar />
+            <div className="flex-grow flex flex-col gap-3 sm:gap-6">
             <div className="w-full max-w-7xl mx-auto">
                 <div className="mb-6 sm:mb-8">
                     <div className="flex justify-between items-start mb-2">
@@ -325,6 +331,7 @@ const MyContent = () => {
                         ))}
                     </div>
                 )}
+            </div>
             </div>
         </div>
     );
