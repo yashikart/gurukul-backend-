@@ -38,19 +38,20 @@ const Sidebar = () => {
         { icon: FaClipboardList, label: "Test", path: "/test" },
         { icon: FaFlipboard, label: "Flashcards", path: "/flashcards" },
         { icon: FaFolder, label: "My Content", path: "/my-content" },
-        { icon: FaVideo, label: "Lectures", path: "/lectures" },
+        // { icon: FaVideo, label: "Lectures", path: "/lectures" }, // School stuff - commented out for now
         { icon: FaRobot, label: "Agent Simulator", path: "/agent-simulator" },
         { icon: FaUserAstronaut, label: "Avatar", path: "/avatar" },
     ];
 
-    // EMS-specific menu items for students
-    const emsMenuItems = currentRole === 'student' ? [
-        { icon: FaBookOpen, label: "My Classes", path: "/ems/classes" },
-        { icon: FaCalendarAlt, label: "My Schedule", path: "/ems/schedule" },
-        { icon: FaBullhorn, label: "Announcements", path: "/ems/announcements" },
-        { icon: FaCheckCircle, label: "Attendance", path: "/ems/attendance" },
-        { icon: FaChalkboardTeacher, label: "My Teachers", path: "/ems/teachers" },
-    ] : [];
+    // EMS-specific menu items for students (School stuff - commented out for now)
+    // const emsMenuItems = currentRole === 'student' ? [
+    //     { icon: FaBookOpen, label: "My Classes", path: "/ems/classes" },
+    //     { icon: FaCalendarAlt, label: "My Schedule", path: "/ems/schedule" },
+    //     { icon: FaBullhorn, label: "Announcements", path: "/ems/announcements" },
+    //     { icon: FaCheckCircle, label: "Attendance", path: "/ems/attendance" },
+    //     { icon: FaChalkboardTeacher, label: "My Teachers", path: "/ems/teachers" },
+    // ] : [];
+    const emsMenuItems = []; // Temporarily empty - uncomment block above to restore
 
 
 
@@ -110,8 +111,8 @@ const Sidebar = () => {
                             </NavLink>
                         ))}
 
-                        {/* EMS Menu Items Separator */}
-                        {emsMenuItems.length > 0 && (
+                        {/* EMS Menu Items Separator - School stuff commented out for now */}
+                        {/* {emsMenuItems.length > 0 && (
                             <>
                                 <div className="h-px bg-white/10 my-2" />
                                 <div className="px-4 py-2">
@@ -134,7 +135,7 @@ const Sidebar = () => {
                                     </NavLink>
                                 ))}
                             </>
-                        )}
+                        )} */}
                     </div>
 
                     {/* Footer Actions */}

@@ -93,9 +93,9 @@ def _gtts_lang_code(lang: str) -> str:
 @router.post("/vaani")
 async def vaani_text_to_speech(request: TTSRequest):
     """
-    Convert text to speech using Vaani TTS (gTTS - offline-capable)
-    Fast, lightweight text-to-speech using Google's TTS engine.
-    Supports multiple languages via request.language (e.g. en, hi, ja, zh, ar).
+    Convert text to speech using Vaani TTS (gTTS).
+    Translates text to the target language first (like Google TTS path), then speaks
+    so you get actual Hindi/Japanese/etc. speech, not English in an accent.
     """
     try:
         if not request.text or not request.text.strip():
@@ -105,19 +105,25 @@ async def vaani_text_to_speech(request: TTSRequest):
             raise HTTPException(status_code=400, detail="Text too long (max 10000 characters)")
         
         lang = _gtts_lang_code(request.language)
-        print(f"[Vaani TTS] Request received - Language: {request.language} -> gTTS {lang}, Text length: {len(request.text)}")
+        # Translate to target language first (same as Google TTS), so we speak in that language
+        from app.services.tts_core_functions import translate_text, remove_emojis
+        text = remove_emojis(request.text)
+        translate_lang = (request.language or "").strip().lower()
+        if translate_lang in ("zh-cn", "zh_cn"):
+            translate_lang = "zh"
+        if translate_lang and translate_lang != "en":
+            text = translate_text(text, target_language=translate_lang)
+        print(f"[Vaani TTS] Request - lang={lang}, text length: {len(text)}")
         
-        # Use gTTS for production compatibility (no system dependencies required)
         from gtts import gTTS
         from io import BytesIO
         
-        # Create gTTS object with requested language (fallback to en if unsupported)
         try:
-            tts = gTTS(text=request.text, lang=lang, slow=False)
+            tts = gTTS(text=text, lang=lang, slow=False)
         except Exception as e:
             if lang != "en":
-                print(f"[Vaani TTS] Language {lang} not supported by gTTS ({e}), falling back to en")
-                tts = gTTS(text=request.text, lang="en", slow=False)
+                print(f"[Vaani TTS] gTTS lang {lang} failed ({e}), falling back to en")
+                tts = gTTS(text=text, lang="en", slow=False)
             else:
                 raise
         
