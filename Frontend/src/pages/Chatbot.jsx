@@ -40,10 +40,18 @@ const Chatbot = () => {
 
 
 
-    // TTS State
+    // Map website language code to TTS code (e.g. zh-CN -> zh)
+    const websiteLangToTTS = (code) => {
+        if (!code) return 'en';
+        if (code === 'zh-CN') return 'zh';
+        return code;
+    };
+    const getWebsiteLanguage = () => websiteLangToTTS(localStorage.getItem('selected_language'));
+
+    // TTS State: sync with website language so TTS matches the language the site is displayed in
     const [isTTSLoading, setIsTTSLoading] = React.useState(false);
     const [ttsLanguage, setTTSLanguage] = React.useState(() =>
-        localStorage.getItem('chatbot_tts_language') || 'en'
+        getWebsiteLanguage() || localStorage.getItem('chatbot_tts_language') || 'en'
     );
     const [ttsProvider, setTTSProvider] = React.useState(() =>
         localStorage.getItem('chatbot_tts_provider') || 'google'
@@ -79,6 +87,34 @@ const Chatbot = () => {
     React.useEffect(() => {
         localStorage.setItem('chatbot_tts_provider', ttsProvider);
     }, [ttsProvider]);
+
+    // Sync TTS language with website language when user changes language in dashboard (same tab or other tab)
+    React.useEffect(() => {
+        const onLanguageChanged = (e) => {
+            const code = e.detail?.language ?? e.newValue;
+            if (code) setTTSLanguage(websiteLangToTTS(code) || 'en');
+        };
+        const onCustom = (e) => onLanguageChanged({ detail: e.detail });
+        const onStorage = (e) => {
+            if (e.key === 'selected_language' && e.newValue != null) onLanguageChanged({ newValue: e.newValue });
+        };
+        window.addEventListener('gurukul-language-changed', onCustom);
+        window.addEventListener('storage', onStorage);
+        return () => {
+            window.removeEventListener('gurukul-language-changed', onCustom);
+            window.removeEventListener('storage', onStorage);
+        };
+    }, []);
+
+    // When Chatbot page gains focus, refresh TTS language from current website language
+    React.useEffect(() => {
+        const onFocus = () => {
+            const siteLang = getWebsiteLanguage();
+            if (siteLang) setTTSLanguage(siteLang);
+        };
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
+    }, []);
 
     // Initial Load of History
     React.useEffect(() => {

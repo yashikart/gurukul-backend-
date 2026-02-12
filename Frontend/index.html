@@ -53,21 +53,35 @@
       }
     };
     
-    // Only handle tooltips on text selection - NO banner manipulation
-    // CSS in index.css will handle hiding the banner completely
+    // Hide only the Google Translate top bar ("Translated into X" / "Show original"), not the dropdown
+    function hideTranslateBanner() {
+      try {
+        var frames = document.querySelectorAll('iframe.goog-te-banner-frame');
+        for (var i = 0; i < frames.length; i++) {
+          var f = frames[i];
+          f.style.setProperty('display', 'none', 'important');
+          f.style.setProperty('visibility', 'hidden', 'important');
+          f.style.setProperty('height', '0', 'important');
+          f.style.setProperty('overflow', 'hidden', 'important');
+          f.style.setProperty('position', 'absolute', 'important');
+          f.style.setProperty('left', '-9999px', 'important');
+        }
+      } catch (e) {}
+    }
     document.addEventListener('DOMContentLoaded', function() {
+      hideTranslateBanner();
+      setInterval(hideTranslateBanner, 500);
       document.addEventListener('mouseup', function(e) {
-        setTimeout(() => {
+        setTimeout(function() {
           try {
-            const tooltip = document.querySelector('.goog-tooltip');
+            var tooltip = document.querySelector('.goog-tooltip');
             if (tooltip) {
               tooltip.style.setProperty('display', 'none', 'important');
               tooltip.style.setProperty('visibility', 'hidden', 'important');
               tooltip.style.setProperty('opacity', '0', 'important');
             }
-          } catch (e) {
-            // Silently ignore
-          }
+            hideTranslateBanner();
+          } catch (e) {}
         }, 10);
       }, true);
     });

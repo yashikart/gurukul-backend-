@@ -4,7 +4,7 @@ Handles syncing student-generated content from Gurukul to EMS System
 """
 
 import httpx
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from fastapi import HTTPException, status
 from app.core.config import settings
 import logging
@@ -236,7 +236,7 @@ class EMSSyncService:
         topic: str,
         difficulty: str,
         num_questions: int,
-        questions: Dict,
+        questions: List,
         user_answers: Dict,
         score: int,
         total_questions: int,

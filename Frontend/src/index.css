@@ -110,6 +110,9 @@ body {
 
 body {
   top: 0px !important;
+  position: static !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
 }
 
 /* Hide Google Translate element completely */

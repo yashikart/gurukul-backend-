@@ -353,9 +353,19 @@ def delete_teacher(
             detail="Teacher not found or does not belong to this school"
         )
     
+    print(f"[TEACHER DELETION] Deactivating teacher ID {teacher_id} for school {school_id}")
     # Soft delete: set is_active to False
     teacher.is_active = False
-    db.commit()
+    try:
+        db.commit()
+        print(f"[TEACHER DELETION] Successfully deactivated teacher {teacher_id}")
+    except Exception as e:
+        db.rollback()
+        print(f"[TEACHER DELETION] Failed to deactivate teacher {teacher_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete teacher: {str(e)}"
+        )
     
     return None
 
@@ -675,6 +685,9 @@ def update_student(
             )
         student.email = student_data.email
     
+    if student_data.grade is not None:
+        student.grade = student_data.grade
+    
     db.commit()
     db.refresh(student)
     
@@ -709,9 +722,19 @@ def delete_student(
             detail="Student not found or does not belong to this school"
         )
     
+    print(f"[STUDENT DELETION] Deactivating student ID {student_id} for school {school_id}")
     # Soft delete: set is_active to False
     student.is_active = False
-    db.commit()
+    try:
+        db.commit()
+        print(f"[STUDENT DELETION] Successfully deactivated student {student_id}")
+    except Exception as e:
+        db.rollback()
+        print(f"[STUDENT DELETION] Failed to deactivate student {student_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete student: {str(e)}"
+        )
     
     return None
 
@@ -925,9 +948,19 @@ def delete_parent(
             detail="Parent not found or does not belong to this school"
         )
     
+    print(f"[PARENT DELETION] Deactivating parent ID {parent_id} for school {school_id}")
     # Soft delete: set is_active to False
     parent.is_active = False
-    db.commit()
+    try:
+        db.commit()
+        print(f"[PARENT DELETION] Successfully deactivated parent {parent_id}")
+    except Exception as e:
+        db.rollback()
+        print(f"[PARENT DELETION] Failed to deactivate parent {parent_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete parent: {str(e)}"
+        )
     
     return None
 

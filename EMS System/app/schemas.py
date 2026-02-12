@@ -606,7 +606,7 @@ class StudentTestResultSync(StudentContentSyncBase):
     topic: str
     difficulty: str = "medium"
     num_questions: int
-    questions: Dict  # All questions with options and correct answers
+    questions: List[Dict]  # All questions with options and correct answers
     user_answers: Dict  # Student's selected answers
     score: int
     total_questions: int

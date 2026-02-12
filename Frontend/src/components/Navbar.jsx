@@ -149,7 +149,10 @@ const Navbar = () => {
     };
     setCurrentLang(langNames[langCode] || 'English');
     setIsLanguageOpen(false);
-    
+
+    // Notify other components (e.g. Chatbot TTS) so they sync to this language
+    window.dispatchEvent(new CustomEvent('gurukul-language-changed', { detail: { language: langCode } }));
+
     // Function to trigger Google Translate using multiple methods
     const triggerTranslation = () => {
       // Method 1: Try to find and use the select element directly

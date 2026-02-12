@@ -471,12 +471,23 @@ def delete_lesson(
             detail="Lesson not found or you are not authorized to delete it"
         )
     
-    # Delete associated lectures first
-    db.query(Lecture).filter(Lecture.lesson_id == lesson_id).delete()
-    
-    # Delete lesson
-    db.delete(lesson)
-    db.commit()
+    print(f"[LESSON DELETION] Teacher {teacher_id} deleting lesson {lesson_id} from school {school_id}")
+    try:
+        # Delete associated lectures first
+        lectures_count = db.query(Lecture).filter(Lecture.lesson_id == lesson_id).delete()
+        print(f"[LESSON DELETION] Deleted {lectures_count} associated lectures")
+        
+        # Delete lesson
+        db.delete(lesson)
+        db.commit()
+        print(f"[LESSON DELETION] Successfully deleted lesson {lesson_id}")
+    except Exception as e:
+        db.rollback()
+        print(f"[LESSON DELETION] Failed to delete lesson {lesson_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete lesson: {str(e)}"
+        )
     
     return None
 
