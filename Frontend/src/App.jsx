@@ -20,7 +20,7 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
 const TeacherDashboard = React.lazy(() => import('./pages/teacher/TeacherDashboard'));
 const ParentDashboard = React.lazy(() => import('./pages/parent/ParentDashboard'));
-const Summarizer = React.lazy(() => import('./pages/Summarizer'));
+// const Summarizer = React.lazy(() => import('./pages/Summarizer')); // PDF summarizer commented out
 const Chatbot = React.lazy(() => import('./pages/Chatbot'));
 const Test = React.lazy(() => import('./pages/Test'));
 const AgentSimulator = React.lazy(() => import('./pages/AgentSimulator'));
@@ -264,7 +264,7 @@ const AppContent = () => {
                     }
                   />
                           <Route path="/subjects" element={<PrivateRoute><Subjects /></PrivateRoute>} />
-                          <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} />
+                          {/* <Route path="/summarizer" element={<PrivateRoute><Summarizer /></PrivateRoute>} /> PDF summarizer commented out */}
                           <Route path="/chatbot" element={<PrivateRoute><Chatbot /></PrivateRoute>} />
                           <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
                           <Route path="/flashcards" element={<PrivateRoute><Flashcards /></PrivateRoute>} />

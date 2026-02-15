@@ -33,7 +33,7 @@ const Sidebar = () => {
     const menuItems = [
         { icon: FaThLarge, label: "Dashboard", path: dashboardPath },
         { icon: FaBookOpen, label: "Subjects", path: "/subjects" },
-        { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" },
+        // { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" }, // PDF summarizer commented out
         { icon: FaComments, label: "Chatbot", path: "/chatbot" },
         { icon: FaClipboardList, label: "Test", path: "/test" },
         { icon: FaFlipboard, label: "Flashcards", path: "/flashcards" },

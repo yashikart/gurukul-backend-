@@ -5,7 +5,7 @@ import { FaThLarge, FaBookOpen, FaFileAlt, FaComments, FaClipboardList, FaVideo 
 const features = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard" },
     { icon: FaBookOpen, label: "Subjects", path: "/subjects" },
-    { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" },
+    // { icon: FaFileAlt, label: "Summarizer", path: "/summarizer" }, // PDF summarizer commented out
     { icon: FaComments, label: "Chatbot", path: "/chatbot" },
     { icon: FaClipboardList, label: "Test", path: "/test" },
     { icon: FaVideo, label: "Lectures", path: "/lectures" },
