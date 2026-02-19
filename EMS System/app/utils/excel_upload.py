@@ -12,6 +12,8 @@ from app.models import User, UserRole, School, StudentParent
 from app.utils.password_generator import generate_unique_password
 from app.auth import get_password_hash
 from app.email_service import send_login_credentials_email
+from app.config import settings
+from app.services.gurukul_sync import sync_student_to_gurukul
 import asyncio
 
 
@@ -270,6 +272,18 @@ async def upload_students_excel(
                     await send_login_credentials_email(db, student, password, UserRole.STUDENT.value)
                 except Exception as e:
                     print(f"Warning: Failed to send email to {email}: {str(e)}")
+                
+                # Sync student to Gurukul (fire-and-forget)
+                if settings.GURUKUL_API_BASE_URL:
+                    asyncio.create_task(
+                        asyncio.to_thread(
+                            sync_student_to_gurukul,
+                            settings.GURUKUL_API_BASE_URL,
+                            email,
+                            password,
+                            name,
+                        )
+                    )
                 
                 result.add_success(student)
                 

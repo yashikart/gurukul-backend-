@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     USE_CREDENTIALS: bool = True
     VALIDATE_CERTS: bool = True
     
+    # Gurukul API (optional): when set, students created in EMS are also registered in Gurukul
+    GURUKUL_API_BASE_URL: Optional[str] = None  # e.g. http://localhost:3000
+
     # Frontend URL (for password setup links)
     # This should point to the EMS frontend, not the Gurukul app.
     # Default to the EMS Vite dev server port (3001).

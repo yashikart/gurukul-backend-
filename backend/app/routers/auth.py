@@ -177,7 +177,13 @@ def require_role(role: str):
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    """Register a new user"""
+    """Register a new user. Gurukul is student-only: only STUDENT role is accepted."""
+    # Gurukul is student-only
+    if user_data.role.upper() != "STUDENT":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can register for Gurukul."
+        )
     # Validate password length (bcrypt has 72-byte limit, but we'll enforce reasonable limits)
     if len(user_data.password) < 6:
         raise HTTPException(
@@ -266,6 +272,13 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user"
+        )
+    
+    # Gurukul is student-only: only STUDENT role can log in
+    if user.role.upper() != "STUDENT":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can access Gurukul. Please use the school portal for other roles."
         )
     
     # Create access token

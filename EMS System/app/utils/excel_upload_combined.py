@@ -2,6 +2,7 @@
 Combined Excel upload utility for students and parents together.
 """
 
+import asyncio
 import pandas as pd
 from typing import List, Dict, Tuple, Optional
 from io import BytesIO
@@ -12,6 +13,8 @@ from app.utils.password_generator import generate_unique_password
 from app.auth import get_password_hash
 from app.email_service import send_login_credentials_email
 from app.utils.excel_upload import ExcelUploadResult, validate_email
+from app.config import settings
+from app.services.gurukul_sync import sync_student_to_gurukul
 
 
 async def upload_students_parents_combined_excel(
@@ -100,6 +103,18 @@ async def upload_students_parents_combined_excel(
                         await send_login_credentials_email(db, student, password, UserRole.STUDENT.value)
                     except Exception as e:
                         print(f"Warning: Failed to send email to {student_email}: {str(e)}")
+                    
+                    # Sync student to Gurukul (fire-and-forget)
+                    if settings.GURUKUL_API_BASE_URL:
+                        asyncio.create_task(
+                            asyncio.to_thread(
+                                sync_student_to_gurukul,
+                                settings.GURUKUL_API_BASE_URL,
+                                student_email,
+                                password,
+                                student_name,
+                            )
+                        )
                 
                 # Process parent if provided
                 if parent_email and parent_name:

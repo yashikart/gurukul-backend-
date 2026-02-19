@@ -3,6 +3,7 @@ School Admin Dashboard API endpoints.
 All endpoints are filtered by school_id to ensure data isolation.
 """
 
+import asyncio
 from typing import List, Optional
 from datetime import datetime, date, time, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, Body
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from app.database import get_db
 from app.dependencies import get_current_admin
+from app.config import settings
+from app.services.gurukul_sync import sync_student_to_gurukul
 from app.models import (
     User, UserRole, School, Subject, Class, ClassStudent,
     StudentParent, Lesson, Lecture, TimetableSlot,
@@ -550,6 +553,18 @@ async def create_student(
         await send_login_credentials_email(db, student, password, UserRole.STUDENT.value)
     except Exception as e:
         print(f"Warning: Failed to send email to {student.email}: {str(e)}")
+    
+    # Sync student to Gurukul so they can log in there too (fire-and-forget)
+    if settings.GURUKUL_API_BASE_URL:
+        asyncio.create_task(
+            asyncio.to_thread(
+                sync_student_to_gurukul,
+                settings.GURUKUL_API_BASE_URL,
+                student.email,
+                password,
+                student.name,
+            )
+        )
     
     # Get linked parent emails and names for response
     parent_links = db.query(StudentParent).filter(StudentParent.student_id == student.id).all()
