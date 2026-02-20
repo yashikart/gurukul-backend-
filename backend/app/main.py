@@ -96,6 +96,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
         "https://gurukul-frontend-738j.onrender.com",  # Gurukul Frontend (Production)
+        "https://gurukul.blackholeinfiverse.com",  # Gurukul custom domain
         "https://ems-frontend-x7tr.onrender.com",  # EMS Frontend (Production)
     ],
     allow_credentials=True,
