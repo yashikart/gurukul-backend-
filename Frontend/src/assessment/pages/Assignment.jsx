@@ -1,6 +1,7 @@
 import { useAuth } from '../../contexts/AuthContext';
 import API_BASE_URL from '../../config';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Assignment from '../components/Assignment';
 import AssignmentResults from '../components/AssignmentResults';
@@ -12,6 +13,7 @@ import { scoringService } from '../lib/scoringService';
 import { supabase } from '../lib/supabaseClient';
 
 export default function AssignmentPage() {
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState('assignment'); // 'assignment', 'evaluating', 'results'
   const { t } = useI18n();
   const [_assignmentAttempt, setAssignmentAttempt] = useState(null);
@@ -257,8 +259,8 @@ export default function AssignmentPage() {
   };
 
   const handleBackToDashboard = () => {
-    // Navigate back to dashboard
-    window.location.href = '/dashboard';
+    // Navigate back to dashboard using React Router
+    navigate('/dashboard');
   };
 
   if (currentView === 'evaluating') {
