@@ -163,48 +163,45 @@ def ingest_prana_packet(payload: PranaPacketIn, db: Session = Depends(get_db)):
     # Store in database
     if HAS_PRANA_MODEL:
         try:
-            record = PranaPacket(
-                packet_id=packet_id,
-                user_id=user_id,
-                employee_id=payload.employee_id,  # Keep for backward compatibility
-                session_id=payload.session_id,
-                lesson_id=payload.lesson_id,
-                system_type=payload.system_type,
-                role=payload.role,
-                client_timestamp=client_ts,
-                received_at=received_at,
-                cognitive_state=cognitive_state,
-                state=payload.state,  # Keep legacy field
-                active_seconds=payload.active_seconds,
-                idle_seconds=payload.idle_seconds,
-                away_seconds=payload.away_seconds,
-                focus_score=payload.focus_score,
-                integrity_score=integrity_score,
-                raw_signals=payload.raw_signals,
-                processed_by_karma=False,
-            )
-            db.add(record)
-            db.commit()
-            db.refresh(record)
-            
-            # Queue in Redis for Karma Tracker
-            redis_queue = get_redis_queue()
+            # Use DeterministicRepository (Phase 1)
             packet_data = {
                 "packet_id": packet_id,
                 "user_id": user_id,
+                "employee_id": payload.employee_id,
                 "session_id": payload.session_id,
                 "lesson_id": payload.lesson_id,
                 "system_type": payload.system_type,
+                "role": payload.role,
+                "client_timestamp": client_ts,
+                # received_at handled by DB default, but we can pass it for deterministic hashing if needed
+                # However, DeterministicRepository uses received_at for ordering.
                 "cognitive_state": cognitive_state,
-                "focus_score": payload.focus_score,
+                "state": payload.state,
                 "active_seconds": payload.active_seconds,
                 "idle_seconds": payload.idle_seconds,
                 "away_seconds": payload.away_seconds,
+                "focus_score": payload.focus_score,
+                "integrity_score": integrity_score,
                 "raw_signals": payload.raw_signals,
-                "client_timestamp": client_ts.isoformat(),
-                "received_at": received_at.isoformat(),
+                "processed_by_karma": False,
             }
-            redis_queue.enqueue_packet(packet_id, packet_data)
+            
+            from app.services.deterministic_repo import deterministic_repo
+            record = deterministic_repo.add_packet(db, packet_data)
+            
+            # Queue in Redis for Karma Tracker
+            redis_queue = get_redis_queue()
+            redis_packet_data = packet_data.copy()
+            redis_packet_data["client_timestamp"] = client_ts.isoformat()
+            redis_packet_data["received_at"] = record.received_at.isoformat()
+            redis_packet_data["previous_hash"] = record.previous_hash
+            redis_packet_data["current_hash"] = record.current_hash
+            
+            redis_queue.enqueue_packet(packet_id, redis_packet_data)
+            
+        except Exception as e:
+            print(f"[Bucket] Failed to save packet to cryptographically chained ledger: {e}")
+            # Still acknowledge receipt even if storage fails
             
         except Exception as e:
             print(f"[Bucket] Failed to save packet to database: {e}")

@@ -8,6 +8,9 @@ import uuid
 def generate_uuid():
     return str(uuid.uuid4())
 
+# --- PRANA Integrity Models (Alpha-Veda Layer) ---
+from app.models.prana_models import PranaPacket, ReviewOutputVersion, NextTaskVersion
+
 # --- EMS & Governance Models ---
 
 class Tenant(Base):
@@ -64,6 +67,7 @@ class User(Base):
     cohort_id = Column(String, ForeignKey("cohorts.id"), nullable=True) # For Students
     parent_id = Column(String, ForeignKey("users.id"), nullable=True) # For Students to link to Parent
     is_active = Column(Boolean, default=True)
+    assessment_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # EMS Integration - Store token for one-time authentication

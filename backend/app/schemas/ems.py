@@ -6,6 +6,20 @@ class TenantCreate(BaseModel):
     name: str # School Name
     type: str = "INSTITUTION" # INSTITUTION or FAMILY
 
+
+class ProvisionTenantRequest(BaseModel):
+    """Used by EMS when a new school is created: provision a Gurukul tenant (central registry + DB URL)."""
+    name: str
+    subdomain_slug: str  # e.g. school_1, or slug from school name
+    database_url: Optional[str] = None  # If omitted, Gurukul builds from template (same host as central, db name gurukul_tenant_<slug>)
+
+
+class ProvisionTenantResponse(BaseModel):
+    tenant_id: str
+    subdomain_slug: str
+    message: str
+
+
 class TenantResponse(TenantCreate):
     id: str
     created_at: datetime

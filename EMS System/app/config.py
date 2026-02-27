@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     
     # Gurukul API (optional): when set, students created in EMS are also registered in Gurukul
     GURUKUL_API_BASE_URL: Optional[str] = None  # e.g. http://localhost:3000
+    GURUKUL_API_KEY: Optional[str] = None  # Optional; if set, sent as X-API-Key when calling Gurukul (e.g. provision-tenant)
 
     # Frontend URL (for password setup links)
     # This should point to the EMS frontend, not the Gurukul app.

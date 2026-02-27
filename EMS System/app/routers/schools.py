@@ -147,9 +147,17 @@ async def create_school(
         if not email_sent:
             # Log warning but don't fail the request
             print(f"[WARNING] School created but failed to send email to {school_data.email}")
-        
+
+        # Wire: same concept — one school in EMS = one tenant in Gurukul. Provision tenant so Gurukul can route by X-Tenant-ID or subdomain (e.g. school_1).
+        try:
+            from app.services.gurukul_sync import provision_tenant_to_gurukul
+            import asyncio
+            asyncio.create_task(asyncio.to_thread(provision_tenant_to_gurukul, school.id, school.name))
+        except Exception as e:
+            print(f"[WARNING] Gurukul tenant provision (background) failed for school {school.id}: {e}")
+
         return school
-        
+
     except IntegrityError as e:
         db.rollback()
         raise HTTPException(

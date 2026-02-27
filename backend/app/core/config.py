@@ -26,6 +26,11 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: Optional[str] = None # postgresql://user:password@host:port/db or sqlite:///./gurukul.db
+
+    # Multi-tenant (DB-per-tenant)
+    MULTI_TENANT_ENABLED: bool = False
+    CENTRAL_DATABASE_URL: Optional[str] = None  # Tenant registry DB; if None and MULTI_TENANT_ENABLED, uses DATABASE_URL
+    TENANT_BASE_DOMAIN: str = "gurukul.blackholeinfiverse.com"  # For subdomain resolution
     
     # EMS System Integration
     EMS_API_BASE_URL: str = "http://localhost:8000"

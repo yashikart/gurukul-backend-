@@ -22,6 +22,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str]
     role: str
     is_active: bool
+    assessment_completed: bool
     
     class Config:
         from_attributes = True

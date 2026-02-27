@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     visualizer({
       filename: './dist/stats.html',
-      open: true,
+      open: false, // avoid spawning browser/powershell in Docker/CI
       gzipSize: true,
       brotliSize: true,
     })

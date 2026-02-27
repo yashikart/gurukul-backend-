@@ -116,6 +116,18 @@ async def subject_explorer(
     db.commit()
     db.refresh(subject_data)
     
+    # Cryptographically chain the next-task recommendations (Phase 1)
+    try:
+        from app.services.deterministic_repo import deterministic_repo
+        next_task_data = {
+            "subject_data_id": subject_data.id,
+            "youtube_recommendations": youtube_videos_dict
+        }
+        deterministic_repo.add_next_task_version(db, submission_id=str(subject_data.id), next_task_json=next_task_data)
+        logger.info(f"Next-task recommendation version 1 saved and chained for topic {request.topic}")
+    except Exception as e:
+        logger.error(f"Failed to save chained next-task version for topic {request.topic}: {e}")
+    
     # 4. Sync to EMS asynchronously (don't block response)
     try:
         # Get school_id from user if available

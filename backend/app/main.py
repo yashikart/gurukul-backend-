@@ -10,6 +10,8 @@ import os
 import uvicorn
 import logging
 import traceback
+from datetime import datetime, timezone
+from typing import Optional
 
 print(f"[Main] Python version: {sys.version}", flush=True)
 print(f"[Main] Working directory: {os.getcwd()}", flush=True)
@@ -17,14 +19,16 @@ print(f"[Main] Python path: {sys.path[:3]}", flush=True)
 sys.stdout.flush()
 
 try:
-    from fastapi import FastAPI, Request, status, HTTPException
+    from fastapi import FastAPI, Request, status, HTTPException, Header
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import JSONResponse
     from fastapi.exceptions import RequestValidationError
     from app.core.config import settings
-    print("[Main] ✓ FastAPI and core imports successful")
+    from app.core.database import engine, Base
+    from app.core.karma_database import get_db as get_mongo_db
+    print("[Main] [OK] FastAPI and core imports successful")
 except Exception as e:
-    print(f"[Main] ✗ Error importing FastAPI/core modules: {e}")
+    print(f"[Main] [FAIL] Error importing FastAPI/core modules: {e}")
     print(traceback.format_exc())
     sys.exit(1)
 
@@ -34,10 +38,10 @@ logger = logging.getLogger(__name__)
 # even if router imports are slow. We'll include routers after the app is created.
 try:
     app = FastAPI(title=settings.API_TITLE)
-    print(f"[Main] ✓ FastAPI app initialized with title: {settings.API_TITLE}")
+    print(f"[Main] [OK] FastAPI app initialized with title: {settings.API_TITLE}")
     sys.stdout.flush()
 except Exception as e:
-    print(f"[Main] ✗ Error initializing FastAPI app: {e}")
+    print(f"[Main] [FAIL] Error initializing FastAPI app: {e}")
     print(traceback.format_exc())
     sys.stdout.flush()
     sys.exit(1)
@@ -105,6 +109,17 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# API security: rate limit, then payload size (last added = first run). Use BaseHTTPMiddleware so Starlette passes (app).
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.core.api_security_layer import payload_size_middleware, rate_limit_middleware
+app.add_middleware(BaseHTTPMiddleware, dispatch=payload_size_middleware)
+app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
+
+# Multi-tenant: resolve tenant from subdomain or X-Tenant-ID before routes
+if getattr(settings, "MULTI_TENANT_ENABLED", False):
+    from app.core.tenant_resolver import tenant_resolver_middleware
+    app.add_middleware(BaseHTTPMiddleware, dispatch=tenant_resolver_middleware)
+
 @app.on_event("startup")
 async def startup_event():
     # Startup
@@ -124,6 +139,39 @@ async def startup_event():
     print(f"{'='*50}\n")
     sys.stdout.flush()
     
+    sys.stdout.flush()
+    
+    async def init_database():
+        """Initialize SQL database tables"""
+        try:
+            print("[Startup] Initializing SQL database...")
+            # Import all models to ensure they are registered with Base.metadata
+            from app.models import all_models, prana_models  # Add other model modules as needed
+            
+            # Create tables in a thread since it's a blocking operation
+            await asyncio.to_thread(Base.metadata.create_all, bind=engine)
+            print("[Startup] [OK] SQL database tables initialized")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"[Startup] [FAIL] SQL database init error: {e}")
+            print(traceback.format_exc())
+            sys.stdout.flush()
+
+    async def init_mongodb():
+        """Initialize MongoDB connection"""
+        try:
+            print("[Startup] Initializing MongoDB connection...")
+            # This will trigger the lazy connection
+            db = get_mongo_db()
+            # Run a simple command to verify connection
+            await asyncio.to_thread(db.command, "ping")
+            print("[Startup] [OK] MongoDB connection verified")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"[Startup] [WARN] MongoDB init warning: {e}")
+            # Don't fail the whole startup for MongoDB if it's optional
+            sys.stdout.flush()
+
     # Import routers NOW (after server has started) - run in thread to avoid blocking
     def import_auth_router_sync():
         """Import and register auth router first (critical for registration/login)"""
@@ -136,17 +184,15 @@ async def startup_event():
             
             # Register auth router immediately
             app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
-            print("[Startup] ✓ Auth router registered at /api/v1/auth")
+            print("[Startup] [OK] Auth router registered at /api/v1/auth")
             
             # Verify routes are registered
             auth_routes = [route.path for route in app.routes if hasattr(route, 'path') and '/api/v1/auth' in route.path]
             print(f"[Startup] Registered auth routes: {len(auth_routes)} routes")
-            if auth_routes:
-                print(f"[Startup] Sample routes: {auth_routes[:3]}")
             sys.stdout.flush()
             return True
         except Exception as e:
-            print(f"[Startup] ✗ CRITICAL: Failed to import auth router: {e}")
+            print(f"[Startup] [FAIL] CRITICAL: Failed to import auth router: {e}")
             print(traceback.format_exc())
             sys.stdout.flush()
             return False
@@ -214,10 +260,10 @@ async def startup_event():
             app.include_router(flashcards.router, prefix="/flashcards", tags=["Legacy Flashcards"])
             app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul Alignment"])
             
-            print("[Startup] ✓ Other routers imported and included")
+            print("[Startup] [OK] Other routers imported and included")
             sys.stdout.flush()
         except Exception as e:
-            print(f"[Startup] ⚠️  Error importing other routers: {e}")
+            print(f"[Startup] [WARN] Error importing other routers: {e}")
             print(traceback.format_exc())
             sys.stdout.flush()
             # Continue to try loading Karma Tracker routers even if other routers fail
@@ -279,123 +325,102 @@ async def startup_event():
             app.include_router(death.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
             app.include_router(event.router, prefix="/api/v1/karma", tags=["Karma Tracker"])
             
-            print("[Startup] ✓ Karma Tracker routers imported and included")
+            print("[Startup] [OK] Karma Tracker routers imported and included")
             sys.stdout.flush()
         except Exception as e:
-            print(f"[Startup] ⚠️  Error importing Karma Tracker routers: {e}")
+            print(f"[Startup] [WARN] Error importing Karma Tracker routers: {e}")
             print(traceback.format_exc())
             sys.stdout.flush()
         
         return True  # Return success - individual router failures are logged but don't stop startup
     
-    # CRITICAL: Import auth router first and wait for it (registration/login must work)
-    # Other routers can load in background
+    async def do_startup():
+        try:
+            # CRITICAL: Import auth router first and wait for it (registration/login must work)
+            # Other routers can load in background
+            try:
+                print("[Startup] [INFO] Importing critical auth router...")
+                sys.stdout.flush()
+                # Wait for auth router with shorter timeout (should be fast)
+                auth_success = await asyncio.wait_for(
+                    asyncio.to_thread(import_auth_router_sync),
+                    timeout=30.0  # 30 seconds should be enough for auth router
+                )
+                if auth_success:
+                    print("[Startup] [OK] Auth router registered. Registration/login endpoints are now available.")
+                    sys.stdout.flush()
+                else:
+                    print("[Startup] [FAIL] CRITICAL: Auth router failed to load!")
+                    sys.stdout.flush()
+            except asyncio.TimeoutError:
+                print("[Startup] [FAIL] CRITICAL: Auth router import timeout after 30 seconds")
+                print("[Startup] Registration/login will NOT work!")
+                sys.stdout.flush()
+            except Exception as e:
+                print(f"[Startup] [FAIL] CRITICAL: Auth router import error: {e}")
+                print(traceback.format_exc())
+                sys.stdout.flush()
+            
+            # Import other routers in background (non-blocking)
+            # These can take longer and don't block server startup
+            async def import_other_routers_async():
+                try:
+                    await asyncio.wait_for(
+                        asyncio.to_thread(import_other_routers_sync),
+                        timeout=120.0  # 2 minutes for other routers
+                    )
+                    print("[Startup] [OK] All other routers imported and registered.")
+                    sys.stdout.flush()
+                except asyncio.TimeoutError:
+                    print("[Startup] [WARN] Other routers import timeout after 2 minutes")
+                    print("[Startup] Some features may not be available.")
+                    sys.stdout.flush()
+                except Exception as e:
+                    print(f"[Startup] [WARN] Other routers import error: {e}")
+                    sys.stdout.flush()
+            
+            # Start importing other routers in background (don't wait)
+            asyncio.create_task(import_other_routers_async())
+            print("[Startup] [INFO] Other routers are loading in background...")
+            sys.stdout.flush()
+            
+            # Run all initialization tasks in background - don't wait for them
+            # This allows startup event to return immediately so server can bind to port
+            asyncio.create_task(init_database())
+            asyncio.create_task(init_mongodb())
+            if getattr(settings, "MULTI_TENANT_ENABLED", False):
+                try:
+                    from app.core.central_registry import create_central_tables
+                    create_central_tables()
+                    print("[Startup] [OK] Central tenant registry tables ensured")
+                except Exception as e:
+                    print(f"[Startup] [WARN] Central registry init: {e}")
+            
+            print("[Startup] [INFO] Summarizer model loading DISABLED to save memory")
+            
+            print("[Startup] [OK] Startup event logic execution finished.")
+            sys.stdout.flush()
+            return True
+        except Exception as e:
+            print(f"[Startup] [FAIL] Fatal error in startup logic: {e}")
+            print(traceback.format_exc())
+            sys.stdout.flush()
+            return False
+
+    # --- STARTUP WATCHDOG ---
     try:
-        print("[Startup] Importing critical auth router...")
-        sys.stdout.flush()
-        # Wait for auth router with shorter timeout (should be fast)
-        auth_success = await asyncio.wait_for(
-            asyncio.to_thread(import_auth_router_sync),
-            timeout=30.0  # 30 seconds should be enough for auth router
-        )
-        if auth_success:
-            print("[Startup] ✓ Auth router registered. Registration/login endpoints are now available.")
-            sys.stdout.flush()
-        else:
-            print("[Startup] ✗ CRITICAL: Auth router failed to load!")
-            sys.stdout.flush()
+        print("[Startup] [INFO] Gurukul Startup Watchdog started (20s timeout)...")
+        await asyncio.wait_for(do_startup(), timeout=20.0)
+        print("[Startup] [OK] Watchdog finished successfully.")
     except asyncio.TimeoutError:
-        print("[Startup] ✗ CRITICAL: Auth router import timeout after 30 seconds")
-        print("[Startup] Registration/login will NOT work!")
+        print("[Startup] [FAIL] FATAL: Gurukul startup timed out after 20 seconds. Some features may be unstable.")
         sys.stdout.flush()
     except Exception as e:
-        print(f"[Startup] ✗ CRITICAL: Auth router import error: {e}")
-        print(traceback.format_exc())
+        print(f"[Startup] [FAIL] Watchdog caught fatal error: {e}")
         sys.stdout.flush()
     
-    # Import other routers in background (non-blocking)
-    # These can take longer and don't block server startup
-    async def import_other_routers_async():
-        try:
-            await asyncio.wait_for(
-                asyncio.to_thread(import_other_routers_sync),
-                timeout=120.0  # 2 minutes for other routers
-            )
-            print("[Startup] ✓ All other routers imported and registered.")
-            sys.stdout.flush()
-        except asyncio.TimeoutError:
-            print("[Startup] ⚠️  Other routers import timeout after 2 minutes")
-            print("[Startup] Some features may not be available.")
-            sys.stdout.flush()
-        except Exception as e:
-            print(f"[Startup] ⚠️  Other routers import error: {e}")
-            sys.stdout.flush()
-    
-    # Start importing other routers in background (don't wait)
-    asyncio.create_task(import_other_routers_async())
-    print("[Startup] Other routers are loading in background...")
-    sys.stdout.flush()
-    
-    # Run blocking operations in background to avoid blocking server startup
-    # These also run in background - don't wait for them
-    async def init_database():
-        try:
-            from app.core.database import engine, Base
-            from app.models import all_models
-            from app.models import rl_models  # Import RL models to register them with Base
-            print("[Startup] Creating database tables...")
-            sys.stdout.flush()
-            Base.metadata.create_all(bind=engine)
-            print("[Startup] ✓ Database tables created successfully!")
-            sys.stdout.flush()
-        except Exception as e:
-            print(f"[Startup] Database initialization failed: {e}")
-            sys.stdout.flush()
-    
-    async def init_mongodb():
-        try:
-            from app.core.karma_database import get_db, get_client
-            db = get_db()
-            # Test connection with timeout
-            print("[Startup] Testing MongoDB connection...")
-            sys.stdout.flush()
-            await asyncio.wait_for(
-                asyncio.to_thread(db.command, 'ping'),
-                timeout=5.0
-            )
-            print("[Startup] ✓ Karma Tracker MongoDB connected successfully!")
-            sys.stdout.flush()
-        except asyncio.TimeoutError:
-            print("[Startup] ⚠️  Karma Tracker MongoDB connection timed out")
-            print("[Startup]   Karma features may not work without MongoDB")
-            sys.stdout.flush()
-        except Exception as e:
-            print(f"[Startup] ⚠️  Karma Tracker MongoDB connection failed: {e}")
-            print("[Startup]   Karma features may not work without MongoDB")
-            sys.stdout.flush()
-    
-    # DISABLED: Model loading uses too much memory (~300MB for LED model)
-    # async def init_models():
-    #     try:
-    #         from download_models_on_startup import ensure_models_exist
-    #         print("[Startup] Checking for model files...")
-    #         sys.stdout.flush()
-    #         await asyncio.to_thread(ensure_models_exist)
-    #     except Exception as e:
-    #         print(f"[Startup] Model download check skipped/failed: {e}")
-    #         sys.stdout.flush()
-    
-    # Run all initialization tasks in background - don't wait for them
-    # This allows startup event to return immediately so server can bind to port
-    asyncio.create_task(init_database())
-    asyncio.create_task(init_mongodb())
-    # DISABLED: Model loading to save memory
-    # asyncio.create_task(init_models())
-    print("[Startup] ℹ️  Summarizer model loading DISABLED to save memory")
-    
-    
-    print("[Startup] ✓ Startup event complete! Server will bind to port now.")
-    print("[Startup] Background tasks (routers, DB, MongoDB, models) are running in background.")
+    print("[Startup] [OK] Startup event complete! Server will bind to port now.")
+    print("[Startup] Background tasks (routers, DB, MongoDB) are running in background.")
     sys.stdout.flush()
     # Return immediately - don't wait for any background tasks
 
@@ -407,11 +432,73 @@ async def startup_event():
 async def root():
     return {"message": "Gurukul Backend API v2 is running", "docs": "/docs"}
 
-# Health check endpoint for Render deployment
+
+# Multi-tenant: show resolved tenant for current request (so you can verify which DB is used)
+@app.get(
+    "/api/v1/tenant-info",
+    summary="Tenant info (multi-tenant)",
+    description="Returns which tenant this request is for. Click 'Try it out', set **tenant_id** (query) to a tenant UUID, then Execute.",
+)
+async def tenant_info(
+    request: Request,
+    tenant_id: Optional[str] = None,
+    x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID"),
+):
+    from app.core.tenant_resolver import get_tenant_context, TenantContext, UUID_PATTERN
+    from app.core.config import settings
+    if not getattr(settings, "MULTI_TENANT_ENABLED", False):
+        return {"multi_tenant_enabled": False, "message": "Set MULTI_TENANT_ENABLED=true to see tenant resolution"}
+    uid = (tenant_id or x_tenant_id or "").strip()
+    if uid and UUID_PATTERN.match(uid):
+        ctx = TenantContext(tenant_id=uid, tenant_slug=None)
+    else:
+        ctx = get_tenant_context(request)
+    from app.core.db_router import resolve_tenant_id
+    resolved_id = resolve_tenant_id(ctx)
+    return {
+        "multi_tenant_enabled": True,
+        "tenant_id": ctx.tenant_id,
+        "tenant_slug": ctx.tenant_slug,
+        "resolved_tenant_id": resolved_id,
+        "hint": "Send X-Tenant-ID header or use subdomain (e.g. school1.gurukul...) to switch tenant",
+    }
+
+# Health check endpoint for Production
 @app.get("/health")
 async def health_check():
-    """Simple health check endpoint that responds immediately"""
-    return {"status": "healthy", "service": "Gurukul Backend API"}
+    """Enhanced health check endpoint with dependency status"""
+    health_status = {
+        "status": "healthy",
+        "service": "Gurukul Backend API",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "dependencies": {
+            "database": "unknown",
+            "mongodb": "unknown"
+        }
+    }
+    
+    # Check SQLAlchemy Database
+    try:
+        from app.core.database import engine
+        from sqlalchemy import text
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        health_status["dependencies"]["database"] = "connected"
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["dependencies"]["database"] = f"failed: {str(e)}"
+
+    # Check MongoDB
+    try:
+        from app.core.karma_database import get_db
+        db = get_db()
+        db.command('ping')
+        health_status["dependencies"]["mongodb"] = "connected"
+    except Exception as e:
+        health_status["status"] = "unhealthy"
+        health_status["dependencies"]["mongodb"] = f"failed: {str(e)}"
+
+    return health_status
 
 # Legacy Shim for old endpoints if needed (optional)
 # We might want to mount the old endpoints similarly or just rely on the new prefix.
@@ -435,14 +522,18 @@ async def global_exception_handler(request: Request, exc: Exception):
     """
     logger.error(f"Unhandled exception: {str(exc)}")
     logger.error(traceback.format_exc())
-    
-    # Return JSON response with CORS headers
+    content = {
+        "detail": f"Internal server error: {str(exc)}",
+        "type": type(exc).__name__
+    }
+    # For /openapi.json failures, include path and traceback so "Failed to fetch" can be debugged
+    if request.url.path.rstrip("/") == "/openapi.json":
+        content["path"] = "/openapi.json"
+        content["traceback"] = traceback.format_exc()
+        content["hint"] = "Fix the error above; then /docs will load."
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "detail": f"Internal server error: {str(exc)}",
-            "type": type(exc).__name__
-        },
+        content=content,
         headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
@@ -483,7 +574,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 # Final message to confirm module is fully loaded
-print("[Main] ✓ Module fully loaded. App is ready for uvicorn to start server.")
+print("[Main] [OK] Module fully loaded. App is ready for uvicorn to start server.")
 print(f"[Main] App object: {app}")
 sys.stdout.flush()
 

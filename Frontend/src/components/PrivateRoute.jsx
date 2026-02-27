@@ -15,6 +15,12 @@ const PrivateRoute = ({ children }) => {
         return <Navigate to="/signin" />;
     }
 
+    // If logged in, check if assessment is completed (only for students)
+    // Allow both /assessment (intake form) and /assignment (actual test) if not completed
+    if (user?.role === 'STUDENT' && !user?.assessment_completed && window.location.hash !== '#/assessment' && window.location.hash !== '#/assignment') {
+        return <Navigate to="/assessment" />;
+    }
+
     // If logged in, render the protected component
     return children;
 };

@@ -1,14 +1,93 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.core.database import get_db
 from app.routers.auth import get_current_user
 from app.core.security import get_password_hash
+from app.core.config import settings
 from app.models.all_models import User, Tenant, Cohort, Flashcard, Summary, Reflection, StudentProgress
-from app.schemas.ems import TenantCreate, TenantResponse, UserCreateAdmin, UserUpdateAdmin, UserResponse, CohortCreate, CohortResponse
+from app.schemas.ems import (
+    TenantCreate, TenantResponse, UserCreateAdmin, UserUpdateAdmin, UserResponse,
+    CohortCreate, CohortResponse, ProvisionTenantRequest, ProvisionTenantResponse,
+)
 import uuid
+import re
 
 router = APIRouter()
+
+
+def _verify_ems_api_key(x_api_key: Optional[str] = Header(None, alias="X-API-Key")):
+    """Verify API key for server-to-server calls from EMS. If EMS_API_KEY is set, key is required."""
+    if getattr(settings, "EMS_API_KEY", None):
+        if x_api_key != settings.EMS_API_KEY:
+            raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    return True
+
+
+# --- EMS → Gurukul: Provision tenant when EMS creates a school (multi-tenant wiring) ---
+
+@router.post("/provision-tenant", response_model=ProvisionTenantResponse, status_code=status.HTTP_201_CREATED)
+async def provision_tenant_from_ems(
+    body: ProvisionTenantRequest,
+    _: bool = Depends(_verify_ems_api_key),
+):
+    """
+    Called by EMS when super admin creates a new school. Creates a row in Gurukul central
+    tenant_registry so this school gets its own tenant (and DB) in Gurukul. Same concept:
+    one school in EMS = one tenant in Gurukul.
+    """
+    from app.core.central_registry import get_central_db, TenantRegistry, create_central_tables
+
+    from app.core.tenant_db_provisioner import create_tenant_database_and_schema
+
+    create_central_tables()
+    tenant_id = str(uuid.uuid4())
+    slug = re.sub(r"[^a-zA-Z0-9_-]", "_", body.subdomain_slug).strip("_") or "school"
+    database_url = body.database_url
+    if not database_url:
+        base_url = getattr(settings, "CENTRAL_DATABASE_URL", None) or settings.DATABASE_URL
+        if base_url and "/" in base_url:
+            parts = base_url.rstrip("/").rsplit("/", 1)
+            if len(parts) == 2:
+                database_url = f"{parts[0]}/gurukul_tenant_{slug}"
+            else:
+                database_url = base_url
+        else:
+            raise HTTPException(status_code=400, detail="database_url required when CENTRAL_DATABASE_URL is not set")
+    with get_central_db() as db:
+        if db is None:
+            raise HTTPException(status_code=503, detail="Central tenant registry not configured")
+        existing = db.query(TenantRegistry).filter(TenantRegistry.subdomain_slug == slug).first()
+        if existing:
+            return ProvisionTenantResponse(
+                tenant_id=existing.id,
+                subdomain_slug=existing.subdomain_slug or slug,
+                message="Tenant already exists for this subdomain_slug",
+            )
+
+        # Create tenant PostgreSQL DB and apply app schema (DB-per-tenant). Done in Gurukul, not EMS.
+        ok = create_tenant_database_and_schema(database_url)
+        if not ok:
+            raise HTTPException(
+                status_code=503,
+                detail="Tenant database creation or schema failed. Check backend logs and that DB user can CREATE DATABASE.",
+            )
+
+        row = TenantRegistry(
+            id=tenant_id,
+            name=body.name,
+            type="INSTITUTION",
+            database_url=database_url,
+            subdomain_slug=slug,
+        )
+        db.add(row)
+        db.commit()
+    return ProvisionTenantResponse(
+        tenant_id=tenant_id,
+        subdomain_slug=slug,
+        message="Tenant provisioned: database created and schema applied. Use X-Tenant-ID or subdomain to route.",
+    )
+
 
 # --- Admin Endpoints ---
 

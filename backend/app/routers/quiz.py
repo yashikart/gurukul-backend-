@@ -239,6 +239,21 @@ async def submit_quiz(
     db.commit()
     db.refresh(test_result)
     
+    # Cryptographically chain the review output (Phase 1)
+    try:
+        from app.services.deterministic_repo import deterministic_repo
+        review_data = {
+            "test_result_id": test_result.id,
+            "correct_count": correct_count,
+            "total_questions": len(questions),
+            "percentage": score_percentage,
+            "results": results
+        }
+        deterministic_repo.add_review_version(db, submission_id=str(test_result.id), review_json=review_data)
+        logger.info(f"Review output version 1 saved and chained for test {test_result.id}")
+    except Exception as e:
+        logger.error(f"Failed to save chained review version for test {test_result.id}: {e}")
+    
     # Sync to EMS asynchronously (don't block response)
     try:
         # Get school_id from user if available (from EMS authentication)

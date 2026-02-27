@@ -3,6 +3,16 @@ import API_BASE_URL from '../config';
 
 const AuthContext = createContext();
 
+// Multi-tenant: add X-Tenant-ID from localStorage so backend uses correct DB
+function authHeaders(extra = {}) {
+    const h = { ...extra };
+    try {
+        const tenantId = localStorage.getItem('gurukul_tenant_id');
+        if (tenantId) h['X-Tenant-ID'] = tenantId;
+    } catch (e) { /* ignore */ }
+    return h;
+}
+
 // Helper function to retry fetch requests with exponential backoff
 // This handles Render free tier cold starts which can take 30-60 seconds
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
@@ -20,28 +30,28 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
         let timeoutId = null;
         try {
             console.log(`[Auth] Fetch attempt ${attempt + 1}/${maxRetries + 1} to:`, url);
-            
+
             // Increase timeout for later attempts (backend may be waking up)
             const timeout = 30000 + (attempt * 10000); // 30s, 40s, 50s, 60s
             const controller = new AbortController();
             timeoutId = setTimeout(() => controller.abort(), timeout);
-            
+
             const response = await fetch(url, {
                 ...options,
                 signal: controller.signal
             });
-            
+
             if (timeoutId) clearTimeout(timeoutId);
             return response;
         } catch (error) {
             if (timeoutId) clearTimeout(timeoutId);
-            
+
             // If it's the last attempt, throw the error
             if (attempt === maxRetries) {
                 console.error(`[Auth] All ${maxRetries + 1} fetch attempts failed`);
                 throw error;
             }
-            
+
             // Only retry on network errors (backend sleeping)
             if (isNetworkError(error) || error.name === 'AbortError') {
                 const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // Exponential backoff: 1s, 2s, 4s, max 10s
@@ -49,7 +59,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
-            
+
             // For other errors (CORS, auth, etc.), don't retry
             throw error;
         }
@@ -69,7 +79,7 @@ export const AuthProvider = ({ children }) => {
         // This will run on initial render in the browser only
         // eslint-disable-next-line no-console
         console.log('[Auth] Runtime API_BASE_URL:', API_BASE_URL, 'hostname:', window.location.hostname);
-        
+
         // Test backend connectivity on page load
         // Use longer timeout for Render cold starts (free tier services can take 30+ seconds to wake up)
         (async () => {
@@ -106,20 +116,21 @@ export const AuthProvider = ({ children }) => {
             if (storedToken) {
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
-                        headers: {
+                        headers: authHeaders({
                             'Authorization': `Bearer ${storedToken}`
-                        },
+                        }),
                         // Add timeout to prevent hanging - longer for Render cold starts
                         signal: AbortSignal.timeout(30000) // 30 second timeout for Render cold starts
                     });
-                    
+
                     if (response.ok) {
                         const userData = await response.json();
                         setUser({
                             id: userData.id,
                             email: userData.email,
                             full_name: userData.full_name,
-                            role: userData.role
+                            role: userData.role,
+                            assessment_completed: userData.assessment_completed
                         });
                     } else if (response.status === 401) {
                         // Only logout on actual 401 Unauthorized (token is invalid/expired)
@@ -155,7 +166,7 @@ export const AuthProvider = ({ children }) => {
             }
             setLoading(false);
         };
-        
+
         checkAuth();
     }, []);
 
@@ -166,16 +177,14 @@ export const AuthProvider = ({ children }) => {
         console.log('[Auth] Full login URL:', loginUrl);
         console.log('[Auth] Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
         console.log('[Auth] Attempting login...');
-        
+
         try {
             const response = await fetchWithRetry(loginUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ email, password }),
             }, 3); // Retry up to 3 times (4 total attempts)
-            
+
             console.log('[Auth] Login response status:', response.status);
             console.log('[Auth] Response OK:', response.ok);
 
@@ -195,24 +204,24 @@ export const AuthProvider = ({ children }) => {
 
             const data = await response.json();
             console.log('[Auth] Login successful!');
-            
+
             // Store token
             localStorage.setItem('auth_token', data.access_token);
             setToken(data.access_token);
-            
+
             // Extract session_id from token (backend includes it in JWT payload)
             const contextManager = (await import('../utils/contextManager')).default;
             const sessionId = contextManager.extractSessionIdFromToken(data.access_token);
             if (sessionId) {
-              localStorage.setItem('session_id', sessionId);
-              console.log('[Auth] Session ID extracted from token:', sessionId);
+                localStorage.setItem('session_id', sessionId);
+                console.log('[Auth] Session ID extracted from token:', sessionId);
             } else {
-              console.warn('[Auth] No session_id found in token');
+                console.warn('[Auth] No session_id found in token');
             }
-            
+
             // Set user
             setUser(data.user);
-            
+
             return { session: { access_token: data.access_token }, user: data.user };
         } catch (error) {
             console.error('[Auth] ===== LOGIN ERROR DETAILS =====');
@@ -220,7 +229,7 @@ export const AuthProvider = ({ children }) => {
             console.error('[Auth] Error message:', error.message);
             console.error('[Auth] Error stack:', error.stack);
             console.error('[Auth] Full error object:', error);
-            
+
             // Handle network errors with more detail
             if (error.name === 'TimeoutError' || error.name === 'AbortError' || error.message.includes('timeout')) {
                 console.error('[Auth] Request timed out after all retries - backend may be taking too long to wake up');
@@ -243,21 +252,19 @@ export const AuthProvider = ({ children }) => {
         console.log('[Auth] Full signup URL:', signupUrl);
         console.log('[Auth] Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
         console.log('[Auth] Attempting registration...');
-        
+
         try {
             const response = await fetchWithRetry(signupUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    email, 
-                    password, 
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({
+                    email,
+                    password,
                     role: role || 'STUDENT',
                     full_name: full_name || null
                 }),
             }, 3); // Retry up to 3 times (4 total attempts)
-            
+
             console.log('[Auth] Registration response status:', response.status);
             console.log('[Auth] Response OK:', response.ok);
             console.log('[Auth] Response headers:', Object.fromEntries(response.headers.entries()));
@@ -278,14 +285,14 @@ export const AuthProvider = ({ children }) => {
 
             const data = await response.json();
             console.log('[Auth] Registration successful!');
-            
+
             // Store token
             localStorage.setItem('auth_token', data.access_token);
             setToken(data.access_token);
-            
+
             // Set user
             setUser(data.user);
-            
+
             return { user: data.user, session: { access_token: data.access_token } };
         } catch (error) {
             console.error('[Auth] ===== SIGNUP ERROR DETAILS =====');
@@ -293,7 +300,7 @@ export const AuthProvider = ({ children }) => {
             console.error('[Auth] Error message:', error.message);
             console.error('[Auth] Error stack:', error.stack);
             console.error('[Auth] Full error object:', error);
-            
+
             // Handle network errors with more detail
             if (error.name === 'TimeoutError' || error.name === 'AbortError' || error.message.includes('timeout')) {
                 console.error('[Auth] Request timed out after all retries - backend may be taking too long to wake up');

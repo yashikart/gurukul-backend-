@@ -5,7 +5,7 @@ Database models for storing PRANA packets from the frontend.
 Used by the bucket layer to store packets before Karma Tracker processes them.
 """
 
-from sqlalchemy import Column, String, Float, DateTime, Text, JSON, Boolean, Index
+from sqlalchemy import Column, String, Float, DateTime, Text, JSON, Boolean, Index, Integer
 from sqlalchemy.sql import func
 from app.core.database import Base
 import uuid
@@ -62,10 +62,59 @@ class PranaPacket(Base):
     karma_actions = Column(JSON, nullable=True, default=list)  # List of karma actions generated from this packet
     processing_error = Column(Text, nullable=True)  # Error message if processing failed
     
+    # Integrity Hardening (Phase 1)
+    previous_hash = Column(String(64), nullable=True, index=True)
+    current_hash = Column(String(64), nullable=True, index=True)
+
     # Indexes for common queries
     __table_args__ = (
         Index('idx_user_processed', 'user_id', 'processed_by_karma'),
         Index('idx_received_at', 'received_at'),
         Index('idx_processed_at', 'processed_at'),
+        Index('idx_integrity_chain', 'previous_hash', 'current_hash'),
+    )
+
+
+class ReviewOutputVersion(Base):
+    """
+    Versioning for PRANA Evaluation Reviews.
+    Ensures that every revision of a review is tracked and chained.
+    """
+    __tablename__ = "review_output_versions"
+
+    id = Column(Integer, primary_key=True)
+    submission_id = Column(String, nullable=False, index=True)
+    version = Column(Integer, nullable=False)
+    review_json = Column(JSON, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Integrity
+    previous_hash = Column(String(64), nullable=True, index=True)
+    current_hash = Column(String(64), nullable=True, index=True)
+
+    __table_args__ = (
+        Index('idx_review_version', 'submission_id', 'version', unique=True),
+    )
+
+
+class NextTaskVersion(Base):
+    """
+    Versioning for PRANA Next-Task recommendations.
+    Ensures that every change to the recommended next task is cryptographically chained.
+    """
+    __tablename__ = "next_task_versions"
+
+    id = Column(Integer, primary_key=True)
+    submission_id = Column(String, nullable=False, index=True)
+    version = Column(Integer, nullable=False)
+    next_task_json = Column(JSON, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Integrity
+    previous_hash = Column(String(64), nullable=True, index=True)
+    current_hash = Column(String(64), nullable=True, index=True)
+
+    __table_args__ = (
+        Index('idx_task_version', 'submission_id', 'version', unique=True),
     )
 

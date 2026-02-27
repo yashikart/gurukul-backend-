@@ -324,6 +324,25 @@ async def update_profile(
             detail="Failed to update profile. Please try again."
         )
 
+@router.post("/complete-assessment", response_model=UserResponse)
+async def complete_assessment(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Mark the assessment as completed for the current user"""
+    try:
+        current_user.assessment_completed = True
+        db.commit()
+        db.refresh(current_user)
+        return current_user
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Auth] Error completing assessment: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update assessment status."
+        )
+
 @router.delete("/delete-account")
 async def delete_account(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Delete the current user's account and all associated data"""

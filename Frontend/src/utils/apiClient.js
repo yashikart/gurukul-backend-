@@ -57,6 +57,11 @@ export const apiRequest = async (endpoint, options = {}, retries = 1) => {
         if (token) {
             fetchOptions.headers['Authorization'] = `Bearer ${token}`;
         }
+        // Multi-tenant: send X-Tenant-ID so backend uses correct DB (set via tenant picker or localStorage)
+        const tenantId = localStorage.getItem('gurukul_tenant_id');
+        if (tenantId) {
+            fetchOptions.headers['X-Tenant-ID'] = tenantId;
+        }
     } catch (e) {
         console.warn('Failed to get auth token for API request', e);
     }
