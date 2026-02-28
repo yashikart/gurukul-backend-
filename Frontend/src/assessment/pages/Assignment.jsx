@@ -18,7 +18,7 @@ export default function AssignmentPage() {
   const { t } = useI18n();
   const [_assignmentAttempt, setAssignmentAttempt] = useState(null);
   const [evaluationResults, setEvaluationResults] = useState(null);
-  const { user, token } = useAuth();
+  const { user, token, updateUser } = useAuth();
 
   const handleAssignmentComplete = async (attempt) => {
     setAssignmentAttempt(attempt);
@@ -53,6 +53,9 @@ export default function AssignmentPage() {
             }
           });
           console.log('✅ Assessment marked as completed in backend');
+          if (updateUser) {
+            updateUser({ assessment_completed: true });
+          }
         } catch (err) {
           console.error('❌ Failed to mark assessment as completed:', err);
         }
