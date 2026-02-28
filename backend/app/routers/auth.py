@@ -245,7 +245,8 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
             "id": new_user.id,
             "email": new_user.email,
             "full_name": new_user.full_name,
-            "role": new_user.role
+            "role": new_user.role,
+            "assessment_completed": new_user.assessment_completed
         }
     }
 
@@ -291,7 +292,8 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
-            "role": user.role
+            "role": user.role,
+            "assessment_completed": user.assessment_completed
         }
     }
 

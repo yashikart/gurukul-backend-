@@ -1,0 +1,24 @@
+
+--- Testing Valid Submission ---
+Status: 200
+Response: {'status': 'ingested', 'packet_id': '3051bf9c-aae1-466a-a316-f1058f5d561a', 'received_at': '2026-02-28T06:58:47.242801+00:00'}
+
+--- Testing Invalid Payloads ---
+Missing active_seconds Status: 422
+Wrong type Status: 422
+
+--- Testing Boundary Limits ---
+Time > 5.0s Status: 500
+Negative time Status: 500
+Excessive size Status: 200
+
+--- Testing High Frequency Calls ---
+High Frequency: 10 success, 0 failures
+
+--- Testing Lifecycle and State Regression ---
+Transition 1: 200, Transition 2: 200
+
+--- Testing Deterministic IDs ---
+ID 1: 864a2bea-4085-457a-afa9-38f4edc671ef
+ID 2: 4965e109-ceee-461b-80d6-49686c6e4d10
+Deterministic IDs: NO
