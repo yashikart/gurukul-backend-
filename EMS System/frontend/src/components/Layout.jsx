@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useDemo } from '../context/DemoContext';
 
 const Layout = ({ children }) => {
   const { user, logout, isSuperAdmin } = useAuth();
+  const { isDemoMode, toggleDemoMode } = useDemo();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,7 +23,7 @@ const Layout = ({ children }) => {
 
     // Set initial state
     handleResize();
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -36,32 +38,34 @@ const Layout = ({ children }) => {
   // Role-based menu items
   const getMenuItems = () => {
     const role = user?.role;
-    
+
     if (role === 'SUPER_ADMIN') {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
-        { id: 'schools', label: 'Schools', icon: '🏫', path: '/dashboard/schools' },
-        { id: 'create-school', label: 'Create School', icon: '➕', path: '/dashboard/create-school' },
-        { id: 'admins', label: 'Admins', icon: '👥', path: '/dashboard/admins' },
-        { id: 'create-admin', label: 'Create Admin', icon: '➕', path: '/dashboard/create-admin' },
-        { id: 'users', label: 'All Users', icon: '👤', path: '/dashboard/users' },
+        ...(!isDemoMode ? [
+          { id: 'schools', label: 'Schools', icon: '🏫', path: '/dashboard/schools' },
+          { id: 'create-school', label: 'Create School', icon: '➕', path: '/dashboard/create-school' },
+          { id: 'admins', label: 'Admins', icon: '👥', path: '/dashboard/admins' },
+          { id: 'create-admin', label: 'Create Admin', icon: '➕', path: '/dashboard/create-admin' },
+          { id: 'users', label: 'All Users', icon: '👤', path: '/dashboard/users' },
+        ] : []),
       ];
-        } else if (role === 'ADMIN') {
-          return [
-            { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
-            { id: 'analytics', label: 'Analytics', icon: '📈', path: '/dashboard/analytics' },
-            { id: 'teachers', label: 'Teachers', icon: '👨‍🏫', path: '/dashboard/teachers' },
-            { id: 'students', label: 'Students', icon: '👨‍🎓', path: '/dashboard/students' },
-            { id: 'parents', label: 'Parents', icon: '👨‍👩‍👧', path: '/dashboard/parents' },
-            { id: 'classes', label: 'Classes', icon: '📚', path: '/dashboard/classes' },
-            { id: 'timetable', label: 'Timetable', icon: '📅', path: '/dashboard/timetable' },
-            { id: 'lessons', label: 'Lessons', icon: '📖', path: '/dashboard/lessons' },
-            { id: 'parent-student-linking', label: 'Parent-Student Links', icon: '🔗', path: '/dashboard/parent-student-linking' },
-            { id: 'holidays-events', label: 'Holidays & Events', icon: '🎉', path: '/dashboard/holidays-events' },
-            { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
-            { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
-          ];
-        } else if (role === 'TEACHER') {
+    } else if (role === 'ADMIN') {
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
+        { id: 'analytics', label: 'Analytics', icon: '📈', path: '/dashboard/analytics' },
+        { id: 'teachers', label: 'Teachers', icon: '👨‍🏫', path: '/dashboard/teachers' },
+        { id: 'students', label: 'Students', icon: '👨‍🎓', path: '/dashboard/students' },
+        { id: 'parents', label: 'Parents', icon: '👨‍👩‍👧', path: '/dashboard/parents' },
+        { id: 'classes', label: 'Classes', icon: '📚', path: '/dashboard/classes' },
+        { id: 'timetable', label: 'Timetable', icon: '📅', path: '/dashboard/timetable' },
+        { id: 'lessons', label: 'Lessons', icon: '📖', path: '/dashboard/lessons' },
+        { id: 'parent-student-linking', label: 'Parent-Student Links', icon: '🔗', path: '/dashboard/parent-student-linking' },
+        { id: 'holidays-events', label: 'Holidays & Events', icon: '🎉', path: '/dashboard/holidays-events' },
+        { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
+        ...(!isDemoMode ? [{ id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' }] : []),
+      ];
+    } else if (role === 'TEACHER') {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
         { id: 'classes', label: 'My Classes', icon: '📚', path: '/dashboard/classes' },
@@ -70,7 +74,7 @@ const Layout = ({ children }) => {
         { id: 'timetable', label: 'Timetable', icon: '📅', path: '/dashboard/timetable' },
         { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
         { id: 'attendance', label: 'Attendance', icon: '✅', path: '/dashboard/attendance' },
-        { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
+        ...(!isDemoMode ? [{ id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' }] : []),
       ];
     } else if (role === 'PARENT') {
       return [
@@ -78,7 +82,7 @@ const Layout = ({ children }) => {
         { id: 'children', label: 'My Children', icon: '👨‍👩‍👧', path: '/dashboard/children' },
         { id: 'attendance', label: 'Attendance', icon: '✅', path: '/dashboard/attendance' },
         { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
-        { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
+        ...(!isDemoMode ? [{ id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' }] : []),
       ];
     } else if (role === 'STUDENT') {
       return [
@@ -88,10 +92,10 @@ const Layout = ({ children }) => {
         { id: 'attendance', label: 'Attendance', icon: '✅', path: '/dashboard/attendance' },
         { id: 'schedule', label: 'Schedule', icon: '📅', path: '/dashboard/schedule' },
         { id: 'announcements', label: 'Announcements', icon: '📢', path: '/dashboard/announcements' },
-        { id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' },
+        ...(!isDemoMode ? [{ id: 'reset-password', label: 'Reset Password', icon: '🔐', path: '/dashboard/reset-password' }] : []),
       ];
     }
-    
+
     // Default menu for unknown roles
     return [
       { id: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
@@ -145,7 +149,7 @@ const Layout = ({ children }) => {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -154,7 +158,7 @@ const Layout = ({ children }) => {
       {/* Sidebar */}
       <div
         className={`
-          ${isMobile 
+          ${isMobile
             ? `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
             : `${sidebarOpen ? 'w-64' : 'w-20'} fixed h-full transition-all duration-300`
           }
@@ -216,11 +220,10 @@ const Layout = ({ children }) => {
                 handleNavigation(item.path);
                 if (isMobile) setSidebarOpen(false);
               }}
-              className={`w-full flex items-center space-x-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-all text-sm md:text-base ${
-                isActive(item.path)
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }`}
+              className={`w-full flex items-center space-x-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-all text-sm md:text-base ${isActive(item.path)
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
             >
               <span className="text-lg md:text-xl">{item.icon}</span>
               {(sidebarOpen || isMobile) && <span className="font-medium">{item.label}</span>}
@@ -266,7 +269,18 @@ const Layout = ({ children }) => {
                   <p className="text-xs md:text-sm text-gray-600 hidden sm:block">{getDashboardSubtitle(user?.role)}</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2 md:space-x-4">
+              <div className="flex items-center space-x-4 md:space-x-6">
+                {/* Demo Mode Toggle */}
+                <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+                  <span className={`text-[10px] md:text-xs font-bold ${isDemoMode ? 'text-green-600' : 'text-gray-400'}`}>DEMO MODE</span>
+                  <button
+                    onClick={toggleDemoMode}
+                    className={`relative inline-flex h-4 w-8 md:h-5 md:w-9 items-center rounded-full transition-colors ${isDemoMode ? 'bg-green-500' : 'bg-gray-400'}`}
+                  >
+                    <span className={`inline-block h-3 w-3 md:h-3.5 md:w-3.5 transform rounded-full bg-white transition-transform ${isDemoMode ? 'translate-x-4 md:translate-x-4.5' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
                 <div className="text-right">
                   <p className="text-xs md:text-sm font-medium text-gray-800 truncate max-w-[120px] md:max-w-none">{user?.email || 'User'}</p>
                   <p className="text-xs text-gray-500 hidden sm:block">{getRoleDisplayName(user?.role)}</p>

@@ -14,10 +14,12 @@ import {
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemo } from '../contexts/DemoContext';
 
 const TeacherSidebar = () => {
     const { isSidebarOpen, closeSidebar } = useSidebar();
     const { user, logout } = useAuth();
+    const { isDemoMode } = useDemo();
     const navigate = useNavigate();
     const [activeHash, setActiveHash] = React.useState(() => window.location.hash.replace('#', '') || 'students');
 
@@ -37,11 +39,11 @@ const TeacherSidebar = () => {
         const handleHashChange = () => {
             setActiveHash(window.location.hash.replace('#', '') || 'students');
         };
-        
+
         window.addEventListener('hashchange', handleHashChange);
         // Check initial hash
         handleHashChange();
-        
+
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
 
@@ -84,7 +86,7 @@ const TeacherSidebar = () => {
                     <div className="flex flex-col gap-2 overflow-y-auto no-scrollbar">
                         {teacherMenuItems.map((item, index) => {
                             const isActive = activeHash === item.hash;
-                            
+
                             return (
                                 <NavLink
                                     key={index}
@@ -112,23 +114,25 @@ const TeacherSidebar = () => {
                     {/* Footer Actions */}
                     <div className="pt-3 border-t border-white/10 mt-2 space-y-2">
                         {/* Settings */}
-                        <NavLink
-                            to="/teacher/dashboard#settings"
-                            onClick={(e) => {
-                                closeSidebar();
-                                setActiveHash('settings');
-                                window.location.hash = 'settings';
-                            }}
-                            className={({ isActive }) => `
-                                flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
-                                ${activeHash === 'settings'
-                                    ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg border border-white/20 transform scale-105'
-                                    : 'bg-white/5 text-gray-300 hover:text-white hover:pl-6 border border-transparent'}
-                            `}
-                        >
-                            <FaCog className="text-lg opacity-80 group-hover:opacity-100" />
-                            <span className="text-sm font-medium tracking-wide">Settings</span>
-                        </NavLink>
+                        {!isDemoMode && (
+                            <NavLink
+                                to="/teacher/dashboard#settings"
+                                onClick={(e) => {
+                                    closeSidebar();
+                                    setActiveHash('settings');
+                                    window.location.hash = 'settings';
+                                }}
+                                className={({ isActive }) => `
+                                    flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
+                                    ${activeHash === 'settings'
+                                        ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg border border-white/20 transform scale-105'
+                                        : 'bg-white/5 text-gray-300 hover:text-white hover:pl-6 border border-transparent'}
+                                `}
+                            >
+                                <FaCog className="text-lg opacity-80 group-hover:opacity-100" />
+                                <span className="text-sm font-medium tracking-wide">Settings</span>
+                            </NavLink>
+                        )}
 
                         {/* Mobile User Section */}
                         {user && (

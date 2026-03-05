@@ -12,16 +12,18 @@ import {
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemo } from '../contexts/DemoContext';
 
 const AdminSidebar = () => {
     const { isSidebarOpen, closeSidebar } = useSidebar();
     const { user, logout } = useAuth();
+    const { isDemoMode } = useDemo();
     const navigate = useNavigate();
     const [activeHash, setActiveHash] = React.useState(() => window.location.hash.replace('#', '') || 'overview');
 
     const adminMenuItems = [
-        { icon: FaServer, label: "System Overview", path: "/admin_dashboard#overview", hash: "overview" },
-        { icon: FaUsers, label: "User Management", path: "/admin_dashboard#users", hash: "users" },
+        ...(!isDemoMode ? [{ icon: FaServer, label: "System Overview", path: "/admin_dashboard#overview", hash: "overview" }] : []),
+        ...(!isDemoMode ? [{ icon: FaUsers, label: "User Management", path: "/admin_dashboard#users", hash: "users" }] : []),
         { icon: FaChartLine, label: "Reports & Analytics", path: "/admin_dashboard#reports", hash: "reports" },
     ];
 
@@ -30,11 +32,11 @@ const AdminSidebar = () => {
         const handleHashChange = () => {
             setActiveHash(window.location.hash.replace('#', '') || 'overview');
         };
-        
+
         window.addEventListener('hashchange', handleHashChange);
         // Check initial hash
         handleHashChange();
-        
+
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
 
@@ -77,7 +79,7 @@ const AdminSidebar = () => {
                     <div className="flex flex-col gap-2 overflow-y-auto no-scrollbar">
                         {adminMenuItems.map((item, index) => {
                             const isActive = activeHash === item.hash;
-                            
+
                             return (
                                 <NavLink
                                     key={index}
@@ -105,23 +107,25 @@ const AdminSidebar = () => {
                     {/* Footer Actions */}
                     <div className="pt-3 border-t border-white/10 mt-2 space-y-2">
                         {/* Settings */}
-                        <NavLink
-                            to="/admin_dashboard#settings"
-                            onClick={(e) => {
-                                closeSidebar();
-                                setActiveHash('settings');
-                                window.location.hash = 'settings';
-                            }}
-                            className={({ isActive }) => `
-                                flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
-                                ${activeHash === 'settings'
-                                    ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg border border-white/20 transform scale-105'
-                                    : 'bg-white/5 text-gray-300 hover:text-white hover:pl-6 border border-transparent'}
-                            `}
-                        >
-                            <FaCog className="text-lg opacity-80 group-hover:opacity-100" />
-                            <span className="text-sm font-medium tracking-wide">Settings</span>
-                        </NavLink>
+                        {!isDemoMode && (
+                            <NavLink
+                                to="/admin_dashboard#settings"
+                                onClick={(e) => {
+                                    closeSidebar();
+                                    setActiveHash('settings');
+                                    window.location.hash = 'settings';
+                                }}
+                                className={({ isActive }) => `
+                                    flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
+                                    ${activeHash === 'settings'
+                                        ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg border border-white/20 transform scale-105'
+                                        : 'bg-white/5 text-gray-300 hover:text-white hover:pl-6 border border-transparent'}
+                                `}
+                            >
+                                <FaCog className="text-lg opacity-80 group-hover:opacity-100" />
+                                <span className="text-sm font-medium tracking-wide">Settings</span>
+                            </NavLink>
+                        )}
 
                         {/* Mobile User Section */}
                         {user && (

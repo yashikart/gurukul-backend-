@@ -5,13 +5,34 @@ from app.routers import auth, super_admin, schools, dashboard, teacher, student,
 from app.routers.admin import dashboard as admin_dashboard
 from app.config import settings
 
-# Create database tables on startup
-try:
-    from app.models import StudentSummary, StudentFlashcard, StudentTestResult, StudentSubjectData
-    Base.metadata.create_all(bind=engine)
-    print("[Startup] Database tables created/verified successfully!")
-except Exception as e:
-    print(f"[Startup] Database table creation warning: {e}")
+import os
+import asyncio
+
+# Create database tables and seed demo data on startup
+@app.on_event("startup")
+async def startup_event():
+    async def run_setup():
+        try:
+            from app.models import StudentSummary, StudentFlashcard, StudentTestResult, StudentSubjectData
+            # Create tables in thread to avoid blocking
+            await asyncio.to_thread(Base.metadata.create_all, bind=engine)
+            print("[Startup] Database tables created/verified successfully!")
+            
+            # --- AUTO SEED DEMO DATA ---
+            if os.getenv("AUTO_SEED_DEMO") == "true":
+                try:
+                    print("[Startup] [SEED] AUTO_SEED_DEMO=true detected. Seeding EMS demo data...")
+                    from scripts.seed_ems_demo import seed_ems_demo
+                    # Seed in thread
+                    await asyncio.to_thread(seed_ems_demo)
+                    print("[Startup] [SEED] [OK] EMS demo data seeded successfully")
+                except Exception as e:
+                    print(f"[Startup] [SEED] [FAIL] Error seeding EMS demo: {e}")
+        except Exception as e:
+            print(f"[Startup] Database table creation/seeding warning: {e}")
+
+    # Run setup in background so server can start immediately
+    asyncio.create_task(run_setup())
 
 # Initialize FastAPI app
 app = FastAPI(

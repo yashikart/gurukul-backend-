@@ -8,9 +8,9 @@ from app.config import settings
 engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
-    pool_recycle=3600,  # Recycle connections after 1 hour
-    echo=settings.ENVIRONMENT == "development",
-    connect_args={"connect_timeout": 10}  # 10 second timeout
+    pool_recycle=3600,
+    echo=False,
+    connect_args={"connect_timeout": 10}
 )
 
 # Create session factory

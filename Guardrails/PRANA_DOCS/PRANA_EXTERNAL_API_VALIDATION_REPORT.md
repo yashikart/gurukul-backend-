@@ -28,3 +28,17 @@ We executed a complete API surface testing suite against `http://localhost:3000/
 
 ## Conclusion
 PRANA behaves as a structurally-valid but completely un-guarded data pipe under external pressure. Canonical claims of ingestion resistance to misuse are completely falsified.
+
+## Final Output & Explicit Statement
+
+**Does PRANA behave exactly as canon states under external pressure?**
+**No.**
+
+**Why:**
+While basic structural schema validation works successfully, PRANA fundamentally violates critical canonical claims:
+1. **Lack of Determinism**: `packet_id` logic simply invokes `uuid4()` on ingestion rather than hashing payloads, exposing it to undetected duplicate spam flows and replay attacks.
+2. **Hidden System Coupling**: Despite the asynchronous client bridge acting independently, the backend ingest endpoint acts synchronously across PostgreSQL database inserts for its hashed-chain ledgers. Temporary database strain triggers a 500 loop.
+3. **Failing Cryptographic Integrity**: The append-only ledger `add_packet()` mechanism fails immediately under concurrent external pressure. Parallel database saves will forge duplicate identical `previous_hash` nodes, forging a chain conflict that subsequently shatters the `verify_packet_chain` process loop.
+4. **Adversarial Silence**: Disconnected from verification engines, the border ingest silently accepts structurally sound non-sequiturs (e.g., direct state skipping from `DEEP_FOCUS` to `FAKING`, payloads reordered, or oversized objects > 1MB).
+
+PRANA behaves as a structurally-valid dumb pipe, breaking several key safety bounds assumed in canon when interacting out in the wild.

@@ -48,6 +48,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ModalProvider } from './contexts/ModalContext';
 import { PranaProvider } from './contexts/PranaContext';
 import { SidebarProvider } from './contexts/SidebarContext';
+import { DemoProvider } from './contexts/DemoContext';
 import { sendLifeEvent } from './utils/karmaTrackerClient';
 import bgImage from './assets/background.png';
 
@@ -392,7 +393,9 @@ const App = () => {
       <AuthProvider>
         <KarmaProvider>
           <PranaProvider>
-            <AppContent />
+            <DemoProvider>
+              <AppContent />
+            </DemoProvider>
           </PranaProvider>
         </KarmaProvider>
       </AuthProvider>

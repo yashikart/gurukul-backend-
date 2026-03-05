@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useDemo } from '../context/DemoContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -8,6 +9,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { isDemoMode, toggleDemoMode } = useDemo();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -15,12 +17,25 @@ const Login = () => {
     setError('');
     setLoading(true);
 
+    if (email.toLowerCase().endsWith('@demo.com') && !isDemoMode) {
+      setError('This is a demo account. Please enable "DEMO MODE" below the login button to use these credentials.');
+      setLoading(false);
+      return;
+    }
+
     const result = await login(email, password);
 
     if (result.success) {
       navigate('/dashboard');
     } else {
-      setError(result.message);
+      let errorMessage = result.message;
+
+      // Helpful hint for race conditions during startup/deployment
+      if (isDemoMode && email.toLowerCase().endsWith('@demo.com') && (errorMessage.includes('Incorrect') || errorMessage.includes('401'))) {
+        errorMessage = "Demo login failed. If the system was just restarted, please wait 3-5 seconds for initialization and try again.";
+      }
+
+      setError(errorMessage);
     }
 
     setLoading(false);
@@ -81,6 +96,17 @@ const Login = () => {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+
+        {/* Demo Mode Toggle */}
+        <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-3">
+          <span className={`text-xs font-bold ${isDemoMode ? 'text-green-600' : 'text-gray-400'}`}>DEMO MODE</span>
+          <button
+            onClick={toggleDemoMode}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isDemoMode ? 'bg-green-500' : 'bg-gray-400'}`}
+          >
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isDemoMode ? 'translate-x-4.5' : 'translate-x-1'}`} />
+          </button>
+        </div>
 
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>Login with your email and password. All user roles can login here.</p>

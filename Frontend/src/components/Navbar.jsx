@@ -5,10 +5,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 import { useAuth } from '../contexts/AuthContext';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useDemo } from '../contexts/DemoContext';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { toggleSidebar, isSidebarOpen } = useSidebar();
+  const { isDemoMode, toggleDemoMode } = useDemo();
   const navigate = useNavigate();
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState('English');
@@ -61,7 +63,7 @@ const Navbar = () => {
       'te': 'తెలుగు',
       'ur': 'اردو'
     };
-    
+
     if (savedLang && langNames[savedLang]) {
       setCurrentLang(langNames[savedLang]);
     }
@@ -70,7 +72,7 @@ const Navbar = () => {
     let attempts = 0;
     const maxAttempts = 50; // 5 seconds max wait
     const timeoutIds = [];
-    
+
     const tryInit = () => {
       attempts++;
       if (initTranslate()) {
@@ -135,7 +137,7 @@ const Navbar = () => {
   const handleLanguageChange = (langCode) => {
     // Store selected language
     localStorage.setItem('selected_language', langCode);
-    
+
     // Update current language state
     const langNames = {
       'en': 'English',
@@ -170,96 +172,96 @@ const Navbar = () => {
     // Function to trigger Google Translate using multiple methods (with error handling)
     const triggerTranslation = () => {
       try {
-      // Method 1: Try to find and use the select element directly
-      const selectors = [
-        '.goog-te-combo',
-        'select.goog-te-combo',
-        '#\\:0\\.targetLanguage',
-        'select[id*="targetLanguage"]',
-        'select[class*="goog-te"]'
-      ];
-      
-      for (const selector of selectors) {
-        try {
-          const select = document.querySelector(selector);
-          if (select && select.tagName === 'SELECT') {
-            // Set the value
-            if (select.value !== langCode) {
-              select.value = langCode;
-            }
-            
-            // Create and dispatch change event
-            const changeEvent = new Event('change', { bubbles: true, cancelable: true });
-            select.dispatchEvent(changeEvent);
-            
-            // Also try input event
-            const inputEvent = new Event('input', { bubbles: true, cancelable: true });
-            select.dispatchEvent(inputEvent);
-            
-            // Try onchange if it exists
-            if (typeof select.onchange === 'function') {
-              try {
-                select.onchange(changeEvent);
-              } catch (e) {
-                // Ignore errors
-              }
-            }
-            
-            return true;
-          }
-        } catch (e) {
-          // Continue to next selector
-        }
-      }
-      
-      // Method 2: Try to access Google Translate iframe
-      try {
-        const iframes = document.querySelectorAll('iframe');
-        for (const iframe of iframes) {
+        // Method 1: Try to find and use the select element directly
+        const selectors = [
+          '.goog-te-combo',
+          'select.goog-te-combo',
+          '#\\:0\\.targetLanguage',
+          'select[id*="targetLanguage"]',
+          'select[class*="goog-te"]'
+        ];
+
+        for (const selector of selectors) {
           try {
-            if (iframe.src && iframe.src.includes('translate.google.com')) {
-              const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-              if (iframeDoc) {
-                const iframeSelect = iframeDoc.querySelector('select');
-                if (iframeSelect) {
-                  iframeSelect.value = langCode;
-                  const changeEvent = new Event('change', { bubbles: true });
-                  iframeSelect.dispatchEvent(changeEvent);
-                  return true;
+            const select = document.querySelector(selector);
+            if (select && select.tagName === 'SELECT') {
+              // Set the value
+              if (select.value !== langCode) {
+                select.value = langCode;
+              }
+
+              // Create and dispatch change event
+              const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+              select.dispatchEvent(changeEvent);
+
+              // Also try input event
+              const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+              select.dispatchEvent(inputEvent);
+
+              // Try onchange if it exists
+              if (typeof select.onchange === 'function') {
+                try {
+                  select.onchange(changeEvent);
+                } catch (e) {
+                  // Ignore errors
                 }
               }
+
+              return true;
             }
           } catch (e) {
-            // Cross-origin restrictions, continue
+            // Continue to next selector
           }
         }
-      } catch (e) {
-        // Ignore iframe access errors
-      }
-      
-      // Method 3: Use cookie-based approach (Google Translate uses cookies)
-      // Get current domain for cookie
-      const domain = window.location.hostname;
-      const cookiePath = '/';
-      
-      if (langCode === 'en') {
-        // Remove translation cookie to show English
-        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${cookiePath};`;
-        document.cookie = `googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${cookiePath};`;
-      } else {
-        // Set translation cookie - don't set domain to avoid cookie rejection
-        const expireDate = new Date();
-        expireDate.setFullYear(expireDate.getFullYear() + 1);
-        document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=${cookiePath}; SameSite=Lax`;
-      }
-      
-      // Method 4: Reload page with translation cookie (last resort)
-      if (langCode !== 'en') {
-        window.location.reload();
-        return true;
-      }
-      
-      return false;
+
+        // Method 2: Try to access Google Translate iframe
+        try {
+          const iframes = document.querySelectorAll('iframe');
+          for (const iframe of iframes) {
+            try {
+              if (iframe.src && iframe.src.includes('translate.google.com')) {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (iframeDoc) {
+                  const iframeSelect = iframeDoc.querySelector('select');
+                  if (iframeSelect) {
+                    iframeSelect.value = langCode;
+                    const changeEvent = new Event('change', { bubbles: true });
+                    iframeSelect.dispatchEvent(changeEvent);
+                    return true;
+                  }
+                }
+              }
+            } catch (e) {
+              // Cross-origin restrictions, continue
+            }
+          }
+        } catch (e) {
+          // Ignore iframe access errors
+        }
+
+        // Method 3: Use cookie-based approach (Google Translate uses cookies)
+        // Get current domain for cookie
+        const domain = window.location.hostname;
+        const cookiePath = '/';
+
+        if (langCode === 'en') {
+          // Remove translation cookie to show English
+          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${cookiePath};`;
+          document.cookie = `googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${cookiePath};`;
+        } else {
+          // Set translation cookie - don't set domain to avoid cookie rejection
+          const expireDate = new Date();
+          expireDate.setFullYear(expireDate.getFullYear() + 1);
+          document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=${cookiePath}; SameSite=Lax`;
+        }
+
+        // Method 4: Reload page with translation cookie (last resort)
+        if (langCode !== 'en') {
+          window.location.reload();
+          return true;
+        }
+
+        return false;
       } catch (err) {
         // Silent error handling - translation will fallback to cookie/reload
         if (process.env.NODE_ENV === 'development') {
@@ -268,13 +270,13 @@ const Navbar = () => {
         return false;
       }
     };
-    
+
     // Try to trigger translation immediately
     if (!triggerTranslation()) {
       // If not found, wait and retry
       let attempts = 0;
       const maxAttempts = 15;
-      
+
       const retry = () => {
         attempts++;
         try {
@@ -305,7 +307,7 @@ const Navbar = () => {
           }
         }
       };
-      
+
       const initialTimeout = setTimeout(retry, 300);
       timeoutIds.push(initialTimeout);
     }
@@ -445,6 +447,17 @@ const Navbar = () => {
 
             {/* Sign In Section */}
             <div className="hidden lg:flex items-center">
+              {/* Demo Mode Toggle (Visible to everyone) */}
+              <div className="flex items-center gap-2 mr-4 bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
+                <span className={`text-xs font-bold ${isDemoMode ? 'text-green-400' : 'text-gray-400'}`}>DEMO MODE</span>
+                <button
+                  onClick={toggleDemoMode}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isDemoMode ? 'bg-green-500' : 'bg-gray-600'}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isDemoMode ? 'translate-x-4.5' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
               {user ? (
                 <div className="flex items-center gap-2 sm:gap-4">
                   <div className="text-xs sm:text-sm text-gray-300 flex items-center gap-1 sm:gap-2">

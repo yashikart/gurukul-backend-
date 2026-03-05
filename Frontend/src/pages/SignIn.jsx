@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FaArrowRight } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemo } from '../contexts/DemoContext';
 import { setUserRole } from '../utils/roles';
 import API_BASE_URL from '../config';
 
@@ -11,22 +12,47 @@ const SignIn = () => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
+    const { isDemoMode } = useDemo();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setLoading(true);
-        
+
         try {
-            const { user } = await login(email, password);
-            
-            // Gurukul is student-only, always redirect to student dashboard
-            setUserRole('student');
-            navigate('/dashboard');
+            // Demo Account Guard
+            if (email.toLowerCase().endsWith('@demo.com') && !isDemoMode) {
+                throw new Error('This is a demo account. Please enable "DEMO MODE" in the navigation bar to use these credentials.');
+            }
+
+            const { user: loggedInUser } = await login(email, password);
+
+            // Dynamically set the role based on the user object from backend
+            const role = (loggedInUser?.role || 'student').toLowerCase();
+            setUserRole(role);
+
+            // Redirect based on role
+            if (role === 'admin') {
+                navigate('/admin/dashboard');
+            } else if (role === 'teacher') {
+                navigate('/teacher/dashboard');
+            } else if (role === 'parent') {
+                navigate('/parent/dashboard');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err) {
             console.error('Login error:', err);
-            setError(err.message || 'Failed to sign in. Please check your credentials and try again.');
+
+            let errorMessage = err.message || 'Failed to sign in. Please check your credentials and try again.';
+
+            // Helpful hint for race conditions during startup/deployment
+            if (isDemoMode && email.toLowerCase().endsWith('@demo.com') && (errorMessage.includes('401') || errorMessage.includes('Incorrect'))) {
+                errorMessage = "Demo login failed. If the system was just restarted, please wait 3-5 seconds for initialization and try again.";
+            }
+
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -72,12 +98,12 @@ const SignIn = () => {
                             />
                         </div>
 
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={loading}
                             className="w-full mt-2 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-500 hover:to-amber-600 text-white font-bold tracking-wide shadow-lg transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         >
-                            {loading ? 'Signing In...' : 'Sign In'} 
+                            {loading ? 'Signing In...' : 'Sign In'}
                             {!loading && <FaArrowRight className="text-sm opacity-80" />}
                         </button>
                     </form>

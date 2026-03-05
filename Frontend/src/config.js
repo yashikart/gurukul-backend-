@@ -16,6 +16,8 @@ const isRenderGurukulFrontend =
 // Otherwise, fall back to VITE_API_URL if provided, or the official backend URL.
 let API_BASE_URL;
 
+const DEMO_TENANT_ID = import.meta.env.VITE_DEMO_TENANT_ID || '55380df9-9af7-43cc-b065-5a98a3dc6d00';
+
 if (import.meta.env.DEV || isLocalhost) {
   API_BASE_URL = 'http://localhost:3000';
 } else if (isRenderGurukulFrontend) {
@@ -25,6 +27,8 @@ if (import.meta.env.DEV || isLocalhost) {
   API_BASE_URL =
     import.meta.env.VITE_API_URL || 'https://gurukul-up9j.onrender.com';
 }
+
+export { API_BASE_URL, DEMO_TENANT_ID };
 
 // Debug log in development AND production (for troubleshooting)
 console.log('[Config] API Configuration:', {

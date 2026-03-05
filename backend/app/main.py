@@ -398,6 +398,18 @@ async def startup_event():
             
             print("[Startup] [INFO] Summarizer model loading DISABLED to save memory")
             
+            # --- AUTO SEED DEMO DATA ---
+            if os.getenv("AUTO_SEED_DEMO") == "true":
+                try:
+                    print("[Startup] [SEED] AUTO_SEED_DEMO=true detected. Seeding demo environment...")
+                    from create_demo_tenant import seed_demo_env
+                    # Run in thread to avoid blocking startup watchdog
+                    await asyncio.to_thread(seed_demo_env)
+                    print("[Startup] [SEED] [OK] Demo environment seeded successfully")
+                except Exception as e:
+                    print(f"[Startup] [SEED] [FAIL] Error seeding demo environment: {e}")
+                    traceback.print_exc()
+
             print("[Startup] [OK] Startup event logic execution finished.")
             sys.stdout.flush()
             return True

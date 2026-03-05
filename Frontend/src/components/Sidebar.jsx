@@ -21,11 +21,13 @@ import {
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemo } from '../contexts/DemoContext';
 import { getCurrentRole, getDashboardPath } from '../utils/roles';
 
 const Sidebar = () => {
     const { isSidebarOpen, closeSidebar } = useSidebar();
     const { user, logout } = useAuth();
+    const { isDemoMode } = useDemo();
     const currentRole = getCurrentRole();
     const dashboardPath = getDashboardPath(currentRole);
     const navigate = useNavigate();
@@ -139,20 +141,22 @@ const Sidebar = () => {
 
                     {/* Footer Actions */}
                     <div className="pt-3 border-t border-white/10 mt-2 space-y-2">
-                        {/* Settings - Hidden for demo */}
-                        {/* <NavLink
-                            to="/settings"
-                            onClick={closeSidebar}
-                            className={({ isActive }) => `
-                  flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
-                  ${isActive
-                                    ? 'bg-gradient-to-r from-gray-700 to-gray-600 text-white shadow-lg border border-white/20'
-                                    : 'bg-white/5 text-gray-300 hover:text-white border border-transparent'}
-                `}
-                        >
-                            <FaCog className="text-lg opacity-80 group-hover:opacity-100" />
-                            <span className="text-sm font-medium tracking-wide">Settings</span>
-                        </NavLink> */}
+                        {/* Settings */}
+                        {!isDemoMode && (
+                            <NavLink
+                                to="/settings"
+                                onClick={closeSidebar}
+                                className={({ isActive }) => `
+                      flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group
+                      ${isActive
+                                        ? 'bg-gradient-to-r from-gray-700 to-gray-600 text-white shadow-lg border border-white/20'
+                                        : 'bg-white/5 text-gray-300 hover:text-white border border-transparent'}
+                    `}
+                            >
+                                <FaCog className="text-lg opacity-80 group-hover:opacity-100" />
+                                <span className="text-sm font-medium tracking-wide">Settings</span>
+                            </NavLink>
+                        )}
 
                         {/* Mobile User Section */}
                         {user && (

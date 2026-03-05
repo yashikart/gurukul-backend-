@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { DemoProvider } from './context/DemoContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import SetPassword from './components/SetPassword';
@@ -83,9 +84,11 @@ function App() {
         v7_relativeSplatPath: true,
       }}
     >
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <DemoProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </DemoProvider>
     </Router>
   );
 }
