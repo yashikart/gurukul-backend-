@@ -8,6 +8,13 @@ from app.config import settings
 import os
 import asyncio
 
+# Initialize FastAPI app
+app = FastAPI(
+    title="School Management System API",
+    description="Multi-tenant School Management System Backend",
+    version="1.0.0"
+)
+
 # Create database tables and seed demo data on startup
 @app.on_event("startup")
 async def startup_event():
@@ -33,13 +40,6 @@ async def startup_event():
 
     # Run setup in background so server can start immediately
     asyncio.create_task(run_setup())
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="School Management System API",
-    description="Multi-tenant School Management System Backend",
-    version="1.0.0"
-)
 
 # CORS middleware (configure for your frontend domain in production)
 app.add_middleware(
