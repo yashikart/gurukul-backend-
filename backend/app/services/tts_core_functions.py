@@ -357,35 +357,33 @@ def text_to_speech_stream(text, language='en', use_google_tts=True, translate=Tr
     if translate and language.lower() != 'en':
         text = translate_text(text, language)
     
-    # Use Google TTS for better language support (default)
-    if use_google_tts:
+    # Use Vaani Sovereign TTS (BHIV Native)
+    if use_google_tts:  # Note: Keeping the parameter name for compatibility, but redirecting to Vaani
         try:
-            from gtts import gTTS
-            import io
+            import requests
+            from app.core.config import settings
             
-            # Language code mapping for Google TTS
-            # Google TTS uses full language codes (e.g., 'en', 'es', 'fr', 'de')
-            # Most of our codes are already compatible, but we can map if needed
-            lang_code = language.lower()
+            print(f"[Vaani] Requesting speech from sovereign engine for language: {language}")
             
-            # Create Google TTS object
-            tts = gTTS(text=text, lang=lang_code, slow=False)
+            response = requests.post(
+                f"{settings.VAANI_API_URL}/vaani/speak",
+                json={
+                    "text": text,
+                    "language": language.lower(),
+                    "voice_profile": "vaani_teacher"
+                },
+                timeout=60
+            )
             
-            # Save to bytes buffer
-            audio_buffer = io.BytesIO()
-            tts.write_to_fp(audio_buffer)
-            audio_buffer.seek(0)
-            audio_data = audio_buffer.read()
-            
-            if not audio_data:
-                raise Exception("Google TTS failed - no audio data")
-            
-            print(f"[TTS] Used Google TTS for language '{language}'")
-            return audio_data
-            
+            if response.status_code == 200:
+                print(f"[Vaani] Speech generated successfully by sovereign engine")
+                return response.content
+            else:
+                raise Exception(f"Vaani API error: {response.status_code} - {response.text}")
+                
         except Exception as e:
-            print(f"[TTS] Google TTS failed: {e}, falling back to pyttsx3")
-            # Fall back to pyttsx3 if Google TTS fails
+            print(f"[Vaani] Sovereign engine failed or timed out: {e}. Falling back to pyttsx3")
+            # Fall back to pyttsx3 if Vaani fails
             use_google_tts = False
     
     # Fallback to pyttsx3 (system voices)

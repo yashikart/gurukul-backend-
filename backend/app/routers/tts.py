@@ -49,24 +49,21 @@ async def text_to_speech(request: TTSRequest):
             raise HTTPException(status_code=400, detail="Text is required")
         
         # Log the language being used
-        print(f"[TTS] Request received - Language: {request.language}, Text length: {len(request.text)}")
+        print(f"[Vaani] Standard API - Request received - Language: {request.language}")
         
-        # Generate audio with language support (Google TTS returns MP3, pyttsx3 returns WAV)
+        # Use our sovereign engine (redirected inside text_to_speech_stream)
         audio_data = text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
         
-        # Determine media type based on audio format
-        # OpenAI TTS returns MP3, Google TTS returns MP3, pyttsx3 returns WAV
-        # Check first few bytes to determine format
-        is_mp3 = audio_data[:3] == b'ID3' or audio_data[:2] == b'\xff\xfb' or audio_data[:4] == b'\xff\xf3' or audio_data[:4] == b'\xff\xf2'
-        media_type = "audio/mpeg" if is_mp3 else "audio/wav"
-        file_ext = "mp3" if is_mp3 else "wav"
+        # Vaani engine returns WAV by default in our current setup
+        media_type = "audio/wav"
+        file_ext = "wav"
         
         # Return audio file
         return Response(
             content=audio_data,
             media_type=media_type,
             headers={
-                "Content-Disposition": f"attachment; filename=speech.{file_ext}"
+                "Content-Disposition": f"attachment; filename=vaani_speech.{file_ext}"
             }
         )
     except Exception as e:
@@ -98,53 +95,21 @@ async def vaani_text_to_speech(request: TTSRequest):
     so you get actual Hindi/Japanese/etc. speech, not English in an accent.
     """
     try:
+        from app.services.tts_core_functions import text_to_speech_stream
+        
         if not request.text or not request.text.strip():
             raise HTTPException(status_code=400, detail="Text is required")
         
-        if len(request.text) > 10000:
-            raise HTTPException(status_code=400, detail="Text too long (max 10000 characters)")
+        print(f"[Vaani] Sovereign Endpoint - Request received - Language: {request.language}")
         
-        lang = _gtts_lang_code(request.language)
-        # Translate to target language first (same as Google TTS), so we speak in that language
-        from app.services.tts_core_functions import translate_text, remove_emojis
-        text = remove_emojis(request.text)
-        translate_lang = (request.language or "").strip().lower()
-        if translate_lang in ("zh-cn", "zh_cn"):
-            translate_lang = "zh"
-        if translate_lang and translate_lang != "en":
-            text = translate_text(text, target_language=translate_lang)
-        print(f"[Vaani TTS] Request - lang={lang}, text length: {len(text)}")
+        # Use our sovereign engine
+        audio_data = text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
         
-        from gtts import gTTS
-        from io import BytesIO
-        
-        try:
-            tts = gTTS(text=text, lang=lang, slow=False)
-        except Exception as e:
-            if lang != "en":
-                print(f"[Vaani TTS] gTTS lang {lang} failed ({e}), falling back to en")
-                tts = gTTS(text=text, lang="en", slow=False)
-            else:
-                raise
-        
-        # Save to BytesIO buffer
-        audio_buffer = BytesIO()
-        tts.write_to_fp(audio_buffer)
-        audio_buffer.seek(0)
-        audio_data = audio_buffer.read()
-        
-        # Check if audio was generated
-        if len(audio_data) == 0:
-            raise HTTPException(status_code=500, detail="Audio generation failed - empty file")
-        
-        print(f"[Vaani TTS] Generated successfully ({len(audio_data)} bytes, lang={lang})")
-        
-        # Return audio file (gTTS generates MP3)
         return Response(
             content=audio_data,
-            media_type="audio/mpeg",
+            media_type="audio/wav",
             headers={
-                "Content-Disposition": "attachment; filename=vaani_speech.mp3"
+                "Content-Disposition": "attachment; filename=vaani_sovereign_speech.wav"
             }
         )
     

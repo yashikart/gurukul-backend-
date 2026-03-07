@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     
     YOUTUBE_API_KEY: Optional[str] = None
     YOUTUBE_API_BASE_URL: str = "https://www.googleapis.com/youtube/v3/search"
+    
+    # Vaani Sovereign TTS
+    VAANI_API_URL: str = os.getenv("VAANI_API_URL", "http://localhost:8008")
 
     # Database
     DATABASE_URL: Optional[str] = None # postgresql://user:password@host:port/db or sqlite:///./gurukul.db

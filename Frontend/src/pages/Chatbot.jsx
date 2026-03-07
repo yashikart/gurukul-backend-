@@ -53,9 +53,7 @@ const Chatbot = () => {
     const [ttsLanguage, setTTSLanguage] = React.useState(() =>
         getWebsiteLanguage() || localStorage.getItem('chatbot_tts_language') || 'en'
     );
-    const [ttsProvider, setTTSProvider] = React.useState(() =>
-        localStorage.getItem('chatbot_tts_provider') || 'google'
-    );
+    const [ttsProvider, setTTSProvider] = React.useState('local');
     const [playingAudioIndex, setPlayingAudioIndex] = React.useState(null);
     const [currentAudio, setCurrentAudio] = React.useState(null);
 
@@ -474,53 +472,27 @@ const Chatbot = () => {
 
             let audioUrl;
 
-            if (ttsProvider === 'google') {
-                // Google TTS - existing implementation
-                const response = await Promise.race([
-                    fetch(`${API_BASE_URL}/api/v1/tts/speak`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            text: cleanedText,
-                            language: ttsLanguage
-                        }),
+            // Vaani TTS fallback (formerly named 'local' in UI)
+            const response = await Promise.race([
+                fetch(`${API_BASE_URL}/api/v1/tts/vaani`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: cleanedText,
+                        language: ttsLanguage  // Use selected language
                     }),
-                    timeoutPromise
-                ]);
+                }),
+                timeoutPromise
+            ]);
 
-                if (!response.ok) {
-                    throw new Error('Failed to generate speech with Google TTS');
-                }
-
-                // Get audio blob
-                const audioBlob = await response.blob();
-                audioUrl = URL.createObjectURL(audioBlob);
-
-            } else if (ttsProvider === 'local') {
-                // Vaani TTS - Backend endpoint (no separate service needed)
-                const response = await Promise.race([
-                    fetch(`${API_BASE_URL}/api/v1/tts/vaani`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            text: cleanedText,
-                            language: ttsLanguage  // Use selected language
-                        }),
-                    }),
-                    timeoutPromise
-                ]);
-
-                if (!response.ok) {
-                    throw new Error('Failed to generate speech with Vaani TTS');
-                }
-
-                const audioBlob = await response.blob();
-                audioUrl = URL.createObjectURL(audioBlob);
+            if (!response.ok) {
+                throw new Error('Failed to generate speech with Vaani TTS');
             }
+
+            const audioBlob = await response.blob();
+            audioUrl = URL.createObjectURL(audioBlob);
 
             clearTimeout(timeoutId);
 
@@ -626,16 +598,9 @@ const Chatbot = () => {
                                 <option value="hi">🇮🇳 Hindi</option>
                                 <option value="ar">🇸🇦 Arabic</option>
                             </select>
-                            {/* TTS Provider Selector */}
-                            <select
-                                value={ttsProvider}
-                                onChange={(e) => setTTSProvider(e.target.value)}
-                                className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300 hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
-                                title="Select TTS provider (Google: natural voices, Vaani: offline)"
-                            >
-                                <option value="google">🌐 Google TTS</option>
-                                <option value="local">🎙️ Vaani TTS</option>
-                            </select>
+                            <div className="px-3 py-1 text-xs bg-white/5 border border-white/10 rounded text-accent font-medium flex items-center gap-1" title="Sovereign Vaani TTS Engine">
+                                🎙️ Vaani Sovereign Voice
+                            </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
