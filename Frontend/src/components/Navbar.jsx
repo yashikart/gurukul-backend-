@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FaUserCircle, FaBars, FaTimes, FaGlobe, FaChevronDown } from 'react-icons/fa';
+import { FaUserCircle, FaBars, FaTimes, FaGlobe, FaChevronDown, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 
 import logo from '../assets/logo.svg';
 import { useAuth } from '../contexts/AuthContext';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useDemo } from '../contexts/DemoContext';
+import { useVoice } from './VoiceManager';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { toggleSidebar, isSidebarOpen } = useSidebar();
   const { isDemoMode, toggleDemoMode } = useDemo();
+  const { isMuted, toggleMute, isPlaying } = useVoice() || { isMuted: false, toggleMute: () => { }, isPlaying: false };
   const navigate = useNavigate();
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState('English');
@@ -408,6 +410,15 @@ const Navbar = () => {
 
           {/* Links & Actions */}
           <div className="flex items-center gap-2 sm:gap-4 lg:gap-8">
+            {/* Voice Toggle */}
+            <button
+              onClick={toggleMute}
+              className={`p-2 rounded-full transition-all border ${isMuted ? 'text-red-400 bg-red-400/10 border-red-500/20' : 'text-accent bg-accent/10 border-accent/20 hover:bg-accent/20'}`}
+              title={isMuted ? "Unmute Sovereign Voice" : "Mute Sovereign Voice"}
+            >
+              {isMuted ? <FaVolumeMute /> : <FaVolumeUp className={isPlaying ? 'animate-pulse' : ''} />}
+            </button>
+
             {/* Language Selector */}
             <div className="relative" ref={languageMenuRef}>
               <button

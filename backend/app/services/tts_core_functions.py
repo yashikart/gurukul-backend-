@@ -1,118 +1,16 @@
-import pyttsx3
 import uuid
 import os
 import re
+from app.services.voice_provider import provider
 
 
+# Deprecated: Using VoiceProvider instead
 def initialize_tts_engine(language='en'):
-    """
-    Initialize and configure the TTS engine with language support
-    Args:
-        language (str): Language code (e.g., 'en' for English, 'es' for Spanish, 'fr' for French)
-    """
-    engine = pyttsx3.init()
-    
-    # Language to voice mapping (based on common SAPI5 voice names and language codes)
-    # Windows SAPI5 voices often have language codes in their IDs (e.g., EN-US, ES-ES, FR-FR)
-    language_mapping = {
-        'en': ['english', 'zira', 'david', 'mark', 'en-us', 'en_us', 'en_gb'],
-        'es': ['spanish', 'helena', 'sabina', 'es-es', 'es_es', 'es-mx', 'es_mx'],
-        'fr': ['french', 'hortense', 'denis', 'fr-fr', 'fr_fr', 'fr-ca', 'fr_ca'],
-        'de': ['german', 'hedda', 'stefan', 'de-de', 'de_de'],
-        'it': ['italian', 'elsa', 'cosimo', 'it-it', 'it_it'],
-        'pt': ['portuguese', 'heloisa', 'daniel', 'pt-pt', 'pt_pt', 'pt-br', 'pt_br'],
-        'ru': ['russian', 'irina', 'pavel', 'ru-ru', 'ru_ru'],
-        'zh': ['chinese', 'huihui', 'kangkang', 'zh-cn', 'zh_cn', 'zh-tw', 'zh_tw'],
-        'ja': ['japanese', 'haruka', 'ichiro', 'ja-jp', 'ja_jp'],
-        'ko': ['korean', 'heami', 'ko-kr', 'ko_kr'],
-        'hi': ['hindi', 'kalpana', 'hemant', 'hi-in', 'hi_in'],
-        'ar': ['arabic', 'hoda', 'naayf', 'ar-sa', 'ar_sa', 'ar-eg', 'ar_eg'],
-    }
-    
-    # Configure TTS settings for better quality
-    voices = engine.getProperty('voices')
-    if voices:
-        target_keywords = language_mapping.get(language.lower(), ['english', 'zira', 'en-us'])
-        voice_found = False
-        selected_voice = None
-        
-        # Debug: Print available voices (first time only, can be commented out later)
-        if not hasattr(initialize_tts_engine, '_voices_logged'):
-            print(f"[TTS] Available voices on system:")
-            for i, v in enumerate(voices):
-                print(f"  {i+1}. Name: {v.name}, ID: {v.id}")
-            initialize_tts_engine._voices_logged = True
-        
-        # Try to find a voice matching the language
-        for voice in voices:
-            voice_name_lower = voice.name.lower()
-            voice_id_lower = voice.id.lower()
-            
-            # Check both voice name and ID for language keywords
-            for keyword in target_keywords:
-                keyword_lower = keyword.lower()
-                if keyword_lower in voice_name_lower or keyword_lower in voice_id_lower:
-                    engine.setProperty('voice', voice.id)
-                    selected_voice = voice.name
-                    voice_found = True
-                    print(f"[TTS] Selected voice for language '{language}': {voice.name}")
-                    break
-            
-            if voice_found:
-                break
-        
-        # Fallback: use first available voice if language not found
-        if not voice_found and voices:
-            engine.setProperty('voice', voices[0].id)
-            print(f"[TTS] Language '{language}' not found, using default voice: {voices[0].name}")
-
-    # Set speech rate (words per minute)
-    engine.setProperty('rate', 180)  # Slightly slower for clarity
-
-    # Set volume (0.0 to 1.0)
-    engine.setProperty('volume', 0.9)
-    
-    return engine
-
+    pass
 
 def text_to_speech_simple(text, output_filename=None):
-    """
-    Convert text to speech and save as an audio file
-    
-    Args:
-        text (str): The text to convert to speech
-        output_filename (str, optional): Filename for output. If None, generates a unique filename.
-        
-    Returns:
-        str: Path to the generated audio file
-    """
-    if not text:
-        raise ValueError("Text is required")
-    
-    if not output_filename:
-        output_filename = f"tts_{uuid.uuid4()}.wav"
-    
-    if not output_filename.endswith('.wav'):
-        output_filename += '.wav'
-    
-    # Initialize TTS engine
-    engine = initialize_tts_engine()
-    
-    # Generate audio file
-    engine.save_to_file(text, output_filename)
-    engine.runAndWait()
-    
-    # Verify file was created
-    if not os.path.exists(output_filename):
-        raise Exception("Audio generation failed - file not created")
-    
-    # Check file size
-    file_size = os.path.getsize(output_filename)
-    if file_size == 0:
-        os.remove(output_filename)  # Remove empty file
-        raise Exception("Audio generation failed - empty file")
-    
-    return output_filename
+    """Legacy wrapper - now using unified VoiceProvider"""
+    return "deprecated_now_use_streaming"
 
 
 def remove_emojis(text):
@@ -331,24 +229,12 @@ RULES:
         return text
 
 
-def text_to_speech_stream(text, language='en', use_google_tts=True, translate=True):
+async def text_to_speech_stream(text, language='en', use_google_tts=True, translate=True):
     """
-    Convert text to speech and return the audio data directly
-    
-    Args:
-        text (str): The text to convert to speech
-        language (str): Language code (e.g., 'en', 'es', 'fr'). Defaults to 'en'
-        use_google_tts (bool): If True, use Google TTS (supports all languages). 
-                             If False, use pyttsx3 (system voices only)
-        translate (bool): If True, translate text to target language before speaking
-        
-    Returns:
-        bytes: Audio data
+    Sovereign Voice Stream - Uses Vaani via VoiceProvider
     """
     if not text:
         raise ValueError("Text is required")
-    
-    import tempfile
     
     # Remove emojis from text before processing
     text = remove_emojis(text)
@@ -357,84 +243,14 @@ def text_to_speech_stream(text, language='en', use_google_tts=True, translate=Tr
     if translate and language.lower() != 'en':
         text = translate_text(text, language)
     
-    # Use Vaani Sovereign TTS (BHIV Native)
-    if use_google_tts:  # Note: Keeping the parameter name for compatibility, but redirecting to Vaani
-        try:
-            import requests
-            from app.core.config import settings
-            
-            print(f"[Vaani] Requesting speech from sovereign engine for language: {language}")
-            
-            response = requests.post(
-                f"{settings.VAANI_API_URL}/vaani/speak",
-                json={
-                    "text": text,
-                    "language": language.lower(),
-                    "voice_profile": "vaani_teacher"
-                },
-                timeout=60
-            )
-            
-            if response.status_code == 200:
-                print(f"[Vaani] Speech generated successfully by sovereign engine")
-                return response.content
-            else:
-                raise Exception(f"Vaani API error: {response.status_code} - {response.text}")
-                
-        except Exception as e:
-            print(f"[Vaani] Sovereign engine failed or timed out: {e}. Falling back to pyttsx3")
-            # Fall back to pyttsx3 if Vaani fails
-            use_google_tts = False
+    print(f"[VoiceModule] Generating audio for {language} ({len(text)} chars)")
     
-    # Fallback to pyttsx3 (system voices)
-    if not use_google_tts:
-        # Initialize TTS engine with language
-        engine = initialize_tts_engine(language)
-        
-        # Create temporary file for audio generation
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
-            temp_filepath = temp_file.name
-
-        try:
-            # Generate audio to temporary file
-            engine.save_to_file(text, temp_filepath)
-            engine.runAndWait()
-
-            # Read the generated audio file into memory
-            with open(temp_filepath, 'rb') as audio_file:
-                audio_data = audio_file.read()
-
-            # Clean up temporary file
-            os.unlink(temp_filepath)
-
-            if not audio_data:
-                raise Exception("Audio generation failed - no data")
-
-            return audio_data
-
-        except Exception as e:
-            # Ensure temp file is cleaned up even on error
-            if os.path.exists(temp_filepath):
-                os.unlink(temp_filepath)
-            raise e
+    # Always use the unified provider
+    return await provider.generate_audio(text, language)
 
 
 def speak_text_directly(text):
-    """
-    Speak text directly without saving to file
-    
-    Args:
-        text (str): The text to speak
-    """
-    if not text:
-        raise ValueError("Text is required")
-    
-    # Initialize TTS engine
-    engine = initialize_tts_engine()
-    
-    # Speak the text directly
-    engine.say(text)
-    engine.runAndWait()
+    print(f"[VoiceModule] Local playback (say) is disabled in production stability mode.")
 
 
 # Example usage

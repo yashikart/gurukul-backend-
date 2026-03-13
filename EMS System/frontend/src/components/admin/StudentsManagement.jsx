@@ -96,8 +96,8 @@ const StudentsManagement = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading students...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading students...</p>
       </div>
     );
   }
@@ -106,62 +106,62 @@ const StudentsManagement = () => {
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-gray-800">Students Management</h1>
-          <p className="text-sm md:text-base text-gray-600 mt-1 md:mt-2">Manage all students in your school</p>
+          <h1 className="text-xl md:text-3xl font-bold text-white">Students Management</h1>
+          <p className="text-sm md:text-base text-gray-400 mt-1 md:mt-2">Manage all students in your school</p>
         </div>
         <div className="flex gap-3">
           <button
             data-ems-task="true"
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm md:text-base whitespace-nowrap"
+            className="px-3 md:px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm md:text-base whitespace-nowrap"
           >
             ➕ Add Student
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="card-dark p-4">
         <input
           type="text"
           placeholder="Search students by name or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
         />
       </div>
 
       {showCreateForm && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="card-dark p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
             {editingStudent ? 'Edit Student' : 'Create New Student'}
           </h2>
           <form onSubmit={editingStudent ? handleUpdateStudent : handleCreateStudent} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Name *</label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Email *</label>
               <input
                 type="email"
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Grade</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Grade</label>
               <select
                 value={formData.grade}
                 onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
               >
                 <option value="">Select a grade</option>
                 <option value="3">3rd Grade</option>
@@ -179,22 +179,22 @@ const StudentsManagement = () => {
             {!editingStudent && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Parent Name</label>
+                  <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Parent Name</label>
                   <input
                     type="text"
                     value={formData.parent_name}
                     onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                     placeholder="Optional: Parent's name (if creating new parent)"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Parent Email</label>
+                  <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Parent Email</label>
                   <input
                     type="email"
                     value={formData.parent_email}
                     onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                     placeholder="Optional: Link to existing parent or create new"
                   />
                   <p className="mt-1 text-xs text-gray-500">
@@ -207,7 +207,7 @@ const StudentsManagement = () => {
               <button
                 type="submit"
                 data-ems-task="true"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition"
               >
                 {editingStudent ? 'Update Student' : 'Create Student'}
               </button>
@@ -218,7 +218,7 @@ const StudentsManagement = () => {
                   setEditingStudent(null);
                   setFormData({ name: '', email: '', grade: '', parent_email: '', parent_name: '' });
                 }}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+                className="px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-400 transition"
               >
                 Cancel
               </button>
@@ -228,28 +228,28 @@ const StudentsManagement = () => {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">All Students ({students.length})</h2>
+      <div className="card-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2A2A3E]">
+          <h2 className="text-xl font-bold text-white">All Students ({students.length})</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#16162A]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parent Email(s)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Grade</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Parent Email(s)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[#2A2A3E]">
               {students.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
@@ -258,9 +258,9 @@ const StudentsManagement = () => {
                 </tr>
               ) : (
                 students.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
+                  <tr key={student.id} className="hover:bg-[#16162A]">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{student.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{student.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.grade || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -269,10 +269,10 @@ const StudentsManagement = () => {
                           {student.parent_emails.map((email, idx) => {
                             const parentName = student.parent_names && student.parent_names[idx] ? student.parent_names[idx] : '';
                             return (
-                              <span key={idx} className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 text-xs font-medium">
+                              <span key={idx} className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-accent-green text-xs font-medium">
                                 <span className="mr-1">✓</span> 
                                 {parentName && <span className="font-semibold mr-1">{parentName}</span>}
-                                <span className="text-gray-600">({email})</span>
+                                <span className="text-gray-400">({email})</span>
                               </span>
                             );
                           })}
@@ -286,21 +286,21 @@ const StudentsManagement = () => {
                         <Link
                           to={`/dashboard/students/${student.id}/content`}
                           data-ems-interaction="true"
-                          className="text-indigo-600 hover:text-indigo-900 transition"
+                          className="text-accent-green hover:text-accent-green/80 transition"
                           title="View Generated Content"
                         >
                           📚 View Content
                         </Link>
                         <button
                           onClick={() => handleEdit(student)}
-                          className="text-indigo-600 hover:text-indigo-900 transition"
+                          className="text-accent-green hover:text-accent-green/80 transition"
                           title="Edit"
                         >
                           ✏️ Edit
                         </button>
                         <button
                           onClick={() => handleDelete(student.id)}
-                          className="text-red-600 hover:text-red-900 transition"
+                          className="text-red-400 hover:text-red-300 transition"
                           title="Delete"
                         >
                           🗑️ Delete

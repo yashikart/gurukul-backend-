@@ -40,30 +40,30 @@ const MyAnnouncements = () => {
   const getAudienceBadgeColor = (audience) => {
     switch (audience) {
       case 'PARENTS':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-accent-blue/15 text-accent-blue';
       case 'EVERYONE':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-accent-pink/15 text-accent-pink';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[#16162A] text-white';
     }
   };
 
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading announcements...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading announcements...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <p className="text-red-800">{error}</p>
+      <div className="error-box p-6">
+        <p className="text-red-400">{error}</p>
         <button
           onClick={fetchAnnouncements}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+          className="mt-4 px-4 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition text-sm font-medium"
         >
           Retry
         </button>
@@ -75,31 +75,31 @@ const MyAnnouncements = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Announcements</h1>
-          <p className="text-gray-600 mt-2">View school announcements for parents</p>
+          <h1 className="text-3xl font-bold text-white">Announcements</h1>
+          <p className="text-gray-400 mt-2">View school announcements for parents</p>
         </div>
         <button
           onClick={fetchAnnouncements}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+          className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
         >
           Refresh
         </button>
       </div>
 
       {announcements.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="card-dark p-8 text-center">
           <div className="text-6xl mb-4">📢</div>
-          <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Announcements</h2>
-          <p className="text-gray-600">There are no announcements at this time.</p>
+          <h2 className="text-2xl font-semibold text-white mb-2">No Announcements</h2>
+          <p className="text-gray-400">There are no announcements at this time.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {announcements.map((announcement) => (
-            <div key={announcement.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition">
+            <div key={announcement.id} className="card-dark p-6 border border-[#2A2A3E] hover:shadow-lg transition">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-semibold text-gray-900">{announcement.title}</h3>
+                    <h3 className="text-xl font-semibold text-white">{announcement.title}</h3>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getAudienceBadgeColor(announcement.target_audience)}`}>
                       {announcement.target_audience}
                     </span>
@@ -111,8 +111,8 @@ const MyAnnouncements = () => {
                 </div>
               </div>
               
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-gray-700 whitespace-pre-wrap">{announcement.content}</p>
+              <div className="mt-4 pt-4 border-t border-[#2A2A3E]">
+                <p className="text-gray-300 whitespace-pre-wrap">{announcement.content}</p>
               </div>
             </div>
           ))}

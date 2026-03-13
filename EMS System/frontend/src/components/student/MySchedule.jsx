@@ -35,8 +35,8 @@ const MySchedule = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading schedule...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading schedule...</p>
       </div>
     );
   }
@@ -45,58 +45,58 @@ const MySchedule = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">My Schedule</h1>
-          <p className="text-gray-600 mt-2">View your weekly class timetable</p>
+          <h1 className="text-3xl font-bold text-white">My Schedule</h1>
+          <p className="text-gray-400 mt-2">View your weekly class timetable</p>
         </div>
         <button
           onClick={fetchTimetable}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+          className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
         >
           Refresh
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {slots.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-gray-600">No schedule assigned yet.</p>
+        <div className="card-dark p-8 text-center">
+          <p className="text-gray-400">No schedule assigned yet.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="card-dark overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-[#16162A]">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Day</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Day</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Time</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Class</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Subject</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Teacher</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Room</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-[#2A2A3E]">
                 {daysOfWeek.map((day, dayIndex) => {
                   const daySlots = groupedSlots[dayIndex] || [];
                   if (daySlots.length === 0) {
                     return (
-                      <tr key={dayIndex} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{day}</td>
+                      <tr key={dayIndex} className="hover:bg-[#16162A]">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{day}</td>
                         <td colSpan="5" className="px-6 py-4 text-sm text-gray-500">No classes scheduled</td>
                       </tr>
                     );
                   }
                   return daySlots.map((slot, slotIndex) => (
-                    <tr key={`${dayIndex}-${slotIndex}`} className="hover:bg-gray-50">
+                    <tr key={`${dayIndex}-${slotIndex}`} className="hover:bg-[#16162A]">
                       {slotIndex === 0 && (
                         <td
                           rowSpan={daySlots.length}
-                          className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 align-top"
+                          className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white align-top"
                         >
                           {day}
                         </td>

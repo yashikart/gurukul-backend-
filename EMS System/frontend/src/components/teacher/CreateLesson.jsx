@@ -232,8 +232,8 @@ const CreateLesson = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading classes...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading classes...</p>
       </div>
     );
   }
@@ -249,43 +249,43 @@ const CreateLesson = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-3xl font-bold text-white">
           {isEditing ? 'Edit Lesson' : 'Create New Lesson'}
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-gray-400 mt-2">
           {isEditing ? 'Update lesson details' : 'Create a lesson for one of your classes'}
         </p>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-800 font-semibold">
+        <div className="success-box p-4">
+          <p className="text-accent-green font-semibold">
             Lesson {isEditing ? 'updated' : 'created'} successfully!
           </p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="card-dark p-6 space-y-6">
         {/* Basic Lesson Information */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">Lesson Information</h2>
+          <h2 className="text-xl font-semibold text-white border-b pb-2">Lesson Information</h2>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Class <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Class <span className="text-red-400">*</span>
             </label>
             <select
               name="class_id"
               value={formData.class_id}
               onChange={handleInputChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
             >
               <option value="">Select a class</option>
               {classes.map((cls) => (
@@ -297,8 +297,8 @@ const CreateLesson = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Lesson Title <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Lesson Title <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -307,12 +307,12 @@ const CreateLesson = () => {
               onChange={handleInputChange}
               required
               placeholder="e.g., Introduction to Algebra"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Description
             </label>
             <textarea
@@ -321,13 +321,13 @@ const CreateLesson = () => {
               onChange={handleInputChange}
               rows={3}
               placeholder="Brief description of the lesson..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Lesson Date <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Lesson Date <span className="text-red-400">*</span>
             </label>
             <input
               type="date"
@@ -335,7 +335,7 @@ const CreateLesson = () => {
               value={formData.lesson_date}
               onChange={handleInputChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
             />
           </div>
         </div>
@@ -343,12 +343,12 @@ const CreateLesson = () => {
         {/* Lectures Section */}
         <div className="space-y-4">
           <div className="flex justify-between items-center border-b pb-2">
-            <h2 className="text-xl font-semibold text-gray-800">Lectures (Optional)</h2>
+            <h2 className="text-xl font-semibold text-white">Lectures (Optional)</h2>
             <button
               type="button"
               data-ems-task="true"
               onClick={addLecture}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+              className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
             >
               + Add Lecture
             </button>
@@ -359,20 +359,20 @@ const CreateLesson = () => {
           )}
 
           {formData.lectures.map((lecture, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
+            <div key={index} className="border border-[#2A2A3E] rounded-lg p-4 space-y-3 bg-[#16162A]">
               <div className="flex justify-between items-center">
-                <h3 className="font-medium text-gray-700">Lecture {index + 1}</h3>
+                <h3 className="font-medium text-gray-300">Lecture {index + 1}</h3>
                 <button
                   type="button"
                   onClick={() => removeLecture(index)}
-                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                  className="text-red-600 hover:text-red-400 text-sm font-medium"
                 >
                   Remove
                 </button>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Lecture Title
                 </label>
                 <input
@@ -380,12 +380,12 @@ const CreateLesson = () => {
                   value={lecture.title}
                   onChange={(e) => updateLecture(index, 'title', e.target.value)}
                   placeholder="e.g., Variables and Expressions"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Content/Notes
                 </label>
                 <textarea
@@ -393,44 +393,44 @@ const CreateLesson = () => {
                   onChange={(e) => updateLecture(index, 'content', e.target.value)}
                   rows={2}
                   placeholder="Lecture content or notes..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Lecture Date
                   </label>
                   <input
                     type="date"
                     value={lecture.lecture_date || formData.lesson_date}
                     onChange={(e) => updateLecture(index, 'lecture_date', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Start Time
                   </label>
                   <input
                     type="time"
                     value={lecture.start_time}
                     onChange={(e) => updateLecture(index, 'start_time', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     End Time
                   </label>
                   <input
                     type="time"
                     value={lecture.end_time}
                     onChange={(e) => updateLecture(index, 'end_time', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
                   />
                 </div>
               </div>
@@ -443,7 +443,7 @@ const CreateLesson = () => {
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium"
+            className="px-6 py-2 border border-[#2A2A3E] rounded-lg text-gray-300 hover:bg-[#16162A] transition font-medium"
           >
             Cancel
           </button>
@@ -451,7 +451,7 @@ const CreateLesson = () => {
             type="submit"
             disabled={submitting}
             data-ems-task="true"
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update Lesson' : 'Create Lesson')}
           </button>

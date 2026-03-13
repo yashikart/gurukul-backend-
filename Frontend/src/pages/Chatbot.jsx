@@ -1,6 +1,6 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar';
-import { FaVolumeUp, FaPlus, FaHistory, FaTrashAlt, FaPaperclip, FaArrowUp, FaChevronDown } from 'react-icons/fa';
+import { FaVolumeUp, FaPlus, FaHistory, FaTrashAlt, FaPaperclip, FaArrowUp, FaChevronDown, FaPause, FaPlay } from 'react-icons/fa';
 import { useModal } from '../contexts/ModalContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SkeletonBox } from '../components/LoadingSkeleton';
@@ -8,7 +8,7 @@ import { SkeletonBox } from '../components/LoadingSkeleton';
 import { containsProfanity } from '../utils/profanityDetector';
 import { apiPost, apiGet, apiDelete, handleApiError } from '../utils/apiClient';
 import { sendLifeEvent } from '../utils/karmaTrackerClient';
-import API_BASE_URL from '../config';
+import vaaniClient from '../utils/vaaniClient';
 
 const Chatbot = () => {
     const { alert, confirm, success, error } = useModal();
@@ -434,105 +434,63 @@ const Chatbot = () => {
             .trim();
     };
 
-    const handleTTS = async (messageContent, messageIndex) => {
-        // If this message is already playing, stop it
-        if (playingAudioIndex === messageIndex && currentAudio) {
-            currentAudio.pause();
-            currentAudio.currentTime = 0;
-            setCurrentAudio(null);
-            setPlayingAudioIndex(null);
+    const [isPlaying, setIsPlaying] = React.useState(false);
+    const [subtitleText, setSubtitleText] = React.useState('');
+
+    const togglePlayback = (messageContent, messageIndex) => {
+        if (playingAudioIndex === messageIndex) {
+            if (isPlaying) {
+                vaaniClient.pause();
+                setIsPlaying(false);
+            } else {
+                vaaniClient.resume();
+                setIsPlaying(true);
+            }
             return;
         }
+        handleTTS(messageContent, messageIndex);
+    };
 
+    const handleTTS = async (messageContent, messageIndex) => {
         // Stop any currently playing audio
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio.currentTime = 0;
-            setCurrentAudio(null);
-            setPlayingAudioIndex(null);
-        }
+        vaaniClient.stop();
+        setPlayingAudioIndex(null);
+        setIsPlaying(false);
+        setSubtitleText('');
 
         if (!messageContent || !messageContent.trim()) {
             error('No message to convert to speech', 'TTS Error');
             return;
         }
 
-        // Clean markdown formatting before sending to TTS
         const cleanedText = cleanTextForTTS(messageContent);
+        setSubtitleText(cleanedText);
 
         setIsTTSLoading(true);
-        let timeoutId;
         try {
-            // Timeout handling: 30s max for TTS generation
-            const timeoutPromise = new Promise((_, reject) => {
-                timeoutId = setTimeout(() => {
-                    reject(new Error('TTS request timed out. Please try again.'));
-                }, 30000);
-            });
-
-            let audioUrl;
-
-            // Vaani TTS fallback (formerly named 'local' in UI)
-            const response = await Promise.race([
-                fetch(`${API_BASE_URL}/api/v1/tts/vaani`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        text: cleanedText,
-                        language: ttsLanguage  // Use selected language
-                    }),
-                }),
-                timeoutPromise
-            ]);
-
-            if (!response.ok) {
-                throw new Error('Failed to generate speech with Vaani TTS');
-            }
-
-            const audioBlob = await response.blob();
-            audioUrl = URL.createObjectURL(audioBlob);
-
-            clearTimeout(timeoutId);
-
-            // Create audio element and play
-            if (!audioUrl) {
-                throw new Error('No audio URL generated');
-            }
-            const audio = new Audio(audioUrl);
-            setCurrentAudio(audio);
             setPlayingAudioIndex(messageIndex);
+            const success = await vaaniClient.speak(cleanedText, ttsLanguage);
 
-            audio.play();
-
-            // Clean up when playback ends
-            audio.onended = () => {
-                URL.revokeObjectURL(audioUrl);
-                setCurrentAudio(null);
+            if (success) {
+                setIsPlaying(true);
+                // Simple sync: clear subtitle when audio ends
+                vaaniClient.audioElement.onended = () => {
+                    setIsPlaying(false);
+                    setPlayingAudioIndex(null);
+                    setSubtitleText('');
+                };
+            } else {
+                error('Failed to generate speech. Please try again.', 'TTS Error');
                 setPlayingAudioIndex(null);
-            };
-
-            // Handle errors during playback
-            audio.onerror = () => {
-                URL.revokeObjectURL(audioUrl);
-                setCurrentAudio(null);
-                setPlayingAudioIndex(null);
-                error('Failed to play audio', 'TTS Error');
-            };
-        } catch (err) {
-            if (timeoutId) clearTimeout(timeoutId);
-            if (process.env.NODE_ENV === 'development') {
-                console.error('TTS Error:', err);
+                setSubtitleText('');
             }
+        } catch (err) {
             error(err.message || 'Failed to generate speech. Please try again.', 'TTS Error');
-            setCurrentAudio(null);
             setPlayingAudioIndex(null);
+            setSubtitleText('');
         } finally {
-            if (timeoutId) clearTimeout(timeoutId);
             setIsTTSLoading(false);
         }
-
     };
 
     // Simplified Markdown Renderer
@@ -597,6 +555,17 @@ const Chatbot = () => {
                                 <option value="ko">🇰🇷 Korean</option>
                                 <option value="hi">🇮🇳 Hindi</option>
                                 <option value="ar">🇸🇦 Arabic</option>
+                            </select>
+                            <select
+                                value={vaaniClient.playbackRate}
+                                onChange={(e) => vaaniClient.setRate(parseFloat(e.target.value))}
+                                className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300 hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
+                                title="Select speech speed"
+                            >
+                                <option value="0.8">0.8x Slow</option>
+                                <option value="1.0">1.0x Normal</option>
+                                <option value="1.2">1.2x Fast</option>
+                                <option value="1.5">1.5x Rapid</option>
                             </select>
                             <div className="px-3 py-1 text-xs bg-white/5 border border-white/10 rounded text-accent font-medium flex items-center gap-1" title="Sovereign Vaani TTS Engine">
                                 🎙️ Vaani Sovereign Voice
@@ -667,15 +636,19 @@ const Chatbot = () => {
                                                 {/* Audio button for assistant messages */}
                                                 {msg.role === 'assistant' && (
                                                     <button
-                                                        onClick={() => handleTTS(msg.content, index)}
+                                                        onClick={() => togglePlayback(msg.content, index)}
                                                         disabled={isTTSLoading && playingAudioIndex !== index}
                                                         className={`absolute top-2 right-2 p-1.5 transition-colors rounded-lg hover:bg-white/10 ${playingAudioIndex === index
                                                             ? 'text-accent'
                                                             : 'text-gray-600 hover:text-gray-400'
                                                             } ${isTTSLoading && playingAudioIndex !== index ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                        title={playingAudioIndex === index ? "Stop audio" : "Convert this message to speech"}
+                                                        title={playingAudioIndex === index ? (isPlaying ? "Pause" : "Resume") : "Convert to speech"}
                                                     >
-                                                        <FaVolumeUp className="text-sm" />
+                                                        {playingAudioIndex === index ? (
+                                                            isPlaying ? <FaPause className="text-sm" /> : <FaPlay className="text-sm" />
+                                                        ) : (
+                                                            <FaVolumeUp className="text-sm" />
+                                                        )}
                                                     </button>
                                                 )}
                                             </div>
@@ -704,6 +677,15 @@ const Chatbot = () => {
                             <div ref={chatEndRef} />
                         </div>
                     </div>
+
+                    {/* Subtitle Overlay */}
+                    {subtitleText && isPlaying && (
+                        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 w-[90%] md:w-[70%] glass-panel bg-black/80 p-3 rounded-xl border border-accent/20 text-center animate-fade-in z-40">
+                            <p className="text-accent text-sm md:text-base font-medium leading-tight">
+                                {subtitleText.length > 100 ? subtitleText.substring(0, 100) + '...' : subtitleText}
+                            </p>
+                        </div>
+                    )}
 
                     {/* Input Area */}
                     <div className="p-3 sm:p-4 md:p-6 pt-0 shrink-0">

@@ -193,8 +193,8 @@ const TimetableManagement = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading timetable...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading timetable...</p>
       </div>
     );
   }
@@ -203,26 +203,26 @@ const TimetableManagement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Timetable Management</h1>
-          <p className="text-gray-600 mt-2">Create and view weekly timetable per class</p>
+          <h1 className="text-3xl font-bold text-white">Timetable Management</h1>
+          <p className="text-gray-400 mt-2">Create and view weekly timetable per class</p>
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+          className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition"
         >
           ➕ Add Slot
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-4 flex flex-wrap gap-4 items-center">
+      <div className="card-dark p-4 flex flex-wrap gap-4 items-center">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             Select Class
           </label>
           <select
             value={selectedClassId}
             onChange={(e) => setSelectedClassId(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
           >
             {classes.map((cls) => (
               <option key={cls.id} value={cls.id}>
@@ -234,18 +234,18 @@ const TimetableManagement = () => {
       </div>
 
       {showCreateForm && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="card-dark p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
             {editingSlot ? 'Edit Timetable Slot' : 'Create Timetable Slot'}
           </h2>
           <form onSubmit={editingSlot ? handleUpdateSlot : handleCreateSlot} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Class</label>
                 <select
                   value={formData.class_id || selectedClassId}
                   onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 >
                   {classes.map((cls) => (
                     <option key={cls.id} value={cls.id}>
@@ -255,11 +255,11 @@ const TimetableManagement = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Day of Week</label>
                 <select
                   value={formData.day_of_week}
                   onChange={(e) => setFormData({ ...formData, day_of_week: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 >
                   {daysOfWeek.map((day, idx) => (
                     <option key={idx} value={idx}>
@@ -271,11 +271,11 @@ const TimetableManagement = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Subject</label>
                 <select
                   value={formData.subject_id}
                   onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 >
                   <option value="">Select subject</option>
                   {subjects.map((subject) => (
@@ -286,11 +286,11 @@ const TimetableManagement = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Teacher</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Teacher</label>
                 <select
                   value={formData.teacher_id}
                   onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 >
                   <option value="">Select teacher</option>
                   {teachers.map((teacher) => (
@@ -303,32 +303,32 @@ const TimetableManagement = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Start Time</label>
                 <input
                   type="time"
                   value={formData.start_time}
                   onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">End Time</label>
                 <input
                   type="time"
                   value={formData.end_time}
                   onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Room</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Room</label>
                 <input
                   type="text"
                   value={formData.room}
                   onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                   placeholder="Optional"
                 />
               </div>
@@ -336,14 +336,14 @@ const TimetableManagement = () => {
             <div className="flex gap-3">
               <button
                 type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition"
               >
                 {editingSlot ? 'Update Slot' : 'Create Slot'}
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+                className="px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-400 transition"
               >
                 Cancel
               </button>
@@ -353,37 +353,37 @@ const TimetableManagement = () => {
       )}
 
       {/* Timetable Grid */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">
+      <div className="card-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2A2A3E] flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white">
             Weekly Timetable - {getClassName(parseInt(selectedClassId, 10))}
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#16162A]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Day
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Time
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Subject
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Teacher
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Room
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[#2A2A3E]">
               {slots.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
@@ -392,8 +392,8 @@ const TimetableManagement = () => {
                 </tr>
               ) : (
                 slots.map((slot) => (
-                  <tr key={slot.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={slot.id} className="hover:bg-[#16162A]">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {daysOfWeek[slot.day_of_week]}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

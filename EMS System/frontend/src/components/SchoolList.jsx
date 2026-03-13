@@ -18,20 +18,13 @@ const SchoolList = () => {
   const fetchSchools = async () => {
     try {
       setLoading(true);
-      // Note: GET /schools/ endpoint has been removed
-      // Get schools by fetching all admins and then fetching each school by ID
       const { adminsAPI } = await import('../services/api');
       const admins = await adminsAPI.getAll();
-      
-      // Extract unique school IDs from admins
       const schoolIds = [...new Set(admins.map(admin => admin.school_id).filter(id => id !== null))];
-      
-      // Fetch each school by ID
       const schoolsPromises = schoolIds.map(schoolId => 
         schoolsAPI.getById(schoolId).catch(() => null)
       );
       const schoolsArray = (await Promise.all(schoolsPromises)).filter(school => school !== null);
-      
       setSchools(schoolsArray);
       setError('');
     } catch (err) {
@@ -47,7 +40,7 @@ const SchoolList = () => {
       setDeleting(true);
       await schoolsAPI.delete(schoolId);
       setDeleteConfirm(null);
-      fetchSchools(); // Refresh list
+      fetchSchools();
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete school. Please try again.');
       setDeleteConfirm(null);
@@ -58,61 +51,58 @@ const SchoolList = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="card-dark p-6">
         <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="mt-4 text-gray-600">Loading schools...</p>
+          <div className="spinner"></div>
+          <p className="mt-4 text-gray-400">Loading schools...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-800">All Schools</h2>
-        <div className="flex items-center space-x-4">
+    <div className="card-dark overflow-hidden animate-fade-in">
+      <div className="px-6 py-4 border-b border-[#2A2A3E] flex justify-between items-center">
+        <h2 className="text-lg font-semibold text-white">All Schools</h2>
+        <div className="flex items-center space-x-3">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search schools..."
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm w-64"
+            className="input-dark text-sm w-64 !py-2 !rounded-capsule"
           />
-          <button
-            onClick={fetchSchools}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
-          >
-            Refresh
+          <button onClick={fetchSchools} className="btn-secondary text-sm">
+            ↻ Refresh
           </button>
         </div>
       </div>
       
       {error && (
-        <div className="p-4 m-6 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">{error}</p>
+        <div className="error-box m-6">
+          <p>{error}</p>
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h3>
-            <p className="text-gray-600 mb-6">
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 className="text-lg font-semibold text-white mb-4">Confirm Delete</h3>
+            <p className="text-gray-400 mb-6">
               Are you sure you want to delete this school? This action cannot be undone.
             </p>
             <div className="flex space-x-4">
               <button
                 onClick={() => handleDelete(deleteConfirm.id)}
                 disabled={deleting}
-                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 btn-danger py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {deleting ? 'Deleting...' : 'Delete'}
               </button>
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition"
+                className="flex-1 btn-secondary py-2.5"
               >
                 Cancel
               </button>
@@ -127,69 +117,51 @@ const SchoolList = () => {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="table-dark">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  School ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Address
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th>School ID</th>
+                <th>Name</th>
+                <th>Address</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {schools.map((school) => (
-                <tr key={school.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-semibold text-indigo-600">School ID: {school.id}</span>
+                <tr key={school.id}>
+                  <td>
+                    <span className="badge badge-green">ID: {school.id}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td>
                     <button
                       onClick={() => navigate(`/dashboard/schools/${school.id}`)}
-                      className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                      className="text-accent-green hover:text-accent-green/80 font-medium hover:underline transition-colors"
                     >
                       {school.name}
                     </button>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {school.address || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {school.phone || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {school.email || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                  <td>{school.address || '-'}</td>
+                  <td>{school.phone || '-'}</td>
+                  <td>{school.email || '-'}</td>
+                  <td className="space-x-2">
                     <button
                       onClick={() => navigate(`/dashboard/schools/${school.id}/edit`)}
-                      className="text-indigo-600 hover:text-indigo-900 font-medium mr-3"
+                      className="text-accent-blue hover:text-accent-blue/80 font-medium transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => navigate(`/dashboard/create-admin?schoolId=${school.id}`)}
-                      className="text-green-600 hover:text-green-900 font-medium mr-3"
+                      className="text-accent-green hover:text-accent-green/80 font-medium transition-colors"
                       title="Create admin for this school"
                     >
                       Create Admin
                     </button>
                     <button
                       onClick={() => setDeleteConfirm({ id: school.id, name: school.name })}
-                      className="text-red-600 hover:text-red-900 font-medium"
+                      className="text-red-400 hover:text-red-300 font-medium transition-colors"
                     >
                       Delete
                     </button>
@@ -200,8 +172,8 @@ const SchoolList = () => {
           </table>
         </div>
       )}
-      <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-        <p className="text-sm text-gray-600">
+      <div className="px-6 py-4 border-t border-[#2A2A3E] bg-[#16162A]">
+        <p className="text-sm text-gray-500">
           Showing {schools.length} school{schools.length !== 1 ? 's' : ''}
         </p>
       </div>

@@ -106,8 +106,8 @@ const MyLessons = () => {
   if (loading && lessons.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading lessons...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading lessons...</p>
       </div>
     );
   }
@@ -116,12 +116,12 @@ const MyLessons = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">My Lessons</h1>
-          <p className="text-gray-600 mt-2">View and manage your lessons</p>
+          <h1 className="text-3xl font-bold text-white">My Lessons</h1>
+          <p className="text-gray-400 mt-2">View and manage your lessons</p>
         </div>
         <button
           onClick={() => navigate('/dashboard/lessons/create')}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium flex items-center gap-2"
+          className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium flex items-center gap-2"
         >
           <span>➕</span>
           <span>Create Lesson</span>
@@ -129,22 +129,22 @@ const MyLessons = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {/* Class Filter */}
       {classes.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-4 flex flex-wrap gap-4 items-center">
+        <div className="card-dark p-4 flex flex-wrap gap-4 items-center">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Filter by Class
             </label>
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green focus:border-accent-green"
             >
               <option value="">All Classes</option>
               {classes.map((cls) => (
@@ -158,9 +158,9 @@ const MyLessons = () => {
       )}
 
       {/* Lessons List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-xl font-bold text-gray-800">
+      <div className="card-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2A2A3E] bg-[#16162A]">
+          <h2 className="text-xl font-bold text-white">
             Lessons ({lessons.length}) 
             {selectedClassId && ` - ${getClassName(parseInt(selectedClassId))}`}
           </h2>
@@ -171,35 +171,35 @@ const MyLessons = () => {
             <p className="text-gray-500 text-lg mb-4">No lessons found</p>
             <button
               onClick={() => navigate('/dashboard/lessons/create')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+              className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
             >
               Create Your First Lesson
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-[#2A2A3E]">
             {lessons.map((lesson) => (
-              <div key={lesson.id} className="px-6 py-4 hover:bg-gray-50 transition">
+              <div key={lesson.id} className="px-6 py-4 hover:bg-[#16162A] transition">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{lesson.title}</h3>
+                      <h3 className="text-lg font-semibold text-white">{lesson.title}</h3>
                       {lesson.class_name && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                        <span className="px-2 py-1 bg-accent-blue/15 text-accent-blue text-xs font-medium rounded">
                           {lesson.class_name}
                         </span>
                       )}
                       {lesson.subject_name && (
-                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
+                        <span className="px-2 py-1 bg-accent-pink/15 text-accent-pink text-xs font-medium rounded">
                           {lesson.subject_name}
                         </span>
                       )}
                     </div>
                     <p className="text-sm text-gray-500 mb-2">
-                      Lesson Date: <span className="font-medium text-gray-700">{formatDate(lesson.lesson_date)}</span>
+                      Lesson Date: <span className="font-medium text-gray-300">{formatDate(lesson.lesson_date)}</span>
                     </p>
                     {lesson.description && (
-                      <p className="text-sm text-gray-600 mb-3">{lesson.description}</p>
+                      <p className="text-sm text-gray-400 mb-3">{lesson.description}</p>
                     )}
                   </div>
                   <div className="flex gap-2 ml-4">
@@ -222,14 +222,14 @@ const MyLessons = () => {
                 </div>
                 
                 {lesson.lectures && lesson.lectures.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Lectures ({lesson.lectures.length}):</p>
+                  <div className="mt-3 pt-3 border-t border-[#2A2A3E]">
+                    <p className="text-sm font-semibold text-gray-300 mb-2">Lectures ({lesson.lectures.length}):</p>
                     <ul className="space-y-2">
                       {lesson.lectures.map((lecture) => (
-                        <li key={lecture.id} className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                        <li key={lecture.id} className="text-sm text-gray-400 bg-[#16162A] p-3 rounded-lg">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <span className="font-medium text-gray-900">{lecture.title}</span>
+                              <span className="font-medium text-white">{lecture.title}</span>
                               {lecture.content && (
                                 <p className="text-xs text-gray-500 mt-1">{lecture.content}</p>
                               )}

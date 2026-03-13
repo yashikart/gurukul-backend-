@@ -26,11 +26,11 @@ const TeacherDashboard = () => {
   };
 
   const StatCard = ({ title, value, icon, color }) => (
-    <div className="bg-white rounded-lg shadow-md p-4 md:p-6 border-l-4" style={{ borderLeftColor: color }}>
+    <div className="stat-card" style={{ borderLeftColor: color }}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs md:text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl md:text-3xl font-bold text-gray-900 mt-1 md:mt-2">{value}</p>
+          <p className="text-xs md:text-sm font-medium text-gray-400">{title}</p>
+          <p className="text-2xl md:text-3xl font-bold text-white mt-1 md:mt-2">{value}</p>
         </div>
         <div className="text-3xl md:text-4xl opacity-20" style={{ color }}>
           {icon}
@@ -42,19 +42,19 @@ const TeacherDashboard = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading dashboard...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <p className="text-red-800">{error}</p>
+      <div className="error-box p-6">
+        <p className="text-red-400">{error}</p>
         <button
           onClick={fetchStats}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+          className="mt-4 px-4 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition text-sm font-medium"
         >
           Retry
         </button>
@@ -65,10 +65,10 @@ const TeacherDashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Teacher Dashboard</h1>
+        <h1 className="text-3xl font-bold text-white">Teacher Dashboard</h1>
         <button
           onClick={fetchStats}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+          className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
         >
           Refresh
         </button>
@@ -103,40 +103,40 @@ const TeacherDashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
+      <div className="card-dark p-6">
+        <h2 className="text-xl font-semibold text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={() => window.location.hash = '#/dashboard/classes'}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-accent-green hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">📚</div>
-            <div className="font-medium text-gray-800">View My Classes</div>
-            <div className="text-sm text-gray-600 mt-1">See all your assigned classes</div>
+            <div className="font-medium text-white">View My Classes</div>
+            <div className="text-sm text-gray-400 mt-1">See all your assigned classes</div>
           </button>
           <button
             onClick={() => window.location.hash = '#/dashboard/students'}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-accent-green hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">👨‍🎓</div>
-            <div className="font-medium text-gray-800">View Students</div>
-            <div className="text-sm text-gray-600 mt-1">Manage your students</div>
+            <div className="font-medium text-white">View Students</div>
+            <div className="text-sm text-gray-400 mt-1">Manage your students</div>
           </button>
           <button
             onClick={() => window.location.hash = '#/dashboard/attendance'}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-accent-green hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">✅</div>
-            <div className="font-medium text-gray-800">Mark Attendance</div>
-            <div className="text-sm text-gray-600 mt-1">Take attendance for your classes</div>
+            <div className="font-medium text-white">Mark Attendance</div>
+            <div className="text-sm text-gray-400 mt-1">Take attendance for your classes</div>
           </button>
           <button
             onClick={() => window.location.hash = '#/dashboard/lessons/create'}
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-left"
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-accent-green hover:bg-indigo-50 transition text-left"
           >
             <div className="text-2xl mb-2">📖</div>
-            <div className="font-medium text-gray-800">Create Lesson</div>
-            <div className="text-sm text-gray-600 mt-1">Create a new lesson for your class</div>
+            <div className="font-medium text-white">Create Lesson</div>
+            <div className="text-sm text-gray-400 mt-1">Create a new lesson for your class</div>
           </button>
         </div>
       </div>

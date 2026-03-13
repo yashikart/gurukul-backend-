@@ -42,74 +42,86 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            School Management System
-          </h1>
-          <p className="text-gray-600">Login to your account</p>
-        </div>
+    <div className="min-h-screen bg-dark-bg flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Background gradient orbs */}
+      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-accent-green/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] rounded-full bg-accent-blue/5 blur-[120px] pointer-events-none" />
 
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800 text-sm">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-              placeholder="Enter your email"
-            />
+      <div className="max-w-md w-full animate-fade-in relative z-10">
+        {/* Login Card — Glassmorphism */}
+        <div className="bg-[#1A1A2E]/80 backdrop-blur-xl border border-[#2A2A3E] rounded-3xl p-8 shadow-2xl">
+          <div className="text-center mb-8">
+            <h1 className="heading-serif text-4xl mb-3 tracking-tight">
+              Gurukul
+            </h1>
+            <p className="text-gray-400 text-sm">School Management System</p>
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-              placeholder="Enter your password"
-            />
+          {error && (
+            <div className="error-box mb-6">
+              <p>{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="email" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="input-dark"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="input-dark"
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full btn-primary py-3.5 text-base mt-2"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="inline-block w-4 h-4 border-2 border-dark-bg/30 border-t-dark-bg rounded-full animate-spin" />
+                  Logging in...
+                </span>
+              ) : 'Login'}
+            </button>
+          </form>
+
+          {/* Demo Mode Toggle */}
+          <div className="mt-8 pt-6 border-t border-[#2A2A3E] flex items-center justify-center gap-3">
+            <span className={`text-xs font-bold uppercase tracking-wider ${isDemoMode ? 'text-accent-green' : 'text-gray-500'}`}>Demo Mode</span>
+            <button
+              onClick={toggleDemoMode}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${isDemoMode ? 'bg-accent-green' : 'bg-[#2A2A3E]'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${isDemoMode ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        {/* Demo Mode Toggle */}
-        <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-3">
-          <span className={`text-xs font-bold ${isDemoMode ? 'text-green-600' : 'text-gray-400'}`}>DEMO MODE</span>
-          <button
-            onClick={toggleDemoMode}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isDemoMode ? 'bg-green-500' : 'bg-gray-400'}`}
-          >
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isDemoMode ? 'translate-x-4.5' : 'translate-x-1'}`} />
-          </button>
-        </div>
-
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Login with your email and password. All user roles can login here.</p>
+          <div className="mt-5 text-center">
+            <p className="text-gray-500 text-xs">Login with your email and password. All user roles can login here.</p>
+          </div>
         </div>
       </div>
     </div>

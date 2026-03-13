@@ -74,47 +74,47 @@ const ChangePassword = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6">Reset Password</h2>
+    <div className="card-dark p-6 max-w-2xl mx-auto">
+      <h2 className="text-2xl font-semibold text-white mb-6">Reset Password</h2>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">{error}</p>
+        <div className="mb-4 p-4 error-box">
+          <p className="text-red-400 text-sm">{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm">Password changed successfully! You can now use your new password to log in.</p>
+        <div className="mb-4 p-4 success-box">
+          <p className="text-accent-green text-sm">Password changed successfully! You can now use your new password to log in.</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
-            Current Password <span className="text-red-500">*</span>
+          <label htmlFor="currentPassword" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+            Current Password <span className="text-red-400">*</span>
           </label>
           <input
             id="currentPassword"
             type="password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+            className="w-full input-dark !py-2"
             placeholder="Enter your current password"
             required
           />
         </div>
 
         <div>
-          <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
-            New Password <span className="text-red-500">*</span>
+          <label htmlFor="newPassword" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+            New Password <span className="text-red-400">*</span>
           </label>
           <input
             id="newPassword"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+            className="w-full input-dark !py-2"
             placeholder="Enter your new password"
             required
             minLength={6}
@@ -123,15 +123,15 @@ const ChangePassword = () => {
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-            Confirm New Password <span className="text-red-500">*</span>
+          <label htmlFor="confirmPassword" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+            Confirm New Password <span className="text-red-400">*</span>
           </label>
           <input
             id="confirmPassword"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+            className="w-full input-dark !py-2"
             placeholder="Confirm your new password"
             required
             minLength={6}
@@ -142,14 +142,14 @@ const ChangePassword = () => {
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 bg-accent-green text-[#0D0D0D] py-3 px-4 rounded-capsule font-semibold hover:bg-accent-green/90 focus:outline-none focus:ring-2 focus:ring-accent-green focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Changing Password...' : 'Change Password'}
           </button>
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+            className="px-6 py-3 btn-secondary"
           >
             Cancel
           </button>

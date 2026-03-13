@@ -55,15 +55,15 @@ const MyAttendance = () => {
   const getStatusColor = (status) => {
     switch (status?.toUpperCase()) {
       case 'PRESENT':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-accent-green';
       case 'ABSENT':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-400';
       case 'LATE':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-accent-amber/15 text-accent-amber';
       case 'EXCUSED':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-accent-blue/15 text-accent-blue';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[#16162A] text-white';
     }
   };
 
@@ -79,8 +79,8 @@ const MyAttendance = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading attendance...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading attendance...</p>
       </div>
     );
   }
@@ -89,28 +89,28 @@ const MyAttendance = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">My Attendance</h1>
-          <p className="text-gray-600 mt-2">View your attendance records</p>
+          <h1 className="text-3xl font-bold text-white">My Attendance</h1>
+          <p className="text-gray-400 mt-2">View your attendance records</p>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-4 flex flex-wrap gap-4 items-center">
+      <div className="card-dark p-4 flex flex-wrap gap-4 items-center">
         {classes.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Filter by Class
             </label>
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              className="px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
             >
               <option value="">All Classes</option>
               {classes.map((cls) => (
@@ -122,18 +122,18 @@ const MyAttendance = () => {
           </div>
         )}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             Date (Leave empty for all records)
           </label>
           <input
             type="date"
             value={attendanceDate}
             onChange={(e) => setAttendanceDate(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
           />
           <button
             onClick={() => setAttendanceDate('')}
-            className="ml-2 px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+            className="ml-2 px-3 py-2 text-sm bg-gray-200 text-gray-300 rounded-lg hover:bg-gray-300 transition"
           >
             Clear
           </button>
@@ -141,9 +141,9 @@ const MyAttendance = () => {
       </div>
 
       {/* Attendance List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-xl font-bold text-gray-800">
+      <div className="card-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2A2A3E] bg-[#16162A]">
+          <h2 className="text-xl font-bold text-white">
             Attendance Records ({attendance.length})
           </h2>
         </div>
@@ -154,18 +154,18 @@ const MyAttendance = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-100">
+              <thead className="bg-[#16162A]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">Class</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">Remarks</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase">Class</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase">Remarks</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-[#2A2A3E]">
                 {attendance.map((record) => (
-                  <tr key={record.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={record.id} className="hover:bg-[#16162A]">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {formatDate(record.attendance_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

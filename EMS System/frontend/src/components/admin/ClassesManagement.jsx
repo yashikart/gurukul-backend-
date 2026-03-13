@@ -254,8 +254,8 @@ const ClassesManagement = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading classes...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading classes...</p>
       </div>
     );
   }
@@ -264,8 +264,8 @@ const ClassesManagement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Classes Management</h1>
-          <p className="text-gray-600 mt-2">Manage classes, subjects, and teachers</p>
+          <h1 className="text-3xl font-bold text-white">Classes Management</h1>
+          <p className="text-gray-400 mt-2">Manage classes, subjects, and teachers</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -276,7 +276,7 @@ const ClassesManagement = () => {
           </button>
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+            className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition"
           >
             ➕ Create Class
           </button>
@@ -285,29 +285,29 @@ const ClassesManagement = () => {
 
       {/* Create/Edit Subject Form */}
       {showCreateSubjectForm && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="card-dark p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
             {editingSubject ? 'Edit Subject' : 'Create New Subject'}
           </h2>
           <form onSubmit={editingSubject ? handleUpdateSubject : handleCreateSubject} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Subject Name *</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Subject Name *</label>
               <input
                 type="text"
                 required
                 value={subjectFormData.name}
                 onChange={(e) => setSubjectFormData({ ...subjectFormData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 placeholder="e.g., Mathematics"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Subject Code (Optional)</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Subject Code (Optional)</label>
               <input
                 type="text"
                 value={subjectFormData.code}
                 onChange={(e) => setSubjectFormData({ ...subjectFormData, code: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 placeholder="e.g., MATH"
               />
             </div>
@@ -325,7 +325,7 @@ const ClassesManagement = () => {
                   setEditingSubject(null);
                   setSubjectFormData({ name: '', code: '' });
                 }}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+                className="px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-400 transition"
               >
                 Cancel
               </button>
@@ -335,41 +335,41 @@ const ClassesManagement = () => {
       )}
 
       {showCreateForm && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="card-dark p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
             {editingClass ? 'Edit Class' : 'Create New Class'}
           </h2>
           <form onSubmit={editingClass ? handleUpdateClass : handleCreateClass} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Class Name *</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Class Name *</label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 placeholder="e.g., Grade 5A"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Grade *</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Grade *</label>
               <input
                 type="text"
                 required
                 value={formData.grade}
                 onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 placeholder="e.g., 5"
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Subject *</label>
                 <select
                   required
                   value={formData.subject_id}
                   onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                   disabled={subjects.length === 0}
                 >
                   <option value="">
@@ -388,12 +388,12 @@ const ClassesManagement = () => {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Teacher *</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Teacher *</label>
                 <select
                   required
                   value={formData.teacher_id}
                   onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 >
                   <option value="">Select teacher</option>
                   {teachers.map((teacher) => (
@@ -405,19 +405,19 @@ const ClassesManagement = () => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Academic Year</label>
               <input
                 type="text"
                 value={formData.academic_year}
                 onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 placeholder="e.g., 2024-2025"
               />
             </div>
             <div className="flex gap-3">
               <button
                 type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition"
               >
                 {editingClass ? 'Update Class' : 'Create Class'}
               </button>
@@ -434,7 +434,7 @@ const ClassesManagement = () => {
                     academic_year: '',
                   });
                 }}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+                className="px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-400 transition"
               >
                 Cancel
               </button>
@@ -444,27 +444,27 @@ const ClassesManagement = () => {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {/* Subjects List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">All Subjects ({subjects.length})</h2>
+      <div className="card-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2A2A3E]">
+          <h2 className="text-xl font-bold text-white">All Subjects ({subjects.length})</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#16162A]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Code</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[#2A2A3E]">
               {subjects.length === 0 ? (
                 <tr>
                   <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
@@ -473,9 +473,9 @@ const ClassesManagement = () => {
                 </tr>
               ) : (
                 subjects.map((subject) => (
-                  <tr key={subject.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{subject.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{subject.name}</td>
+                  <tr key={subject.id} className="hover:bg-[#16162A]">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{subject.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{subject.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{subject.code || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex gap-2">
@@ -503,25 +503,25 @@ const ClassesManagement = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">All Classes ({classes.length})</h2>
+      <div className="card-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2A2A3E]">
+          <h2 className="text-xl font-bold text-white">All Classes ({classes.length})</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#16162A]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Students</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Academic Year</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Grade</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Subject</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Teacher</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Students</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Academic Year</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[#2A2A3E]">
               {classes.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
@@ -534,9 +534,9 @@ const ClassesManagement = () => {
                   const isExpanded = selectedClass === cls.id;
                   return (
                     <React.Fragment key={cls.id}>
-                      <tr className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{cls.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{cls.name}</td>
+                      <tr className="hover:bg-[#16162A]">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">{cls.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{cls.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{cls.grade}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {cls.subject_name || `Subject #${cls.subject_id}`}
@@ -583,9 +583,9 @@ const ClassesManagement = () => {
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan="7" className="px-6 py-4 bg-gray-50">
+                          <td colSpan="7" className="px-6 py-4 bg-[#16162A]">
                             <div className="space-y-2">
-                              <h4 className="font-semibold text-gray-700">Enrolled Students ({enrolledStudents.length}):</h4>
+                              <h4 className="font-semibold text-gray-300">Enrolled Students ({enrolledStudents.length}):</h4>
                               {enrolledStudents.length === 0 ? (
                                 <p className="text-gray-500 text-sm">No students enrolled yet. Click "Assign" to add students.</p>
                               ) : (
@@ -621,9 +621,9 @@ const ClassesManagement = () => {
 
       {/* Assign Student Modal */}
       {showAssignModal && assigningClassId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Assign Student to Class</h2>
+        <div className="modal-overlay">
+          <div className="bg-[#1A1A2E] border border-[#2A2A3E] rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-white mb-4">Assign Student to Class</h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {students
                 .filter(student => {
@@ -632,7 +632,7 @@ const ClassesManagement = () => {
                   return !enrolled.some(s => s.id === student.id);
                 })
                 .map((student) => (
-                  <div key={student.id} className="flex items-center justify-between p-3 border rounded hover:bg-gray-50">
+                  <div key={student.id} className="flex items-center justify-between p-3 border rounded hover:bg-[#16162A]">
                     <div>
                       <span className="font-medium">{student.name}</span>
                       <span className="text-sm text-gray-500 ml-2">({student.email})</span>
@@ -661,7 +661,7 @@ const ClassesManagement = () => {
                   setShowAssignModal(false);
                   setAssigningClassId(null);
                 }}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 text-white rounded hover:bg-gray-400"
               >
                 Close
               </button>

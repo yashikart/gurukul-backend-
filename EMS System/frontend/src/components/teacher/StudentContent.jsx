@@ -46,19 +46,19 @@ const StudentContent = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading content...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading content...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <p className="text-red-800">{error}</p>
+      <div className="error-box p-6">
+        <p className="text-red-400">{error}</p>
         <button
           onClick={fetchAllContent}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+          className="mt-4 px-4 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition text-sm font-medium"
         >
           Retry
         </button>
@@ -69,17 +69,17 @@ const StudentContent = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Student Generated Content</h1>
+        <h1 className="text-3xl font-bold text-white">Student Generated Content</h1>
         <button
           onClick={fetchAllContent}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+          className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
         >
           Refresh
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-[#2A2A3E]">
         <nav className="-mb-px flex space-x-8">
           {['all', 'summaries', 'flashcards', 'tests', 'subjects'].map((tab) => (
             <button
@@ -87,8 +87,8 @@ const StudentContent = () => {
               onClick={() => setActiveTab(tab)}
               className={`${
                 activeTab === tab
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-accent-green text-accent-green'
+                  : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-[#2A2A3E]'
               } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize`}
             >
               {tab === 'all' ? `All (${totalItems})` : 
@@ -105,12 +105,12 @@ const StudentContent = () => {
       <div className="space-y-6">
         {(activeTab === 'all' || activeTab === 'summaries') && summaries.length > 0 && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Summaries ({summaries.length})</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Summaries ({summaries.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {summaries.map((summary) => (
-                <div key={summary.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{summary.title}</h3>
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-3">{summary.content}</p>
+                <div key={summary.id} className="card-dark p-6 border border-[#2A2A3E]">
+                  <h3 className="text-lg font-semibold text-white mb-2">{summary.title}</h3>
+                  <p className="text-sm text-gray-400 mb-2 line-clamp-3">{summary.content}</p>
                   <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
                     <span>Source: {summary.source || 'Manual'}</span>
                     <span>{new Date(summary.created_at).toLocaleDateString()}</span>
@@ -123,13 +123,13 @@ const StudentContent = () => {
 
         {(activeTab === 'all' || activeTab === 'flashcards') && flashcards.length > 0 && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Flashcards ({flashcards.length})</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Flashcards ({flashcards.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {flashcards.map((flashcard) => (
-                <div key={flashcard.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                <div key={flashcard.id} className="card-dark p-6 border border-[#2A2A3E]">
                   <div className="mb-4">
-                    <p className="font-medium text-gray-900 mb-2">Q: {flashcard.question}</p>
-                    <p className="text-sm text-gray-700">A: {flashcard.answer}</p>
+                    <p className="font-medium text-white mb-2">Q: {flashcard.question}</p>
+                    <p className="text-sm text-gray-300">A: {flashcard.answer}</p>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
                     <span>Confidence: {flashcard.confidence.toFixed(1)}%</span>
@@ -143,21 +143,21 @@ const StudentContent = () => {
 
         {(activeTab === 'all' || activeTab === 'tests') && testResults.length > 0 && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Test Results ({testResults.length})</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Test Results ({testResults.length})</h2>
             <div className="space-y-4">
               {testResults.map((test) => (
-                <div key={test.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                <div key={test.id} className="card-dark p-6 border border-[#2A2A3E]">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{test.subject} - {test.topic}</h3>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <h3 className="text-lg font-semibold text-white">{test.subject} - {test.topic}</h3>
+                      <p className="text-sm text-gray-400 mt-1">
                         {test.correct_answers}/{test.total_questions} correct
                       </p>
                     </div>
                     <div className={`px-4 py-2 rounded-lg font-semibold ${
-                      test.score_percentage >= 80 ? 'bg-green-100 text-green-800' :
-                      test.score_percentage >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
+                      test.score_percentage >= 80 ? 'bg-green-100 text-accent-green' :
+                      test.score_percentage >= 60 ? 'bg-accent-amber/15 text-accent-amber' :
+                      'bg-red-100 text-red-400'
                     }`}>
                       {test.score_percentage.toFixed(1)}%
                     </div>
@@ -174,16 +174,16 @@ const StudentContent = () => {
 
         {(activeTab === 'all' || activeTab === 'subjects') && subjectData.length > 0 && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Subject Explorer ({subjectData.length})</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Subject Explorer ({subjectData.length})</h2>
             <div className="space-y-4">
               {subjectData.map((data) => (
-                <div key={data.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{data.subject} - {data.topic}</h3>
-                  <p className="text-sm text-gray-700 mb-4 line-clamp-4">{data.notes}</p>
+                <div key={data.id} className="card-dark p-6 border border-[#2A2A3E]">
+                  <h3 className="text-lg font-semibold text-white mb-2">{data.subject} - {data.topic}</h3>
+                  <p className="text-sm text-gray-300 mb-4 line-clamp-4">{data.notes}</p>
                   {data.youtube_recommendations && data.youtube_recommendations.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-xs font-medium text-gray-600 mb-2">YouTube Recommendations:</p>
-                      <ul className="list-disc list-inside text-xs text-gray-600">
+                    <div className="mt-4 pt-4 border-t border-[#2A2A3E]">
+                      <p className="text-xs font-medium text-gray-400 mb-2">YouTube Recommendations:</p>
+                      <ul className="list-disc list-inside text-xs text-gray-400">
                         {data.youtube_recommendations.slice(0, 3).map((rec, idx) => (
                           <li key={idx}>{rec.title || rec}</li>
                         ))}
@@ -201,10 +201,10 @@ const StudentContent = () => {
         )}
 
         {totalItems === 0 && (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="card-dark p-12 text-center">
             <div className="text-6xl mb-4">📚</div>
-            <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Content Generated Yet</h2>
-            <p className="text-gray-600">This student hasn't generated any content in Gurukul yet.</p>
+            <h2 className="text-2xl font-semibold text-white mb-2">No Content Generated Yet</h2>
+            <p className="text-gray-400">This student hasn't generated any content in Gurukul yet.</p>
           </div>
         )}
       </div>

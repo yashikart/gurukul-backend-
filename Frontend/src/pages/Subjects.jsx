@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import LearningFlow from '../components/LearningFlow';
 import LearningSuggestions from '../components/LearningSuggestions';
-import { FaBook, FaLightbulb, FaBookOpen, FaFlipboard, FaChevronDown } from 'react-icons/fa';
+import { FaBook, FaLightbulb, FaBookOpen, FaFlipboard, FaChevronDown, FaPause, FaPlay } from 'react-icons/fa';
 import { useModal } from '../contexts/ModalContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SkeletonBox, SkeletonCard } from '../components/LoadingSkeleton';
@@ -11,6 +11,8 @@ import { containsProfanity } from '../utils/profanityDetector';
 import { apiPost, handleApiError } from '../utils/apiClient';
 import { trackTopicStudied } from '../utils/progressTracker';
 import { sendLifeEvent } from '../utils/karmaTrackerClient';
+import vaaniClient from '../utils/vaaniClient';
+import { FaVolumeUp } from 'react-icons/fa';
 
 const Subjects = () => {
     const { alert, error, success } = useModal();
@@ -33,6 +35,70 @@ const Subjects = () => {
     const [isFlashcardModalOpen, setIsFlashcardModalOpen] = React.useState(false);
     const [flashcardGenerationStep, setFlashcardGenerationStep] = React.useState('select'); // 'select', 'loading', 'success'
     const [flashcardLoading, setFlashcardLoading] = React.useState(false);
+    const [isNarrating, setIsNarrating] = React.useState(false);
+    const [isPlaying, setIsPlaying] = React.useState(false);
+    const [subtitleText, setSubtitleText] = React.useState('');
+
+    // Narrate Lesson
+    const toggleNarration = () => {
+        if (isNarrating) {
+            if (isPlaying) {
+                vaaniClient.pause();
+                setIsPlaying(false);
+            } else {
+                vaaniClient.resume();
+                setIsPlaying(true);
+            }
+            return;
+        }
+        handleNarrate();
+    };
+
+    const handleNarrate = async () => {
+        if (!result || !result.notes) return;
+
+        // Stop any currently playing audio
+        vaaniClient.stop();
+        setIsNarrating(false);
+        setIsPlaying(false);
+        setSubtitleText('');
+
+        setIsNarrating(true);
+        try {
+            // Clean text for TTS (reuse logic or keep simple)
+            const cleanText = result.notes
+                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                .replace(/^#{1,6}\s+/gm, '')
+                .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+                .replace(/```[\s\S]*?```/g, '')
+                .replace(/`([^`]+)`/g, '$1')
+                .replace(/^[-*•]\s+/gm, '')
+                .replace(/^\d+\.\s+/gm, '')
+                .trim();
+
+            setSubtitleText(cleanText);
+
+            const lang = localStorage.getItem('selected_language') || 'en';
+            const success = await vaaniClient.speak(cleanText, lang);
+
+            if (success) {
+                setIsPlaying(true);
+                vaaniClient.audioElement.onended = () => {
+                    setIsPlaying(false);
+                    setIsNarrating(false);
+                    setSubtitleText('');
+                };
+            } else {
+                error('Failed to generate narration.', 'Narration Error');
+                setIsNarrating(false);
+                setSubtitleText('');
+            }
+        } catch (err) {
+            error('Narration failed.', 'Error');
+            setIsNarrating(false);
+            setSubtitleText('');
+        }
+    };
 
     // Persistence Effects
     React.useEffect(() => {
@@ -169,7 +235,7 @@ const Subjects = () => {
 
     const handleGenerateFlashcards = async (questionType) => {
         if (!result) return;
-        
+
         setFlashcardGenerationStep('loading');
         setFlashcardLoading(true);
 
@@ -218,7 +284,7 @@ const Subjects = () => {
             }
 
             setFlashcardGenerationStep('success');
-            
+
             // Auto-close modal after 2 seconds and navigate
             setTimeout(() => {
                 setIsFlashcardModalOpen(false);
@@ -509,6 +575,28 @@ const Subjects = () => {
                                     {result.topic}
                                 </h2>
                                 <div className="flex items-center gap-2">
+                                    <select
+                                        value={vaaniClient.playbackRate}
+                                        onChange={(e) => vaaniClient.setRate(parseFloat(e.target.value))}
+                                        className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300 hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
+                                        title="Select speech speed"
+                                    >
+                                        <option value="0.8">0.8x</option>
+                                        <option value="1.0">1.0x</option>
+                                        <option value="1.2">1.2x</option>
+                                        <option value="1.5">1.5x</option>
+                                    </select>
+                                    <button
+                                        onClick={toggleNarration}
+                                        className={`px-4 py-2 rounded-lg transition-all border flex items-center gap-2 shadow-lg ${isNarrating ? 'bg-accent/20 border-accent/50 text-accent' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                                    >
+                                        {isNarrating ? (
+                                            isPlaying ? <FaPause className="text-sm" /> : <FaPlay className="text-sm" />
+                                        ) : (
+                                            <FaVolumeUp className="text-sm" />
+                                        )}
+                                        {isNarrating ? (isPlaying ? 'Pause' : 'Resume') : 'Narrate Lesson'}
+                                    </button>
                                     <button
                                         onClick={handleOpenFlashcardModal}
                                         className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-sm font-semibold rounded-lg transition-all border border-orange-500/50 flex items-center gap-2 shadow-lg shadow-orange-500/20 hover:-translate-y-0.5"
@@ -615,6 +703,14 @@ const Subjects = () => {
                     </div>
                 )}
 
+                {/* Subtitle Overlay for Lesson Narration */}
+                {subtitleText && isPlaying && (
+                    <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] glass-panel bg-black/90 p-4 rounded-xl border border-accent/20 text-center animate-fade-in z-50">
+                        <p className="text-accent text-sm md:text-lg font-medium leading-tight">
+                            {subtitleText.length > 150 ? subtitleText.substring(0, 150) + '...' : subtitleText}
+                        </p>
+                    </div>
+                )}
             </main>
 
             {/* Flashcard Generation Modal */}

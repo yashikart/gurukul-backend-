@@ -12,7 +12,7 @@ _client: MongoClient = None
 _db = None
 
 def get_client() -> MongoClient:
-    """Lazy MongoDB client - only connects when actually needed"""
+    """Lazy MongoDB client - only connects when actually needed with retry logic"""
     global _client
     if _client is None:
         with _client_lock:
@@ -23,18 +23,31 @@ def get_client() -> MongoClient:
                 min_pool = int(os.getenv("MONGO_MIN_POOL_SIZE", "0"))
                 server_sel_timeout = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000"))
                 connect_timeout = int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "5000"))
-                # Use connect=False to prevent blocking during construction
-                # Connection will happen on first use
-                _client = MongoClient(
-                    MONGO_URI,
-                    maxPoolSize=max_pool,
-                    minPoolSize=min_pool,
-                    serverSelectionTimeoutMS=server_sel_timeout,
-                    connectTimeoutMS=connect_timeout,
-                    connect=False,  # CRITICAL: Don't connect during construction
-                )
-                print("[Karma DB] MongoDB client created (not connected yet)", flush=True)
-                sys.stdout.flush()
+                
+                try:
+                    _client = MongoClient(
+                        MONGO_URI,
+                        maxPoolSize=max_pool,
+                        minPoolSize=min_pool,
+                        serverSelectionTimeoutMS=server_sel_timeout,
+                        connectTimeoutMS=connect_timeout,
+                        connect=False,  # Still lazy, but prepared
+                    )
+                    # Verify on first access
+                    print("[Karma DB] MongoDB client created. Host: " + MONGO_URI.split('@')[-1].split('/')[0] if '@' in MONGO_URI else 'Localhost', flush=True)
+                except Exception as e:
+                    print(f"[Karma DB] [FAIL] Critical error creating MongoClient: {e}")
+                    raise
+    
+    # Check if client is still alive
+    try:
+        _client.admin.command('ping')
+    except Exception as e:
+        print(f"[Karma DB] Connection lost or stale. Attempting to refresh client... {e}")
+        with _client_lock:
+            _client = None
+            return get_client()
+            
     return _client
 
 def get_db():

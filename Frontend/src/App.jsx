@@ -51,6 +51,34 @@ import { SidebarProvider } from './contexts/SidebarContext';
 import { DemoProvider } from './contexts/DemoContext';
 import { sendLifeEvent } from './utils/karmaTrackerClient';
 import bgImage from './assets/background.png';
+import { VoiceManager } from './components/VoiceManager';
+import { checkBackendHealth } from './utils/apiClient';
+
+const HealthMonitor = () => {
+  const [isOnline, setIsOnline] = React.useState(true);
+  const [lastCheck, setLastCheck] = React.useState(Date.now());
+
+  React.useEffect(() => {
+    const checkHealth = async () => {
+      const healthy = await checkBackendHealth();
+      setIsOnline(healthy);
+      setLastCheck(Date.now());
+    };
+
+    const interval = setInterval(checkHealth, 60000); // Check every minute
+    checkHealth();
+    return () => clearInterval(interval);
+  }, []);
+
+  if (isOnline) return null;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[100] bg-red-600 text-white text-[10px] font-bold py-1 px-4 flex justify-between items-center animate-pulse">
+      <span>SYSTEM OFFLINE: RECONNECTING TO GURUKUL CORE...</span>
+      <span>Last Checked: {new Date(lastCheck).toLocaleTimeString()}</span>
+    </div>
+  );
+};
 
 const AppContent = () => {
   const { user } = useAuth();
@@ -240,6 +268,7 @@ const AppContent = () => {
       <ModalProvider>
         <SidebarProvider>
           <div className="relative z-10 min-h-screen flex flex-col font-sans text-gray-100">
+            <HealthMonitor />
             <Navbar />
 
             <main className="flex-grow flex flex-col items-center justify-center relative container mx-auto px-2 sm:px-4 mt-16 sm:mt-20">
@@ -394,7 +423,9 @@ const App = () => {
         <KarmaProvider>
           <PranaProvider>
             <DemoProvider>
-              <AppContent />
+              <VoiceManager>
+                <AppContent />
+              </VoiceManager>
             </DemoProvider>
           </PranaProvider>
         </KarmaProvider>

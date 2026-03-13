@@ -18,16 +18,45 @@ if not SQLALCHEMY_DATABASE_URL:
 connect_args = {}
 if "sqlite" in SQLALCHEMY_DATABASE_URL:
     connect_args = {"check_same_thread": False}
+    if not settings.DATABASE_URL:
+        print("[Database] CRITICAL: DATABASE_URL not set. Falling back to SQLite (gurukul.db). Data will NOT be persistent across deployments!")
+else:
+    print(f"[Database] Connecting to production database: {SQLALCHEMY_DATABASE_URL.split('@')[-1] if '@' in SQLALCHEMY_DATABASE_URL else 'Remote'}")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args=connect_args,
-    pool_pre_ping=True,  # Verify connections before using
-    pool_size=10,        # Permanent connections
-    max_overflow=20,     # Burst capacity
-    pool_timeout=30,     # Wait budget for connection
-    pool_recycle=1800    # Refresh connections every 30m
-)
+def create_resilient_engine():
+    """Attempt to create engine with retry logic for network resilience"""
+    import time
+    max_retries = 5
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            new_engine = create_engine(
+                SQLALCHEMY_DATABASE_URL,
+                connect_args=connect_args,
+                pool_pre_ping=True,  # Verify connections before using
+                pool_size=10,        # Permanent connections
+                max_overflow=20,     # Burst capacity
+                pool_timeout=30,     # Wait budget for connection
+                pool_recycle=1800    # Refresh connections every 30m
+            )
+            # Test connection immediately
+            with new_engine.connect() as conn:
+                from sqlalchemy import text
+                conn.execute(text("SELECT 1"))
+            return new_engine
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"[Database] Connection attempt {attempt + 1} failed: {e}. Retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print(f"[Database] FATAL: All {max_retries} connection attempts failed. Error: {e}")
+                # We return the engine anyway; SQLAlchemy will retry on next use, 
+                # but we've logged the failure clearly.
+                return create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
+
+engine = create_resilient_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

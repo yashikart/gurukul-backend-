@@ -174,8 +174,8 @@ const HolidaysEvents = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading holidays and events...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading holidays and events...</p>
       </div>
     );
   }
@@ -184,8 +184,8 @@ const HolidaysEvents = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Holidays & Events</h1>
-          <p className="text-gray-600 mt-2">Manage holidays, exams, PTM, and other events</p>
+          <h1 className="text-3xl font-bold text-white">Holidays & Events</h1>
+          <p className="text-gray-400 mt-2">Manage holidays, exams, PTM, and other events</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -196,7 +196,7 @@ const HolidaysEvents = () => {
           </button>
           <button
             onClick={() => setShowEventForm(!showEventForm)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+            className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition"
           >
             ➕ Add Event
           </button>
@@ -204,55 +204,55 @@ const HolidaysEvents = () => {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {showHolidayForm && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="card-dark p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
             {editingHoliday ? 'Edit Holiday' : 'Create Holiday'}
           </h2>
           <form onSubmit={editingHoliday ? handleUpdateHoliday : handleCreateHoliday} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Name *</label>
               <input
                 type="text"
                 required
                 value={holidayForm.name}
                 onChange={(e) => setHolidayForm({ ...holidayForm, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Start Date *</label>
                 <input
                   type="date"
                   required
                   value={holidayForm.start_date}
                   onChange={(e) => setHolidayForm({ ...holidayForm, start_date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">End Date *</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">End Date *</label>
                 <input
                   type="date"
                   required
                   value={holidayForm.end_date}
                   onChange={(e) => setHolidayForm({ ...holidayForm, end_date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Description</label>
               <textarea
                 value={holidayForm.description}
                 onChange={(e) => setHolidayForm({ ...holidayForm, description: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 rows={3}
               />
             </div>
@@ -266,7 +266,7 @@ const HolidaysEvents = () => {
               <button
                 type="button"
                 onClick={handleCancelHoliday}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+                className="px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-400 transition"
               >
                 Cancel
               </button>
@@ -276,73 +276,73 @@ const HolidaysEvents = () => {
       )}
 
       {showEventForm && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="card-dark p-6">
+          <h2 className="text-xl font-bold text-white mb-4">
             {editingEvent ? 'Edit Event' : 'Create Event'}
           </h2>
           <form onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Title *</label>
               <input
                 type="text"
                 required
                 value={eventForm.title}
                 onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Date *</label>
                 <input
                   type="date"
                   required
                   value={eventForm.event_date}
                   onChange={(e) => setEventForm({ ...eventForm, event_date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Time</label>
                 <input
                   type="time"
                   value={eventForm.event_time}
                   onChange={(e) => setEventForm({ ...eventForm, event_time: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type *</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Type *</label>
               <input
                 type="text"
                 required
                 value={eventForm.event_type}
                 onChange={(e) => setEventForm({ ...eventForm, event_type: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 placeholder="e.g., Exam, PTM, Annual Day"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Description</label>
               <textarea
                 value={eventForm.description}
                 onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-[#2A2A3E] rounded-lg focus:ring-2 focus:ring-accent-green"
                 rows={3}
               />
             </div>
             <div className="flex gap-3">
               <button
                 type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition"
               >
                 {editingEvent ? 'Update Event' : 'Create Event'}
               </button>
               <button
                 type="button"
                 onClick={handleCancelEvent}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+                className="px-4 py-2 bg-gray-300 text-white rounded-lg hover:bg-gray-400 transition"
               >
                 Cancel
               </button>
@@ -352,32 +352,32 @@ const HolidaysEvents = () => {
       )}
 
       {/* Holidays List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">Holidays ({holidays.length})</h2>
+      <div className="card-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2A2A3E]">
+          <h2 className="text-xl font-bold text-white">Holidays ({holidays.length})</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#16162A]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Start Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   End Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Description
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[#2A2A3E]">
               {holidays.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
@@ -386,8 +386,8 @@ const HolidaysEvents = () => {
                 </tr>
               ) : (
                 holidays.map((holiday) => (
-                  <tr key={holiday.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={holiday.id} className="hover:bg-[#16162A]">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {holiday.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -426,35 +426,35 @@ const HolidaysEvents = () => {
       </div>
 
       {/* Events List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">Events ({events.length})</h2>
+      <div className="card-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2A2A3E]">
+          <h2 className="text-xl font-bold text-white">Events ({events.length})</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#16162A]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Title
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Time
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Description
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[#2A2A3E]">
               {events.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
@@ -463,8 +463,8 @@ const HolidaysEvents = () => {
                 </tr>
               ) : (
                 events.map((event) => (
-                  <tr key={event.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={event.id} className="hover:bg-[#16162A]">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {event.title}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

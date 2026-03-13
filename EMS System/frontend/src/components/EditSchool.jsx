@@ -52,7 +52,6 @@ const EditSchool = () => {
     setLoading(true);
 
     try {
-      // Only send non-empty fields
       const updateData = {};
       if (formData.name) updateData.name = formData.name;
       if (formData.address !== undefined) updateData.address = formData.address || null;
@@ -74,43 +73,43 @@ const EditSchool = () => {
   if (fetching) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading school details...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading school details...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
+    <div className="card-dark p-6 max-w-2xl mx-auto animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-800">Edit School</h2>
-          <p className="text-sm text-indigo-600 font-medium mt-1">School ID: {id}</p>
+          <h2 className="heading-serif text-2xl">Edit School</h2>
+          <p className="text-sm text-accent-green font-medium mt-1">School ID: {id}</p>
         </div>
         <button
           onClick={() => navigate('/dashboard/schools')}
-          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+          className="btn-secondary text-sm"
         >
           Cancel
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">{error}</p>
+        <div className="error-box mb-4">
+          <p>{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm">{success}</p>
+        <div className="success-box mb-4">
+          <p>{success}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-            School Name <span className="text-red-500">*</span>
+          <label htmlFor="name" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+            School Name <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -119,12 +118,12 @@ const EditSchool = () => {
             value={formData.name}
             onChange={handleChange}
             required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+            className="input-dark"
           />
         </div>
 
         <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="address" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
             Address
           </label>
           <textarea
@@ -133,13 +132,13 @@ const EditSchool = () => {
             value={formData.address || ''}
             onChange={handleChange}
             rows="3"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+            className="input-dark !rounded-xl"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="phone" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
               Phone Number
             </label>
             <input
@@ -148,12 +147,12 @@ const EditSchool = () => {
               name="phone"
               value={formData.phone || ''}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              className="input-dark"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="email" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
               Email Address
             </label>
             <input
@@ -162,23 +161,23 @@ const EditSchool = () => {
               name="email"
               value={formData.email || ''}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              className="input-dark"
             />
           </div>
         </div>
 
-        <div className="flex space-x-4">
+        <div className="flex space-x-4 pt-2">
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 btn-primary"
           >
             {loading ? 'Updating...' : 'Update School'}
           </button>
           <button
             type="button"
             onClick={() => navigate('/dashboard/schools')}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+            className="btn-secondary"
           >
             Cancel
           </button>

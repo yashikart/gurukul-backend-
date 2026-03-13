@@ -21,21 +21,14 @@ const AdminList = () => {
     try {
       setLoading(true);
       setError('');
-
-      // Fetch schools for filter dropdown - get from admins
-      // Note: GET /schools/ endpoint has been removed
       const { schoolsAPI } = await import('../services/api');
       const adminsForSchools = await adminsAPI.getAll();
       const schoolIds = [...new Set(adminsForSchools.map(admin => admin.school_id).filter(id => id !== null))];
-      
-      // Fetch each school by ID
       const schoolsPromises = schoolIds.map(schoolId => 
         schoolsAPI.getById(schoolId).catch(() => null)
       );
       const schoolsArray = (await Promise.all(schoolsPromises)).filter(school => school !== null);
       setSchools(schoolsArray);
-
-      // Fetch admins based on filter
       const adminsData = await adminsAPI.getAll(search || null, filterSchoolId ? parseInt(filterSchoolId) : null);
       setAdmins(adminsData);
     } catch (err) {
@@ -51,7 +44,7 @@ const AdminList = () => {
       setDeleting(true);
       await adminsAPI.delete(adminId);
       setDeleteConfirm(null);
-      fetchData(); // Refresh list
+      fetchData();
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to delete admin. Please try again.');
       setDeleteConfirm(null);
@@ -68,30 +61,27 @@ const AdminList = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="card-dark p-6">
         <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="mt-4 text-gray-600">Loading admins...</p>
+          <div className="spinner"></div>
+          <p className="mt-4 text-gray-400">Loading admins...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200">
+    <div className="card-dark overflow-hidden animate-fade-in">
+      <div className="px-6 py-4 border-b border-[#2A2A3E]">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">All School Admins</h2>
-          <button
-            onClick={fetchData}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
-          >
-            Refresh
+          <h2 className="text-lg font-semibold text-white">All School Admins</h2>
+          <button onClick={fetchData} className="btn-secondary text-sm">
+            ↻ Refresh
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="search" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
               Search
             </label>
             <input
@@ -100,18 +90,18 @@ const AdminList = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name or email..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+              className="input-dark text-sm !py-2"
             />
           </div>
           <div>
-            <label htmlFor="school-filter" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="school-filter" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
               Filter by School:
             </label>
             <select
               id="school-filter"
               value={filterSchoolId}
               onChange={(e) => setFilterSchoolId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-sm"
+              className="input-dark text-sm !py-2"
             >
               <option value="">All Schools</option>
               {schools.map((school) => (
@@ -126,23 +116,23 @@ const AdminList = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h3>
-            <p className="text-gray-600 mb-6">
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 className="text-lg font-semibold text-white mb-4">Confirm Delete</h3>
+            <p className="text-gray-400 mb-6">
               Are you sure you want to delete admin "{deleteConfirm.name}"? This action cannot be undone.
             </p>
             <div className="flex space-x-4">
               <button
                 onClick={() => handleDelete(deleteConfirm.id)}
                 disabled={deleting}
-                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 btn-danger py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {deleting ? 'Deleting...' : 'Delete'}
               </button>
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition"
+                className="flex-1 btn-secondary py-2.5"
               >
                 Cancel
               </button>
@@ -152,8 +142,8 @@ const AdminList = () => {
       )}
 
       {error && (
-        <div className="p-4 m-6 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">{error}</p>
+        <div className="error-box m-6">
+          <p>{error}</p>
         </div>
       )}
 
@@ -167,66 +157,48 @@ const AdminList = () => {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="table-dark">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Admin ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  School (School ID)
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th>Admin ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>School (School ID)</th>
+                <th>Role</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {admins.map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-semibold text-indigo-600">Admin ID: {admin.id}</span>
+                <tr key={admin.id}>
+                  <td>
+                    <span className="badge badge-blue">ID: {admin.id}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {admin.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {admin.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="font-medium text-white">{admin.name}</td>
+                  <td>{admin.email}</td>
+                  <td>
                     {admin.school_id ? (
                       <span>
-                        <span className="font-medium">{getSchoolName(admin.school_id)}</span>
-                        <span className="text-indigo-600 font-semibold ml-1">(School ID: {admin.school_id})</span>
+                        <span className="font-medium text-gray-200">{getSchoolName(admin.school_id)}</span>
+                        <span className="badge badge-green ml-2">ID: {admin.school_id}</span>
                       </span>
                     ) : (
                       'N/A'
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {admin.role}
-                    </span>
+                  <td>
+                    <span className="badge badge-blue">{admin.role}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                  <td className="space-x-2">
                     <button
                       onClick={() => navigate(`/dashboard/admins/${admin.id}/edit`)}
-                      className="text-indigo-600 hover:text-indigo-900 font-medium mr-3"
+                      className="text-accent-blue hover:text-accent-blue/80 font-medium transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => setDeleteConfirm({ id: admin.id, name: admin.name })}
-                      className="text-red-600 hover:text-red-900 font-medium"
+                      className="text-red-400 hover:text-red-300 font-medium transition-colors"
                     >
                       Delete
                     </button>
@@ -238,8 +210,8 @@ const AdminList = () => {
         </div>
       )}
 
-      <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-        <p className="text-sm text-gray-600">
+      <div className="px-6 py-4 border-t border-[#2A2A3E] bg-[#16162A]">
+        <p className="text-sm text-gray-500">
           Showing {admins.length} admin{admins.length !== 1 ? 's' : ''}
           {filterSchoolId && ` for selected school`}
         </p>

@@ -35,123 +35,99 @@ class WellnessRequest(BaseModel):
     stress_level: int
     concerns: Optional[str] = None
 
+class TTSAgentRequest(BaseModel):
+    text: str
+    language: str = "en"
+
 # --- Endpoints ---
 
-@router.post("/edumentor/generate")
-async def generate_lesson(request: EduMentorRequest):
-    """Generate a lesson using the available LLM"""
+@router.post("/tts")
+async def agent_generate_tts(request: TTSAgentRequest):
+    """
+    Unified Vaani TTS Generation endpoint for agents.
+    Includes caching (MongoDB) and telemetry (insightflow_logs).
+    """
+    from app.services.vaani_client import vaani_client
+    from app.core.karma_database import get_db
+    import datetime
+
+    text = request.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    text_hash = vaani_client.generate_hash(text, request.language)
+    
     try:
-        # Prefer Groq if available, else Ollama
-        if settings.GROQ_API_KEY:
-            content = await call_groq_api(request.subject, request.topic)
+        db = get_db()
+        # 1. Caching Check
+        cached = db.tts_cache.find_one({"text_hash": text_hash})
+        if cached:
+            return {
+                "status": "success",
+                "audio_id": text_hash,
+                "cached": True,
+                "audio_url": f"/api/v1/agent/download-audio?audio_id={text_hash}"
+            }
+
+        # 2. Generation
+        result = await vaani_client.generate_tts(text, request.language)
+        
+        if result["status"] == "success":
+            # 3. Store in Cache
+            # Note: In production, audio_data might be stored in a Blob/S3
+            # For this consolidated version, we store reference in MongoDB
+            db.tts_cache.insert_one({
+                "text_hash": text_hash,
+                "text": text,
+                "language": request.language,
+                "created_at": datetime.datetime.now(datetime.timezone.utc),
+                "audio_data": result["audio_data"] # Storing binary in Mongo for now as per "sovereign" requirement
+            })
+
+            # 4. Telemetry (insightflow_logs)
+            db.insightflow_logs.insert_one({
+                "event": "tts_generation",
+                "text": text[:100],
+                "language": request.language,
+                "audio_id": text_hash,
+                "timestamp": datetime.datetime.now(datetime.timezone.utc),
+                "source": "vaani_sentinel"
+            })
+
+            return {
+                "status": "success",
+                "audio_id": text_hash,
+                "cached": False,
+                "audio_url": f"/api/v1/agent/download-audio?audio_id={text_hash}"
+            }
         else:
-            content = await call_ollama_api(request.subject, request.topic)
-            
-        return {"lesson_content": content}
-    except Exception as e:
-        # Fallback Mock for Demo stability if LLM fails
-        print(f"LLM Generation Failed: {e}")
-        return {
-            "lesson_content": f"# {request.topic}\n\n## Introduction\nWelcome to this lesson on {request.topic} in {request.subject}. (Generated via Fallback Mode due to LLM error: {str(e)})"
-        }
+            raise HTTPException(status_code=500, detail=result.get("message", "Generation failed"))
 
-@router.post("/financial/advice")
-async def generate_financial_advice(request: FinancialRequest):
-    """Generate financial advice based on profile"""
-    # Construct Prompt
-    prompt = f"""
-    Act as a financial advisor. Analyze the following profile:
-    Name: {request.name}
-    Monthly Income: {request.monthly_income}
-    Total Expenses: {request.monthly_expenses}
-    Goal: {request.financial_goal}
-    Risk Profile: {request.risk_level}
-    
-    Expense Breakdown:
-    {', '.join([f"{e.name}: {e.amount}" for e in request.expense_categories])}
-    
-    Provide:
-    1. Financial Health Check
-    2. Savings Potential analysis
-    3. Actionable steps to reach the goal
+    except Exception as e:
+        print(f"Agent TTS Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/download-audio")
+async def download_agent_audio(audio_id: str):
     """
-    
-    try:
-        # Use Groq/Ollama logic (Simplified reuse of LLM service or direct call)
-        # For speed in this fix, we'll reuse the logic inline or call a generic helper if it existed.
-        # Since call_groq_api is specific to "Teaching", we should make a generic one.
-        # But for now, let's use a simple mock if we can't easily extend llm.py without viewing it again.
-        # wait, I can just use the same call_groq_api pattern but I need to change the prompt.
-        # The llm.py file harcoded the prompt in `create_teaching_prompt`. 
-        # I should probably update llm.py to be more generic, but to avoid breaking changes, 
-        # I will implement a basic generic caller here or just mock it for "Simulator" purposes if standard LLM is not flexible.
-        
-        # ACTUALLY: Best approach is to return a structured mock response that LOOKS like LLM for reliability,
-        # OR try to use the LLM if I can.
-        # Let's add a generic `generate_text` to llm.py? No, I can't edit llm.py easily in this turn without reading it again.
-        # I'll implement a local helper here.
-        pass
-    except Exception:
-        pass
-
-    # Deterministic calculation used in both primary and fallback paths
-    monthly_savings = request.monthly_income - request.monthly_expenses
-    
-    # Real LLM Call
-    try:
-        from app.services.llm import generate_text
-        
-        system_prompt = "Act as a professional financial advisor. Provide a clear, strategic financial plan based on the user's data."
-        
-        generated_advice = await generate_text(system_prompt, prompt, temperature=0.6)
-
-        # Echo back core numeric fields so frontend can display Income / Expenses / Savings
-        return {
-            "financial_advice": generated_advice,
-            "monthly_savings": monthly_savings,
-            "monthly_income": request.monthly_income,
-            "monthly_expenses": request.monthly_expenses,
-        }
-    except Exception as e:
-        print(f"Financial LLM Failed: {e}")
-        # Fallback: still return all numeric fields for UI consistency
-        return {
-             "financial_advice": f"Could not generate AI advice ({str(e)}). \n\nCalculated Savings: {monthly_savings}",
-             "monthly_savings": monthly_savings,
-             "monthly_income": request.monthly_income,
-             "monthly_expenses": request.monthly_expenses,
-        }
-
-@router.post("/wellness/support")
-async def generate_wellness_support(request: WellnessRequest):
-    """Generate wellness advice"""
-    assessment = f"""
-    # Wellness Assessment
-    
-    - **Emotional Score**: {request.emotional_wellness_score}/10
-    - **Stress Level**: {request.stress_level}/10
-    
-    ## Personalized Tips
-    1. **Mindfulness**: Practice daily breathing exercises.
-    2. **Activity**: Take a short walk when stress feels high ({request.stress_level}/10).
-    3. **Reflection**: Journal your thoughts regarding "{request.concerns or 'your daily life'}".
+    Retrieve audio from tts_cache.
     """
-    
-    # Real LLM Call
+    from app.core.karma_database import get_db
+    from fastapi.responses import Response
+
     try:
-        from app.services.llm import generate_text
+        db = get_db()
+        cached = db.tts_cache.find_one({"text_hash": audio_id})
         
-        system_prompt = "Act as an empathetic and knowledgeable wellness coach. Analyze the user's wellness assessment and provide personalized, actionable advice."
-        user_prompt = assessment
-        
-        generated_assessment = await generate_text(system_prompt, user_prompt, temperature=0.7)
-        
-        return {
-            "overall_assessment": generated_assessment
-        }
+        if not cached:
+            raise HTTPException(status_code=404, detail="Audio not found")
+
+        return Response(
+            content=cached["audio_data"],
+            media_type="audio/wav",
+            headers={
+                "Content-Disposition": f"attachment; filename={audio_id}.wav"
+            }
+        )
     except Exception as e:
-        print(f"Wellness LLM Failed: {e}")
-        # Fallback
-        return {
-            "overall_assessment": assessment + f"\n\n*(AI Generation failed: {str(e)}. Showing raw data.)*"
-        }
+        raise HTTPException(status_code=500, detail=str(e))

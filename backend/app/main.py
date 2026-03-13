@@ -90,6 +90,13 @@ atonement = None
 death = None
 event = None
 
+# Global health state
+system_health = {
+    "sql_db": "initializing",
+    "mongo_db": "initializing",
+    "startup_complete": False
+}
+
 # CORS - Allow frontend to access backend
 app.add_middleware(
     CORSMiddleware,
@@ -166,10 +173,11 @@ async def startup_event():
             # Run a simple command to verify connection
             await asyncio.to_thread(db.command, "ping")
             print("[Startup] [OK] MongoDB connection verified")
+            system_health["mongo_db"] = "connected"
             sys.stdout.flush()
         except Exception as e:
             print(f"[Startup] [WARN] MongoDB init warning: {e}")
-            # Don't fail the whole startup for MongoDB if it's optional
+            system_health["mongo_db"] = f"failed: {str(e)}"
             sys.stdout.flush()
 
     # Import routers NOW (after server has started) - run in thread to avoid blocking
@@ -200,13 +208,14 @@ async def startup_event():
     def import_other_routers_sync():
         """Import other routers (non-critical, can run in background)"""
         global chat, flashcards, learning, ems, summarizer, soul, agents, quiz, journey, tts
-        global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual
+        global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, monitor
         
         try:
             print("[Startup] Importing other routers (non-critical)...")
             sys.stdout.flush()
             from app.routers import chat as chat_mod, flashcards as flashcards_mod, learning as learning_mod
             from app.routers import ems as ems_mod
+            from app.services import system_monitor as monitor_mod
             # DISABLED: summarizer uses too much memory (LED model ~300MB)
             # from app.routers import summarizer as summarizer_mod
             summarizer_mod = None
@@ -234,8 +243,10 @@ async def startup_event():
             vaani = vaani_mod
             bucket = bucket_mod
             ems_sync_manual = ems_sync_manual_mod
+            monitor = monitor_mod
             
             # Include routers
+            app.include_router(monitor.router)
             app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
             app.include_router(flashcards.router, prefix="/api/v1/flashcards", tags=["Flashcards"])
             app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
@@ -431,8 +442,39 @@ async def startup_event():
         print(f"[Startup] [FAIL] Watchdog caught fatal error: {e}")
         sys.stdout.flush()
     
+    async def dependency_watchdog():
+        """Periodic background task to ensure dependencies stay connected"""
+        print("[Watchdog] Background dependency watchdog started.")
+        while True:
+            await asyncio.sleep(60) # check every minute
+            
+            # Check SQL
+            try:
+                from app.core.database import engine
+                from sqlalchemy import text
+                with engine.connect() as connection:
+                    connection.execute(text("SELECT 1"))
+                system_health["sql_db"] = "connected"
+            except Exception as e:
+                system_health["sql_db"] = f"lost: {str(e)}"
+                print(f"[Watchdog] SQL Connection lost: {e}")
+
+            # Check Mongo
+            try:
+                from app.core.karma_database import get_db as get_m_db
+                db = get_m_db()
+                db.command('ping')
+                system_health["mongo_db"] = "connected"
+            except Exception as e:
+                system_health["mongo_db"] = f"lost: {str(e)}"
+                print(f"[Watchdog] MongoDB Connection lost: {e}")
+
+    # Start the watchdog
+    asyncio.create_task(dependency_watchdog())
+    
+    system_health["startup_complete"] = True
     print("[Startup] [OK] Startup event complete! Server will bind to port now.")
-    print("[Startup] Background tasks (routers, DB, MongoDB) are running in background.")
+    print("[Startup] Background tasks (routers, DB, MongoDB, Watchdog) are active.")
     sys.stdout.flush()
     # Return immediately - don't wait for any background tasks
 
@@ -478,15 +520,12 @@ async def tenant_info(
 # Health check endpoint for Production
 @app.get("/health")
 async def health_check():
-    """Enhanced health check endpoint with dependency status"""
+    """Enhanced health check endpoint with dependency status and automatic recovery signal"""
     health_status = {
         "status": "healthy",
-        "service": "Gurukul Backend API",
+        "service": "Gurukul Backend API v2",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "dependencies": {
-            "database": "unknown",
-            "mongodb": "unknown"
-        }
+        "system_state": system_health,
     }
     
     # Check SQLAlchemy Database
@@ -495,21 +534,28 @@ async def health_check():
         from sqlalchemy import text
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
-        health_status["dependencies"]["database"] = "connected"
+        health_status["system_state"]["sql_db"] = "connected"
     except Exception as e:
         health_status["status"] = "unhealthy"
-        health_status["dependencies"]["database"] = f"failed: {str(e)}"
+        health_status["system_state"]["sql_db"] = f"failed: {str(e)}"
 
     # Check MongoDB
     try:
-        from app.core.karma_database import get_db
-        db = get_db()
+        from app.core.karma_database import get_db as get_m_db
+        db = get_m_db()
         db.command('ping')
-        health_status["dependencies"]["mongodb"] = "connected"
+        health_status["system_state"]["mongo_db"] = "connected"
     except Exception as e:
-        health_status["status"] = "unhealthy"
-        health_status["dependencies"]["mongodb"] = f"failed: {str(e)}"
+        # Don't fail the whole health check if MongoDB is down (non-critical in some flows)
+        # But report it clearly
+        health_status["system_state"]["mongo_db"] = f"failed: {str(e)}"
+        if health_status["status"] == "healthy":
+            health_status["status"] = "degraded"
 
+    # Set response status code based on health
+    if health_status["status"] == "unhealthy":
+        return JSONResponse(status_code=503, content=health_status)
+    
     return health_status
 
 # Legacy Shim for old endpoints if needed (optional)

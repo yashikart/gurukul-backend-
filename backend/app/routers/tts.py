@@ -52,7 +52,7 @@ async def text_to_speech(request: TTSRequest):
         print(f"[Vaani] Standard API - Request received - Language: {request.language}")
         
         # Use our sovereign engine (redirected inside text_to_speech_stream)
-        audio_data = text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
+        audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
         
         # Vaani engine returns WAV by default in our current setup
         media_type = "audio/wav"
@@ -102,8 +102,8 @@ async def vaani_text_to_speech(request: TTSRequest):
         
         print(f"[Vaani] Sovereign Endpoint - Request received - Language: {request.language}")
         
-        # Use our sovereign engine
-        audio_data = text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
+        # Use our sovereign engine (redirected inside text_to_speech_stream)
+        audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
         
         return Response(
             content=audio_data,

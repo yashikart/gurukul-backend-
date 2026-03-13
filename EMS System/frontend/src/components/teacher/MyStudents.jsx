@@ -54,8 +54,8 @@ const MyStudents = () => {
   if (loading && students.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading students...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading students...</p>
       </div>
     );
   }
@@ -63,11 +63,11 @@ const MyStudents = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">My Students</h2>
+        <h2 className="text-2xl font-bold text-white">My Students</h2>
         {selectedClass && (
           <button
             onClick={() => fetchStudents(selectedClass)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+            className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
           >
             Refresh
           </button>
@@ -76,14 +76,14 @@ const MyStudents = () => {
 
       {/* Class Selector */}
       {classes.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="card-dark p-4">
+          <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
             Select Class
           </label>
           <select
             value={selectedClass || ''}
             onChange={(e) => setSelectedClass(parseInt(e.target.value))}
-            className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+            className="w-full md:w-64 input-dark !py-2"
           >
             {classes.map((cls) => (
               <option key={cls.id} value={cls.id}>
@@ -95,43 +95,43 @@ const MyStudents = () => {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {!selectedClass ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-600">No classes available. Please contact your administrator.</p>
+        <div className="card-dark overflow-hidden p-8 text-center">
+          <p className="text-gray-400">No classes available. Please contact your administrator.</p>
         </div>
       ) : students.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-600">No students enrolled in this class yet.</p>
+        <div className="card-dark overflow-hidden p-8 text-center">
+          <p className="text-gray-400">No students enrolled in this class yet.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="card-dark overflow-hidden overflow-hidden">
+          <table className="min-w-full divide-y divide-[#2A2A3E]">
+            <thead className="bg-[#16162A]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Grade
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[#2A2A3E]">
               {students.map((student) => (
-                <tr key={student.id} className="hover:bg-gray-50">
+                <tr key={student.id} className="hover:bg-[#16162A]">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                    <div className="text-sm font-medium text-white">{student.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-500">{student.email}</div>
@@ -144,7 +144,7 @@ const MyStudents = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <Link
                       to={`/dashboard/students/${student.id}/content`}
-                      className="text-indigo-600 hover:text-indigo-900 font-medium"
+                      className="text-accent-green hover:text-accent-green/80 font-medium"
                     >
                       📚 View Content
                     </Link>

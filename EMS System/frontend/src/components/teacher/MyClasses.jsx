@@ -29,8 +29,8 @@ const MyClasses = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="mt-4 text-gray-600">Loading classes...</p>
+        <div className="spinner spinner-lg"></div>
+        <p className="mt-4 text-gray-400">Loading classes...</p>
       </div>
     );
   }
@@ -38,43 +38,43 @@ const MyClasses = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">My Classes</h2>
+        <h2 className="text-2xl font-bold text-white">My Classes</h2>
         <button
           onClick={fetchClasses}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+          className="px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
         >
           Refresh
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="error-box">
+          <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {classes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-600">No classes assigned yet.</p>
+        <div className="card-dark overflow-hidden p-8 text-center">
+          <p className="text-gray-400">No classes assigned yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {classes.map((classItem) => (
             <div
               key={classItem.id}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-pointer"
+              className="card-dark p-6 hover:shadow-lg transition cursor-pointer"
               onClick={() => navigate(`/dashboard/classes/${classItem.id}/students`)}
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-800">{classItem.name}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{classItem.subject_name || 'No Subject'}</p>
+                  <h3 className="text-xl font-semibold text-white">{classItem.name}</h3>
+                  <p className="text-sm text-gray-400 mt-1">{classItem.subject_name || 'No Subject'}</p>
                 </div>
                 <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
                   Grade {classItem.grade}
                 </span>
               </div>
-              <div className="space-y-2 text-sm text-gray-600">
+              <div className="space-y-2 text-sm text-gray-400">
                 <p><span className="font-medium">Academic Year:</span> {classItem.academic_year || 'N/A'}</p>
                 <p><span className="font-medium">Subject:</span> {classItem.subject_name || 'N/A'}</p>
               </div>
@@ -83,7 +83,7 @@ const MyClasses = () => {
                   e.stopPropagation();
                   navigate(`/dashboard/classes/${classItem.id}/students`);
                 }}
-                className="mt-4 w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+                className="mt-4 w-full px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition text-sm font-medium"
               >
                 View Students
               </button>

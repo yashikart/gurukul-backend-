@@ -43,25 +43,25 @@ const CreateSchool = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6">Create New School</h2>
+    <div className="card-dark p-6 max-w-2xl mx-auto animate-fade-in">
+      <h2 className="heading-serif text-2xl mb-6">Create New School</h2>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">{error}</p>
+        <div className="error-box mb-4">
+          <p>{error}</p>
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm">{success}</p>
+        <div className="success-box mb-4">
+          <p>{success}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-            School Name <span className="text-red-500">*</span>
+          <label htmlFor="name" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+            School Name <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -70,13 +70,13 @@ const CreateSchool = () => {
             value={formData.name}
             onChange={handleChange}
             required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+            className="input-dark"
             placeholder="Enter school name"
           />
         </div>
 
         <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="address" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
             Address
           </label>
           <textarea
@@ -85,14 +85,14 @@ const CreateSchool = () => {
             value={formData.address}
             onChange={handleChange}
             rows="3"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+            className="input-dark !rounded-xl"
             placeholder="Enter school address"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="phone" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
               Phone Number
             </label>
             <input
@@ -101,13 +101,13 @@ const CreateSchool = () => {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              className="input-dark"
               placeholder="123-456-7890"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="email" className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
               Email Address
             </label>
             <input
@@ -116,24 +116,24 @@ const CreateSchool = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              className="input-dark"
               placeholder="school@example.com"
             />
           </div>
         </div>
 
-        <div className="flex space-x-4">
+        <div className="flex space-x-4 pt-2">
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 btn-primary"
           >
             {loading ? 'Creating...' : 'Create School'}
           </button>
           <button
             type="button"
             onClick={() => setFormData({ name: '', address: '', phone: '', email: '' })}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+            className="btn-secondary"
           >
             Clear
           </button>

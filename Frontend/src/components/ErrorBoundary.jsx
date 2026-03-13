@@ -51,30 +51,44 @@ class ErrorBoundary extends React.Component {
                         <div className="space-y-3">
                             <button
                                 onClick={this.handleReset}
-                                className="w-full py-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl transition-all"
+                                className="w-full py-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-orange-500/20"
                             >
-                                Try Again
+                                Try Recovery
                             </button>
                             <button
-                                onClick={() => { window.location.hash = '#/dashboard'; }}
+                                onClick={() => { window.location.reload(); }}
                                 className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl border border-white/10 transition-all"
+                            >
+                                Fresh Reload
+                            </button>
+                            <button
+                                onClick={() => { window.location.hash = '#/dashboard'; this.handleReset(); }}
+                                className="w-full py-3 text-gray-400 hover:text-white text-sm transition-all"
                             >
                                 Go to Dashboard
                             </button>
                         </div>
 
-                        {/* Development error details */}
-                        {process.env.NODE_ENV === 'development' && this.state.error && (
-                            <details className="mt-6 text-left">
-                                <summary className="text-xs text-gray-500 cursor-pointer mb-2">
-                                    Error Details (Development Only)
-                                </summary>
-                                <pre className="text-xs text-red-400 bg-black/40 p-4 rounded overflow-auto max-h-40">
-                                    {this.state.error.toString()}
-                                    {this.state.errorInfo?.componentStack}
-                                </pre>
-                            </details>
-                        )}
+                        {/* Error info and build version */}
+                        <div className="mt-8 pt-6 border-t border-white/5">
+                            <p className="text-[10px] text-gray-500 mb-2 uppercase tracking-widest">System Diagnostics</p>
+                            <div className="flex justify-between text-[10px] text-gray-400">
+                                <span>Build Version</span>
+                                <span className="font-mono">v1.2.0-stable</span>
+                            </div>
+
+                            {(process.env.NODE_ENV === 'development' || true) && this.state.error && (
+                                <details className="mt-4 text-left">
+                                    <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300 transition-colors uppercase tracking-widest">
+                                        Stack Trace
+                                    </summary>
+                                    <pre className="mt-2 text-[10px] text-red-400/80 bg-black/40 p-3 rounded-lg overflow-auto max-h-32 border border-red-500/10 font-mono">
+                                        {this.state.error.toString()}
+                                        {this.state.errorInfo?.componentStack}
+                                    </pre>
+                                </details>
+                            )}
+                        </div>
                     </div>
                 </div>
             );
