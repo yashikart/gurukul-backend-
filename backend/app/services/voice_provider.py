@@ -1,108 +1,234 @@
+"""
+voice_provider.py — Canonical Voice Provider for Gurukul
+
+Routes all TTS generation through the Vaani Sovereign Engine (Port 8008).
+Implements production guardrails:
+  - 5000 character hard input limit
+  - 20 second inference timeout via asyncio.wait_for
+  - Max 3 concurrent requests via asyncio.Semaphore
+  - Automatic retry with backoff (3 attempts)
+  - In-memory cache for repeated requests
+  - GPU→CPU fallback awareness
+"""
+
 import asyncio
+import hashlib
 import time
+import logging
 import requests
-import os
 from typing import Dict, Any, Optional
 from app.services.voice_engine_interface import VoiceEngineInterface
 from app.core.config import settings
+
+logger = logging.getLogger("VoiceProvider")
+
+# ──────────────────────────────────────────────────────────────
+# Constants
+# ──────────────────────────────────────────────────────────────
+MAX_INPUT_CHARS     = 5000      # Hard limit — requests above this are REJECTED
+INFERENCE_TIMEOUT   = 20        # Seconds — inference aborts after this
+MAX_CONCURRENCY     = 3         # Semaphore slots
+MAX_RETRIES         = 3         # Retry attempts before giving up
+CACHE_MAX_ENTRIES   = 200       # Evict oldest when exceeded
+
 
 class VoiceProvider(VoiceEngineInterface):
     """
     Canonical Voice Provider that routes to the Vaani engine (Port 8008).
     Includes safety guardrails: timeouts, concurrency limits, and GPU-to-CPU fallback.
     """
-    
+
     def __init__(self):
         self.vaani_url = settings.VAANI_API_URL
-        self.max_chars = 5000
-        self.semaphore = asyncio.Semaphore(3)  # Max 3 concurrent requests
-        self.request_timeout = 20  # 20 second inference timeout
-        self.cache = {} # Simple in-memory cache for repeated hits
+        self.max_chars = MAX_INPUT_CHARS
+        self.semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
+        self.request_timeout = INFERENCE_TIMEOUT
+        self.cache: Dict[str, bytes] = {}
         self.start_time = time.time()
         self.stats = {
-            "requests": 0,
+            "total_requests": 0,
+            "successful_requests": 0,
             "failures": 0,
-            "gpu_mode": True
+            "timeouts": 0,
+            "cache_hits": 0,
+            "rejected_too_long": 0,
+            "gpu_mode": True,
+            "queue_depth": 0,
         }
+        logger.info(
+            f"VoiceProvider initialized | vaani_url={self.vaani_url} | "
+            f"max_chars={self.max_chars} | timeout={self.request_timeout}s | "
+            f"concurrency={MAX_CONCURRENCY}"
+        )
+
+    # ──────────────────────────────────────────────────────────
+    # Public API  (implements VoiceEngineInterface)
+    # ──────────────────────────────────────────────────────────
 
     async def generate_audio(self, text: str, language: str = "en") -> bytes:
         """
-        Synthesize audio via Vaani API with guardrails.
-        """
-        # 1. Validation
-        if len(text) > self.max_chars:
-            print(f"[VoiceProvider] WARN: Text length {len(text)} exceeds limit {self.max_chars}. Truncating.")
-            text = text[:self.max_chars]
+        Synthesize audio via Vaani API with full guardrails.
 
-        # 2. Caching
-        cache_key = f"{language}:{text}"
+        Raises:
+            ValueError   — if text exceeds 5000 chars or is empty
+            TimeoutError — if inference takes > 20 seconds
+            RuntimeError — if all retry attempts fail
+        """
+        # ── 1. Input Validation ──────────────────────────────
+        if not text or not text.strip():
+            raise ValueError("Text input is empty")
+
+        if len(text) > self.max_chars:
+            self.stats["rejected_too_long"] += 1
+            raise ValueError(
+                f"Input length {len(text)} exceeds maximum {self.max_chars} characters. "
+                f"Please shorten your text."
+            )
+
+        # ── 2. Cache Lookup ──────────────────────────────────
+        cache_key = self._cache_key(text, language)
         if cache_key in self.cache:
-            print("[VoiceProvider] Cache HIT")
+            self.stats["cache_hits"] += 1
+            logger.info(f"[CACHE HIT] key={cache_key[:12]}… | total_hits={self.stats['cache_hits']}")
             return self.cache[cache_key]
 
-        # 3. Concurrency Control
-        async with self.semaphore:
-            self.stats["requests"] += 1
-            return await self._call_vaani_engine(text, language)
+        # ── 3. Concurrency-Controlled Inference ──────────────
+        self.stats["total_requests"] += 1
+        self.stats["queue_depth"] += 1
+        logger.info(
+            f"[QUEUED] request #{self.stats['total_requests']} | "
+            f"queue_depth={self.stats['queue_depth']}/{MAX_CONCURRENCY} | "
+            f"text_len={len(text)}"
+        )
 
-    async def _call_vaani_engine(self, text: str, language: str, retries: int = 3) -> bytes:
-        for attempt in range(retries):
-            try:
-                # Use thread pool for blocking request
-                audio_data = await asyncio.to_thread(self._sync_request, text, language)
-                
-                if audio_data:
-                    # Cache success
-                    self.cache[f"{language}:{text}"] = audio_data
-                    return audio_data
-                
-                raise Exception("Empty audio data returned from Vaani")
-                
-            except Exception as e:
-                print(f"[VoiceProvider] Attempt {attempt+1} failed: {e}")
-                if attempt == retries - 1:
+        try:
+            async with self.semaphore:
+                logger.info(f"[ACQUIRED] semaphore slot | queue_depth={self.stats['queue_depth']}")
+
+                # ── 4. Timeout Enforcement ───────────────────
+                try:
+                    audio_data = await asyncio.wait_for(
+                        self._call_vaani_engine(text, language),
+                        timeout=self.request_timeout
+                    )
+                except asyncio.TimeoutError:
+                    self.stats["timeouts"] += 1
                     self.stats["failures"] += 1
-                    raise
-                await asyncio.sleep(1) # Wait before retry
+                    logger.error(
+                        f"[TIMEOUT] Inference aborted after {self.request_timeout}s | "
+                        f"total_timeouts={self.stats['timeouts']}"
+                    )
+                    raise TimeoutError(
+                        f"Voice inference timed out after {self.request_timeout} seconds"
+                    )
+
+            # ── 5. Cache Result ──────────────────────────────
+            self._cache_put(cache_key, audio_data)
+            self.stats["successful_requests"] += 1
+            return audio_data
+
+        finally:
+            self.stats["queue_depth"] -= 1
+
+    def get_status(self) -> dict:
+        """Return operational metrics for monitoring."""
+        return {
+            "uptime_seconds": int(time.time() - self.start_time),
+            "total_requests": self.stats["total_requests"],
+            "successful_requests": self.stats["successful_requests"],
+            "failure_count": self.stats["failures"],
+            "timeout_count": self.stats["timeouts"],
+            "rejected_too_long": self.stats["rejected_too_long"],
+            "gpu_mode": self.stats["gpu_mode"],
+            "cache_size": len(self.cache),
+            "cache_hits": self.stats["cache_hits"],
+            "queue_depth": self.stats["queue_depth"],
+            "max_concurrency": MAX_CONCURRENCY,
+            "max_input_chars": MAX_INPUT_CHARS,
+            "inference_timeout_s": INFERENCE_TIMEOUT,
+        }
+
+    # ──────────────────────────────────────────────────────────
+    # Internal Methods
+    # ──────────────────────────────────────────────────────────
+
+    async def _call_vaani_engine(self, text: str, language: str) -> bytes:
+        """Call Vaani API with retry logic."""
+        last_error = None
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                audio_data = await asyncio.to_thread(
+                    self._sync_request, text, language
+                )
+                if audio_data:
+                    return audio_data
+                raise RuntimeError("Empty audio data returned from Vaani")
+
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    f"[RETRY] Attempt {attempt}/{MAX_RETRIES} failed: {e}"
+                )
+                if attempt < MAX_RETRIES:
+                    await asyncio.sleep(1 * attempt)  # Linear backoff
+
+        # All retries exhausted
+        self.stats["failures"] += 1
+        raise RuntimeError(
+            f"Voice generation failed after {MAX_RETRIES} attempts: {last_error}"
+        )
 
     def _sync_request(self, text: str, language: str) -> bytes:
-        """Synchronous HTTP call to Vaani API"""
+        """Synchronous HTTP call to Vaani API."""
         payload = {
             "text": text,
             "language": language,
             "voice_profile": "vaani_teacher"
         }
-        
+
         try:
-            # Vaani engine exposes /voice/speak as identified in voice_service_api.py
             response = requests.post(
                 f"{self.vaani_url}/voice/speak",
                 json=payload,
                 timeout=self.request_timeout
             )
-            
+
             if response.status_code == 200:
                 return response.content
-            
-            # GPU Fallback Logic (Engine reports 503 if CUDA fails during reload)
-            if response.status_code == 503 and "GPU" in response.text:
-                print("[VoiceProvider] GPU OVERLOAD/UNAVAILABLE.")
-                # The engine currently doesn't support a 'gpu' flag via API, 
-                # but we monitor for failures to report in health.
-            
-            raise Exception(f"Vaani API error {response.status_code}: {response.text}")
-            
+
+            # GPU Fallback Detection
+            if response.status_code == 503:
+                if "GPU" in response.text or "CUDA" in response.text:
+                    logger.warning("[GPU] GPU unavailable — Vaani falling back to CPU mode")
+                    self.stats["gpu_mode"] = False
+
+            raise RuntimeError(
+                f"Vaani API error {response.status_code}: {response.text[:200]}"
+            )
+
         except requests.exceptions.Timeout:
-            raise Exception(f"Vaani inference timed out after {self.request_timeout}s")
+            raise TimeoutError(
+                f"Vaani HTTP request timed out after {self.request_timeout}s"
+            )
+        except requests.exceptions.ConnectionError as e:
+            raise ConnectionError(f"Cannot reach Vaani engine at {self.vaani_url}: {e}")
 
-    def get_status(self) -> dict:
-        return {
-            "uptime_seconds": int(time.time() - self.start_time),
-            "total_requests": self.stats["requests"],
-            "failure_count": self.stats["failures"],
-            "gpu_mode": self.stats["gpu_mode"],
-            "cache_size": len(self.cache)
-        }
+    def _cache_key(self, text: str, language: str) -> str:
+        """Generate deterministic cache key using SHA-256."""
+        raw = f"{language}:{text}"
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
+    def _cache_put(self, key: str, data: bytes):
+        """Insert into cache with LRU-style eviction."""
+        if len(self.cache) >= CACHE_MAX_ENTRIES:
+            # Remove oldest entry
+            oldest_key = next(iter(self.cache))
+            del self.cache[oldest_key]
+            logger.info(f"[CACHE] Evicted oldest entry (size was {CACHE_MAX_ENTRIES})")
+        self.cache[key] = data
+
+
+# ──────────────────────────────────────────────────────────────
 # Singleton instance
+# ──────────────────────────────────────────────────────────────
 provider = VoiceProvider()
