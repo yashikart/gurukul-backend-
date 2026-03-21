@@ -1,8 +1,29 @@
 @echo off
 echo.
-echo === Starting All Services ===
+echo === Gurukul Service Launcher ===
 echo.
-echo Opening 5 separate CMD windows...
+echo Choose launch mode:
+echo   [1] Supervised Mode  (Python Orchestrator - auto-restarts crashed services)
+echo   [2] Manual Mode      (Individual windows - original behaviour)
+echo.
+set /p CHOICE=Enter 1 or 2: 
+echo.
+
+if "%CHOICE%"=="1" goto :SUPERVISED
+if "%CHOICE%"=="2" goto :MANUAL
+echo Invalid choice. Defaulting to Manual Mode.
+goto :MANUAL
+
+:SUPERVISED
+echo Starting in SUPERVISED mode via service_orchestrator.py...
+echo Services will auto-restart on crash. Press Ctrl+C to stop all.
+echo.
+cd /d %~dp0backend
+python scripts/service_orchestrator.py --poll 30
+goto :EOF
+
+:MANUAL
+echo Starting in MANUAL mode (individual CMD windows)...
 echo.
 
 REM Start Gurukul Backend

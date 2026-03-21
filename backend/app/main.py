@@ -122,6 +122,14 @@ from app.core.api_security_layer import payload_size_middleware, rate_limit_midd
 app.add_middleware(BaseHTTPMiddleware, dispatch=payload_size_middleware)
 app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
 
+# Metrics middleware — transparent request counter & latency tracker
+try:
+    from app.services.system_metrics import MetricsMiddleware
+    app.add_middleware(MetricsMiddleware)
+    print("[Main] [OK] MetricsMiddleware registered")
+except Exception as _e:
+    print(f"[Main] [WARN] MetricsMiddleware not loaded: {_e}")
+
 # Multi-tenant: resolve tenant from subdomain or X-Tenant-ID before routes
 if getattr(settings, "MULTI_TENANT_ENABLED", False):
     from app.core.tenant_resolver import tenant_resolver_middleware
@@ -244,7 +252,23 @@ async def startup_event():
             bucket = bucket_mod
             ems_sync_manual = ems_sync_manual_mod
             monitor = monitor_mod
-            
+
+            # --- Start autonomous watchdog (background thread) ---
+            try:
+                from app.services.service_watchdog import watchdog as _watchdog
+                _watchdog.start()
+                print("[Startup] [OK] ServiceWatchdog started (background thread)")
+            except Exception as _we:
+                print(f"[Startup] [WARN] ServiceWatchdog could not start: {_we}")
+
+            # --- Register metrics router ---
+            try:
+                from app.services.system_metrics import metrics_router as _metrics_router
+                app.include_router(_metrics_router)
+                print("[Startup] [OK] /system/metrics endpoint registered")
+            except Exception as _me:
+                print(f"[Startup] [WARN] metrics_router not loaded: {_me}")
+
             # Include routers
             app.include_router(monitor.router)
             app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
