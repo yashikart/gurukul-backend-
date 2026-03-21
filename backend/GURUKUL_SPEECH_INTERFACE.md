@@ -1,33 +1,39 @@
-# GURUKUL SPEECH INTERFACE LAYER
-
 ## Overview
 
 The Gurukul Speech Interface Layer adds full multilingual Speech-to-Text (STT) capability, completing the voice conversation loop:
 
-```
-Student Speaks → [STT] → Text → [AI Engine] → Response → [Vaani TTS] → Student Hears
+```mermaid
+graph LR
+    A[Student Speaks] --> B[STT Service]
+    B --> C[Recognized Text]
+    C --> D[AI Reasoning]
+    D --> E[Response Text]
+    E --> F[Vaani TTS]
+    F --> G[Student Hears]
 ```
 
 ---
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│  POST /api/v1/voice/listen     (transcription only)  │
-│  POST /api/v1/voice/converse   (full loop: STT+LLM+TTS) │
-└───────────────────┬─────────────────────────────────┘
-                    │
-          ┌─────────▼──────────┐
-          │  SpeechProvider    │  ← Guardrails: size, timeout, cache, semaphore
-          └─────────┬──────────┘
-                    │
-          ┌─────────▼──────────┐
-          │    STTService      │  ← Engine selection
-          ├────────────────────┤
-          │  Tier 1: Groq      │  ← whisper-large-v3 (cloud, low-latency)
-          │  Tier 2: f-whisper │  ← faster-whisper local (offline fallback)
-          └────────────────────┘
+![Architecture Diagram](file:///C:/Users/pc45/.gemini/antigravity\brain\46fa51c8-a89f-40b4-bbf3-422aa965600a\gurukul_stt_architecture_diagram_1774087775311.png)
+
+```mermaid
+sequenceDiagram
+    participant S as Student
+    participant API as Gurukul API
+    participant STT as SpeechProvider
+    participant AI as Llama 3 (Groq)
+    participant TTS as Vaani Engine
+
+    S->>API: POST /voice/converse (audio)
+    API->>STT: transcribe(audio)
+    STT-->>API: text (e.g. "नमस्ते")
+    API->>AI: query(text)
+    AI-->>API: response ("स्वागत है")
+    API->>TTS: generate_audio(response)
+    TTS-->>API: audio_bytes
+    API-->>S: JSON + audio_response
 ```
 
 ---
@@ -135,10 +141,22 @@ curl -X POST http://localhost:3000/api/v1/voice/listen \
 
 ## How to Test
 
+### 1. Verification Suite
+Runs mocked unit tests covering logic and guardrails:
 ```bash
 cd Gurukul/backend
 python scripts/stt_test.py
 ```
+
+### 2. Live Log Generator
+To get the mandatory **Multilingual Test Logs**, use the provided generator script. 
+1. Place audio samples in `backend/scripts/samples/` named `sample_en.wav`, `sample_hi.wav`, etc.
+2. Ensure the backend is running.
+3. Run the generator:
+```bash
+python scripts/stt_live_logger.py
+```
+This will create a `multilingual_test_logs.json` file on success.
 
 ---
 
