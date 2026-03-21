@@ -231,7 +231,9 @@ async def startup_event():
             from app.routers import journey as journey_mod, tts as tts_mod, ems_student as ems_student_mod
             from app.routers import lesson as lesson_mod, sovereign as sovereign_mod, vaani as vaani_mod
             from app.routers import bucket as bucket_mod, ems_sync_manual as ems_sync_manual_mod
-            
+            from app.routers import voice as voice_mod
+
+
             # Assign to globals
             chat = chat_mod
             flashcards = flashcards_mod
@@ -252,6 +254,13 @@ async def startup_event():
             bucket = bucket_mod
             ems_sync_manual = ems_sync_manual_mod
             monitor = monitor_mod
+
+            # --- Register Voice (STT) router ---
+            try:
+                app.include_router(voice_mod.router, prefix="/api/v1", tags=["Speech Interface (STT)"])
+                print("[Startup] [OK] Voice STT router registered at /api/v1/voice")
+            except Exception as _ve:
+                print(f"[Startup] [WARN] Voice STT router not loaded: {_ve}")
 
             # --- Start autonomous watchdog (background thread) ---
             try:
