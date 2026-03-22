@@ -214,103 +214,179 @@ async def startup_event():
             return False
     
     def import_other_routers_sync():
-        """Import other routers (non-critical, can run in background)"""
+        """Import other routers — each independently fault-isolated so one failure
+        does not prevent other routers from loading."""
         global chat, flashcards, learning, ems, summarizer, soul, agents, quiz, journey, tts
         global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, monitor
-        
+
+        print("[Startup] Importing other routers (individually fault-isolated)...")
+        sys.stdout.flush()
+
+        # ── System monitor ────────────────────────────────────────────
         try:
-            print("[Startup] Importing other routers (non-critical)...")
-            sys.stdout.flush()
-            from app.routers import chat as chat_mod, flashcards as flashcards_mod, learning as learning_mod
-            from app.routers import ems as ems_mod
             from app.services import system_monitor as monitor_mod
-            # DISABLED: summarizer uses too much memory (LED model ~300MB)
-            # from app.routers import summarizer as summarizer_mod
-            summarizer_mod = None
-            from app.routers import soul as soul_mod, agents as agents_mod, quiz as quiz_mod
-            from app.routers import journey as journey_mod, tts as tts_mod, ems_student as ems_student_mod
-            from app.routers import lesson as lesson_mod, sovereign as sovereign_mod, vaani as vaani_mod
-            from app.routers import bucket as bucket_mod, ems_sync_manual as ems_sync_manual_mod
-            from app.routers import voice as voice_mod
-
-
-            # Assign to globals
-            chat = chat_mod
-            flashcards = flashcards_mod
-            learning = learning_mod
-            ems = ems_mod
-            # DISABLED: summarizer uses too much memory
-            # summarizer = summarizer_mod
-            summarizer = None
-            soul = soul_mod
-            agents = agents_mod
-            quiz = quiz_mod
-            journey = journey_mod
-            tts = tts_mod
-            ems_student = ems_student_mod
-            lesson = lesson_mod
-            sovereign = sovereign_mod
-            vaani = vaani_mod
-            bucket = bucket_mod
-            ems_sync_manual = ems_sync_manual_mod
             monitor = monitor_mod
-
-            # --- Register Voice (STT) router ---
-            try:
-                app.include_router(voice_mod.router, prefix="/api/v1", tags=["Speech Interface (STT)"])
-                print("[Startup] [OK] Voice STT router registered at /api/v1/voice")
-            except Exception as _ve:
-                print(f"[Startup] [WARN] Voice STT router not loaded: {_ve}")
-
-            # --- Start autonomous watchdog (background thread) ---
-            try:
-                from app.services.service_watchdog import watchdog as _watchdog
-                _watchdog.start()
-                print("[Startup] [OK] ServiceWatchdog started (background thread)")
-            except Exception as _we:
-                print(f"[Startup] [WARN] ServiceWatchdog could not start: {_we}")
-
-            # --- Register metrics router ---
-            try:
-                from app.services.system_metrics import metrics_router as _metrics_router
-                app.include_router(_metrics_router)
-                print("[Startup] [OK] /system/metrics endpoint registered")
-            except Exception as _me:
-                print(f"[Startup] [WARN] metrics_router not loaded: {_me}")
-
-            # Include routers
             app.include_router(monitor.router)
-            app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
-            app.include_router(flashcards.router, prefix="/api/v1/flashcards", tags=["Flashcards"])
-            app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
-            # DISABLED: summarizer uses too much memory
-            # app.include_router(summarizer.router, prefix="/api/v1/ai", tags=["AI Utilities"])
-            app.include_router(ems.router, prefix="/api/v1/ems", tags=["Admin (EMS)"])
-            app.include_router(ems_student.router, tags=["EMS Student Integration"])
-            app.include_router(ems_sync_manual.router, tags=["EMS Manual Sync"])
-            app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul"])
-            app.include_router(agents.router, prefix="/api/v1/agent", tags=["Agents"])
-            app.include_router(quiz.router, prefix="/api/v1/quiz", tags=["Quiz"])
-            app.include_router(journey.router, prefix="/api/v1/learning", tags=["Learning Journey"])
-            app.include_router(tts.router, prefix="/api/v1/tts", tags=["Text-to-Speech"])
-            app.include_router(lesson.router, prefix="/api/v1/lesson", tags=["Lesson Context"])
-            app.include_router(sovereign.router, prefix="/api/v1/sovereign", tags=["Sovereign Fusion Layer"])
-            app.include_router(vaani.router, prefix="/api/v1/vaani", tags=["Vaani RL-TTS"])
-            app.include_router(bucket.router, prefix="/api/v1", tags=["PRANA Bucket"])
-            
-            # Legacy shims
-            # DISABLED: summarizer uses too much memory
-            # app.include_router(summarizer.router, tags=["Legacy Summarizer"])
-            app.include_router(flashcards.router, prefix="/flashcards", tags=["Legacy Flashcards"])
-            app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul Alignment"])
-            
-            print("[Startup] [OK] Other routers imported and included")
-            sys.stdout.flush()
+            print("[Startup] [OK] monitor router")
         except Exception as e:
-            print(f"[Startup] [WARN] Error importing other routers: {e}")
+            print(f"[Startup] [WARN] monitor failed: {e}")
+
+        # ── Core Learning ─────────────────────────────────────────────
+        try:
+            from app.routers import chat as chat_mod
+            chat = chat_mod
+            app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
+            print("[Startup] [OK] chat router")
+        except Exception as e:
+            print(f"[Startup] [WARN] chat failed: {e}")
+
+        try:
+            from app.routers import flashcards as flashcards_mod
+            flashcards = flashcards_mod
+            app.include_router(flashcards.router, prefix="/api/v1/flashcards", tags=["Flashcards"])
+            app.include_router(flashcards.router, prefix="/flashcards", tags=["Legacy Flashcards"])
+            print("[Startup] [OK] flashcards router")
+        except Exception as e:
+            print(f"[Startup] [WARN] flashcards failed: {e}")
+
+        try:
+            from app.routers import learning as learning_mod
+            learning = learning_mod
+            app.include_router(learning.router, prefix="/api/v1/learning", tags=["Learning"])
+            print("[Startup] [OK] learning router")
+        except Exception as e:
+            print(f"[Startup] [WARN] learning failed: {e}")
+
+        # ── AGENTS (critical — has /api/v1/agent/tts) ─────────────────
+        try:
+            from app.routers import agents as agents_mod
+            agents = agents_mod
+            app.include_router(agents.router, prefix="/api/v1/agent", tags=["Agents"])
+            print("[Startup] [OK] agents router (includes /api/v1/agent/tts)")
+        except Exception as e:
+            print(f"[Startup] [WARN] agents failed: {e}")
             print(traceback.format_exc())
-            sys.stdout.flush()
-            # Continue to try loading Karma Tracker routers even if other routers fail
+
+        # ── Soul & Quiz ───────────────────────────────────────────────
+        try:
+            from app.routers import soul as soul_mod
+            soul = soul_mod
+            app.include_router(soul.router, prefix="/api/v1/soul", tags=["Soul"])
+            print("[Startup] [OK] soul router")
+        except Exception as e:
+            print(f"[Startup] [WARN] soul failed: {e}")
+
+        try:
+            from app.routers import quiz as quiz_mod
+            quiz = quiz_mod
+            app.include_router(quiz.router, prefix="/api/v1/quiz", tags=["Quiz"])
+            print("[Startup] [OK] quiz router")
+        except Exception as e:
+            print(f"[Startup] [WARN] quiz failed: {e}")
+
+        # ── EMS ───────────────────────────────────────────────────────
+        try:
+            from app.routers import ems as ems_mod
+            ems = ems_mod
+            app.include_router(ems.router, prefix="/api/v1/ems", tags=["Admin (EMS)"])
+            print("[Startup] [OK] ems router")
+        except Exception as e:
+            print(f"[Startup] [WARN] ems failed: {e}")
+
+        try:
+            from app.routers import ems_student as ems_student_mod
+            ems_student = ems_student_mod
+            app.include_router(ems_student.router, tags=["EMS Student Integration"])
+            print("[Startup] [OK] ems_student router")
+        except Exception as e:
+            print(f"[Startup] [WARN] ems_student failed: {e}")
+
+        try:
+            from app.routers import ems_sync_manual as ems_sync_manual_mod
+            ems_sync_manual = ems_sync_manual_mod
+            app.include_router(ems_sync_manual.router, tags=["EMS Manual Sync"])
+            print("[Startup] [OK] ems_sync_manual router")
+        except Exception as e:
+            print(f"[Startup] [WARN] ems_sync_manual failed: {e}")
+
+        # ── Journey / Lesson ──────────────────────────────────────────
+        try:
+            from app.routers import journey as journey_mod
+            journey = journey_mod
+            app.include_router(journey.router, prefix="/api/v1/learning", tags=["Learning Journey"])
+            print("[Startup] [OK] journey router")
+        except Exception as e:
+            print(f"[Startup] [WARN] journey failed: {e}")
+
+        try:
+            from app.routers import lesson as lesson_mod
+            lesson = lesson_mod
+            app.include_router(lesson.router, prefix="/api/v1/lesson", tags=["Lesson Context"])
+            print("[Startup] [OK] lesson router")
+        except Exception as e:
+            print(f"[Startup] [WARN] lesson failed: {e}")
+
+        # ── TTS / Vaani / Sovereign ───────────────────────────────────
+        try:
+            from app.routers import tts as tts_mod
+            tts = tts_mod
+            app.include_router(tts.router, prefix="/api/v1/tts", tags=["Text-to-Speech"])
+            print("[Startup] [OK] tts router")
+        except Exception as e:
+            print(f"[Startup] [WARN] tts failed: {e}")
+
+        try:
+            from app.routers import vaani as vaani_mod
+            vaani = vaani_mod
+            app.include_router(vaani.router, prefix="/api/v1/vaani", tags=["Vaani RL-TTS"])
+            print("[Startup] [OK] vaani router")
+        except Exception as e:
+            print(f"[Startup] [WARN] vaani failed: {e}")
+
+        try:
+            from app.routers import sovereign as sovereign_mod
+            sovereign = sovereign_mod
+            app.include_router(sovereign.router, prefix="/api/v1/sovereign", tags=["Sovereign Fusion Layer"])
+            print("[Startup] [OK] sovereign router")
+        except Exception as e:
+            print(f"[Startup] [WARN] sovereign failed: {e}")
+
+        # ── PRANA Bucket ──────────────────────────────────────────────
+        try:
+            from app.routers import bucket as bucket_mod
+            bucket = bucket_mod
+            app.include_router(bucket.router, prefix="/api/v1", tags=["PRANA Bucket"])
+            print("[Startup] [OK] bucket router")
+        except Exception as e:
+            print(f"[Startup] [WARN] bucket failed: {e}")
+
+        # ── Voice STT ─────────────────────────────────────────────────
+        try:
+            from app.routers import voice as voice_mod
+            app.include_router(voice_mod.router, prefix="/api/v1", tags=["Speech Interface (STT)"])
+            print("[Startup] [OK] voice STT router at /api/v1/voice")
+        except Exception as e:
+            print(f"[Startup] [WARN] voice STT router failed: {e}")
+
+        # ── Watchdog ──────────────────────────────────────────────────
+        try:
+            from app.services.service_watchdog import watchdog as _watchdog
+            _watchdog.start()
+            print("[Startup] [OK] ServiceWatchdog started")
+        except Exception as _we:
+            print(f"[Startup] [WARN] ServiceWatchdog failed: {_we}")
+
+        # ── Metrics endpoint ──────────────────────────────────────────
+        try:
+            from app.services.system_metrics import metrics_router as _metrics_router
+            app.include_router(_metrics_router)
+            print("[Startup] [OK] /system/metrics endpoint registered")
+        except Exception as _me:
+            print(f"[Startup] [WARN] metrics_router not loaded: {_me}")
+
+        print("[Startup] [OK] Router import phase complete")
+        sys.stdout.flush()
+
         
         # Import Karma Tracker routers
         try:
