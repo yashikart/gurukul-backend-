@@ -17,11 +17,14 @@ from app.core.database import get_db
 from app.models.all_models import Flashcard as DBFlashcard, User
 from app.routers.auth import get_current_user
 from app.services.ems_sync import ems_sync
+from app.services.prana_runtime import prana_runtime
+from app.models.prana_models import PranaIntegrityLog
 from app.schemas.flashcard import (
     GenerateFlashcardsRequest, Flashcard
 )
 from app.utils.grade_helper import get_student_grade, get_grade_complexity_guidelines, get_grade_level_description
 import logging
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -506,6 +509,28 @@ async def submit_review(
         card.confidence = max(0.0, (card.confidence or 0) - 0.2)
         
     db.commit()
+    try:
+        review_count = db.query(PranaIntegrityLog).filter(
+            PranaIntegrityLog.submission_id == card.id,
+            PranaIntegrityLog.source_system == "gurukul"
+        ).count()
+        prana_runtime.ingest_event(
+            db,
+            submission_id=card.id,
+            event_type="review_completed",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            payload={
+                "sequence": review_count + 1,
+                "route": "/api/v1/flashcards/reviews",
+                "user_id": current_user.id,
+                "difficulty": attempt.difficulty,
+                "next_review_days": card.days_until_review,
+                "confidence": card.confidence,
+            },
+            source_system="gurukul",
+        )
+    except Exception as e:
+        logger.error(f"Failed to emit PRANA review event for flashcard {card.id}: {e}")
     return {"message": "Review logged", "next_review_days": card.days_until_review}
 
 @router.get("/reviews/stats")

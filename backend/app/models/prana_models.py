@@ -1,8 +1,8 @@
 """
 PRANA Packet Models
 
-Database models for storing PRANA packets from the frontend.
-Used by the bucket layer to store packets before Karma Tracker processes them.
+Database models for storing PRANA packets from the frontend and the
+monitoring-only PRANA runtime integrity stream.
 """
 
 from sqlalchemy import Column, String, Float, DateTime, Text, JSON, Boolean, Index, Integer
@@ -117,4 +117,82 @@ class NextTaskVersion(Base):
     __table_args__ = (
         Index('idx_task_version', 'submission_id', 'version', unique=True),
     )
+
+
+class PranaIntegrityLog(Base):
+    """
+    Append-only integrity events emitted by the monitoring-only PRANA runtime.
+    """
+    __tablename__ = "prana_integrity_log"
+
+    event_id = Column(String, primary_key=True, default=generate_uuid, index=True)
+    submission_id = Column(String, nullable=False, index=True)
+    event_type = Column(String, nullable=False, index=True)
+    event_timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
+    freshness_timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
+    payload = Column(JSON, nullable=False, default=dict)
+    payload_hash = Column(String(64), nullable=False, index=True)
+    source_system = Column(String, nullable=False, index=True)
+    expected_sequence = Column(Integer, nullable=False, default=1)
+    actual_sequence = Column(Integer, nullable=True)
+    gap_detected = Column(Boolean, nullable=False, default=False, index=True)
+    out_of_order = Column(Boolean, nullable=False, default=False, index=True)
+    anomaly_count = Column(Integer, nullable=False, default=0)
+    replay_status = Column(String, nullable=True)
+    received_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    __table_args__ = (
+        Index("idx_prana_integrity_source_submission", "source_system", "submission_id", "received_at"),
+        Index("idx_prana_integrity_sequence", "source_system", "submission_id", "expected_sequence"),
+    )
+
+
+class PranaAnomalyEvent(Base):
+    """
+    Detected anomaly markers for PRANA runtime signals.
+    """
+    __tablename__ = "anomaly_event"
+
+    id = Column(Integer, primary_key=True)
+    event_id = Column(String, nullable=True, index=True)
+    submission_id = Column(String, nullable=False, index=True)
+    source_system = Column(String, nullable=False, index=True)
+    anomaly_type = Column(String, nullable=False, index=True)
+    details = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+
+class PranaVitalityMetric(Base):
+    """
+    Current vitality view for a monitored source stream.
+    """
+    __tablename__ = "prana_vitality"
+
+    stream_key = Column(String, primary_key=True)
+    source_system = Column(String, nullable=False, index=True)
+    submission_id = Column(String, nullable=False, index=True)
+    last_seen = Column(DateTime(timezone=True), nullable=True, index=True)
+    gap_count = Column(Integer, nullable=False, default=0)
+    anomaly_count = Column(Integer, nullable=False, default=0)
+    freshness_status = Column(String, nullable=False, default="unknown", index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("idx_prana_vitality_stream", "source_system", "submission_id", unique=True),
+    )
+
+
+class ReplayValidationLog(Base):
+    """
+    Append-only replay verification results for integrity events.
+    """
+    __tablename__ = "replay_validation_log"
+
+    validation_id = Column(String, primary_key=True, default=generate_uuid, index=True)
+    event_id = Column(String, nullable=False, index=True)
+    replay_timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    computed_hash = Column(String(64), nullable=False)
+    stored_hash = Column(String(64), nullable=False)
+    validation_result = Column(String, nullable=False, index=True)
+    source_system = Column(String, nullable=False, index=True)
 

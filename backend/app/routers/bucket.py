@@ -18,6 +18,7 @@ from sqlalchemy import desc
 
 from app.core.database import get_db
 from app.core.redis_client import get_redis_queue
+from app.services.prana_runtime import prana_runtime
 
 # Import PranaPacket model
 try:
@@ -208,6 +209,27 @@ def ingest_prana_packet(payload: PranaPacketIn, db: Session = Depends(get_db)):
             # Still acknowledge receipt even if storage fails
     else:
         print(f"[Bucket] Received PRANA packet (no storage): user_id={user_id}, state={cognitive_state}")
+
+    try:
+        prana_runtime.ingest_event(
+            db,
+            submission_id=packet_id,
+            event_type="bucket_memory_saved",
+            timestamp=received_at.isoformat(),
+            payload={
+                "sequence": 1,
+                "operation": "CREATE",
+                "route": "/api/v1/bucket/prana/ingest",
+                "packet_id": packet_id,
+                "user_id": user_id,
+                "category": payload.raw_signals.get("category", "learning"),
+                "content": payload.raw_signals.get("content"),
+                "cognitive_state": cognitive_state,
+            },
+            source_system="Bucket",
+        )
+    except Exception as e:
+        print(f"[Bucket] Failed to emit PRANA runtime event for packet {packet_id}: {e}")
 
     return PranaPacketResponse(
         status="ingested",

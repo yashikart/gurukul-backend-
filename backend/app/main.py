@@ -10,7 +10,9 @@ import os
 import uvicorn
 import logging
 import traceback
+import importlib.util
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 print(f"[Main] Python version: {sys.version}", flush=True)
@@ -33,6 +35,21 @@ except Exception as e:
     sys.exit(1)
 
 logger = logging.getLogger(__name__)
+
+
+def load_demo_seed_fn():
+    """Load the optional demo seeding function if the script exists."""
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "create_demo_tenant.py"
+    if not script_path.exists():
+        return None
+
+    spec = importlib.util.spec_from_file_location("create_demo_tenant", script_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load demo seed script from {script_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, "seed_demo_env", None)
 
 # Initialize FastAPI IMMEDIATELY - this allows the server to start listening
 # even if router imports are slow. We'll include routers after the app is created.
@@ -70,6 +87,7 @@ sovereign = None
 vaani = None
 bucket = None
 ems_sync_manual = None
+prana = None
 
 # Karma Tracker routers
 karma_router = None
@@ -140,7 +158,7 @@ async def startup_event():
     # Startup
     import asyncio
     global chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts
-    global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual
+    global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, prana
     global karma_router, balance, redeem, policy, feedback, analytics, agami, normalization
     global rnanubandhan, karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
     
@@ -217,7 +235,7 @@ async def startup_event():
         """Import other routers — each independently fault-isolated so one failure
         does not prevent other routers from loading."""
         global chat, flashcards, learning, ems, summarizer, soul, agents, quiz, journey, tts
-        global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, monitor
+        global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, prana, monitor
 
         print("[Startup] Importing other routers (individually fault-isolated)...")
         sys.stdout.flush()
@@ -359,6 +377,14 @@ async def startup_event():
             print("[Startup] [OK] bucket router")
         except Exception as e:
             print(f"[Startup] [WARN] bucket failed: {e}")
+
+        try:
+            from app.routers import prana as prana_mod
+            prana = prana_mod
+            app.include_router(prana.router, prefix="/api/v1", tags=["PRANA Runtime"])
+            print("[Startup] [OK] prana router")
+        except Exception as e:
+            print(f"[Startup] [WARN] prana failed: {e}")
 
         # ── Voice STT ─────────────────────────────────────────────────
         try:
@@ -522,7 +548,10 @@ async def startup_event():
             if os.getenv("AUTO_SEED_DEMO") == "true":
                 try:
                     print("[Startup] [SEED] AUTO_SEED_DEMO=true detected. Seeding demo environment...")
-                    from create_demo_tenant import seed_demo_env
+                    seed_demo_env = load_demo_seed_fn()
+                    if seed_demo_env is None:
+                        print("[Startup] [SEED] [SKIP] Demo seed script not found at backend/scripts/create_demo_tenant.py")
+                        return True
                     # Run in thread to avoid blocking startup watchdog
                     await asyncio.to_thread(seed_demo_env)
                     print("[Startup] [SEED] [OK] Demo environment seeded successfully")

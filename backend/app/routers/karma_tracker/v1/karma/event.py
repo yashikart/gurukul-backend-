@@ -5,10 +5,15 @@ from datetime import datetime, timezone
 import uuid
 
 # Import database and models
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
 from app.core.karma_database import karma_events_col
 from app.models.karma_models import KarmaEvent
 from app.middleware.karma_validation_schemas import sanitize_input
 from app.middleware.karma_validation_schemas import ALLOWED_FILE_TYPES
+from app.services.prana_runtime import prana_runtime
+from app.utils.karma.paap import classify_paap_action
 
 # Import internal route handlers
 from app.routers.karma_tracker.v1.karma.log_action import log_action, LogActionRequest
@@ -19,6 +24,13 @@ from app.routers.karma_tracker.v1.karma.stats import get_user_stats
 from app.utils.karma.karma_lifecycle import check_death_event_threshold, process_death_event
 
 router = APIRouter()
+
+
+def _safe_insert_karma_event(db_event: KarmaEvent) -> None:
+    try:
+        karma_events_col.insert_one(db_event.dict())
+    except Exception as exc:
+        print(f"[Karma] Warning: failed to persist karma_events audit record {db_event.event_id}: {exc}")
 
 class UnifiedEventRequest(BaseModel):
     type: str = Field(..., description="Event type: life_event, atonement, appeal, death_event, stats_request")
@@ -35,7 +47,7 @@ class UnifiedEventResponse(BaseModel):
     routing_info: Dict[str, Any]
 
 @router.post("/", response_model=UnifiedEventResponse)
-async def unified_event_endpoint(request: UnifiedEventRequest):
+async def unified_event_endpoint(request: UnifiedEventRequest, db: Session = Depends(get_db)):
     """
     Unified event gateway that routes different event types to appropriate internal endpoints.
     Stores all events in karma_events collection for audit and debugging.
@@ -83,7 +95,7 @@ async def unified_event_endpoint(request: UnifiedEventRequest):
             # Update database with error
             db_event.status = "failed"
             db_event.error_message = f"Invalid event type: {request.type}"
-            karma_events_col.insert_one(db_event.dict())
+            _safe_insert_karma_event(db_event)
             
             raise HTTPException(
                 status_code=400, 
@@ -94,7 +106,34 @@ async def unified_event_endpoint(request: UnifiedEventRequest):
         db_event.status = "processed"
         db_event.response_data = response.dict()
         db_event.updated_at = datetime.now(timezone.utc)
-        karma_events_col.insert_one(db_event.dict())
+        _safe_insert_karma_event(db_event)
+
+        try:
+            classification_input = request.data.get("context") or request.data.get("note") or request.data.get("action") or request.type
+            classification_action = request.data.get("action")
+            classification_result = classify_paap_action(classification_action) if classification_action else None
+            prana_runtime.ingest_event(
+                db,
+                submission_id=event_id,
+                event_type="truth_classification",
+                timestamp=(request.timestamp or datetime.now(timezone.utc)).isoformat(),
+                payload={
+                    "sequence": 1,
+                    "route": "/api/v1/karma/",
+                    "karma_event_type": request.type,
+                    "classification_input": classification_input,
+                    "classification_action": classification_action,
+                    "classification_result": classification_result,
+                    "source": request.source or "Karma",
+                    "status": "processed",
+                },
+                source_system="Karma",
+            )
+        except Exception as prana_exc:
+            db.rollback()
+            print(f"[Karma] Failed to emit PRANA runtime event for karma event {event_id}: {prana_exc}")
+
+        response.routing_info["event_id"] = event_id
         
         return response
         
@@ -103,14 +142,14 @@ async def unified_event_endpoint(request: UnifiedEventRequest):
         db_event.status = "failed"
         db_event.error_message = str(e)
         db_event.updated_at = datetime.now(timezone.utc)
-        karma_events_col.insert_one(db_event.dict())
+        _safe_insert_karma_event(db_event)
         raise
     except Exception as e:
         # Update database with unexpected error
         db_event.status = "failed"
         db_event.error_message = f"Internal error: {str(e)}"
         db_event.updated_at = datetime.now(timezone.utc)
-        karma_events_col.insert_one(db_event.dict())
+        _safe_insert_karma_event(db_event)
         
         raise HTTPException(
             status_code=500, 
@@ -360,7 +399,7 @@ async def unified_event_with_file(
             # Update database with error
             db_event.status = "failed"
             db_event.error_message = "Currently only 'atonement_with_file' is supported for file uploads"
-            karma_events_col.insert_one(db_event.dict())
+            _safe_insert_karma_event(db_event)
             raise HTTPException(status_code=400, detail="Currently only 'atonement_with_file' is supported for file uploads")
         
         # Validate file if provided
@@ -407,7 +446,7 @@ async def unified_event_with_file(
         db_event.status = "processed"
         db_event.response_data = result
         db_event.updated_at = datetime.now(timezone.utc)
-        karma_events_col.insert_one(db_event.dict())
+        _safe_insert_karma_event(db_event)
         
         return UnifiedEventResponse(
             status="success",
@@ -426,12 +465,12 @@ async def unified_event_with_file(
         db_event.status = "failed"
         db_event.error_message = str(e)
         db_event.updated_at = datetime.now(timezone.utc)
-        karma_events_col.insert_one(db_event.dict())
+        _safe_insert_karma_event(db_event)
         raise
     except Exception as e:
         # Update database with unexpected error
         db_event.status = "failed"
         db_event.error_message = f"Internal error: {str(e)}"
         db_event.updated_at = datetime.now(timezone.utc)
-        karma_events_col.insert_one(db_event.dict())
+        _safe_insert_karma_event(db_event)
         raise HTTPException(status_code=500, detail=f"Error processing {event_type}: {str(e)}")

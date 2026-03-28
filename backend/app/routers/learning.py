@@ -11,8 +11,10 @@ from sqlalchemy.orm import Session
 from app.services.llm import call_groq_api, call_ollama_api, create_teaching_prompt, generate_text
 from app.services.youtube import get_youtube_recommendations
 from app.services.knowledge_base_helper import get_knowledge_base_context, enhance_prompt_with_context
+from app.services.prana_runtime import prana_runtime
 from app.utils.grade_helper import get_student_grade, get_grade_complexity_guidelines, get_grade_level_description
 import logging
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +185,26 @@ async def save_learning_summary(
     db.add(new_summary)
     db.commit()
     db.refresh(new_summary)
+
+    try:
+        prana_runtime.ingest_event(
+            db,
+            submission_id=new_summary.id,
+            event_type="task_submit",
+            timestamp=(new_summary.created_at.isoformat() if new_summary.created_at else datetime.now(timezone.utc).isoformat()),
+            payload={
+                "sequence": 1,
+                "route": "/api/v1/learning/summaries/save",
+                "user_id": current_user.id,
+                "title": summary_in.title,
+                "source": summary_in.source or "manual",
+                "source_type": summary_in.source_type or "text",
+                "content_length": len(summary_in.content),
+            },
+            source_system="gurukul",
+        )
+    except Exception as e:
+        logger.error(f"Failed to emit PRANA task_submit event for summary {new_summary.id}: {e}")
     
     # Sync to EMS asynchronously (don't block response)
     try:
