@@ -222,6 +222,7 @@ def ingest_prana_packet(payload: PranaPacketIn, db: Session = Depends(get_db)):
                 "route": "/api/v1/bucket/prana/ingest",
                 "packet_id": packet_id,
                 "user_id": user_id,
+                "run_id": payload.raw_signals.get("run_id"),
                 "category": payload.raw_signals.get("category", "learning"),
                 "content": payload.raw_signals.get("content"),
                 "cognitive_state": cognitive_state,

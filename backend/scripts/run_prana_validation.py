@@ -19,7 +19,13 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{(ROOT_DIR / 'gurukul.db').res
 from app.core.database import SessionLocal
 from app.models.all_models import Flashcard
 from app.models.prana_models import PranaAnomalyEvent, PranaIntegrityLog, PranaVitalityMetric
-from app.services.prana_runtime import prana_runtime
+from app.services.prana_contract_registry import PRANA_CONTRACT_REGISTRY_NAME
+from app.services.prana_replay_orchestrator import prana_replay_orchestrator
+from app.services.prana_runtime import (
+    AppendOnlyViolationError,
+    SQLITE_APPEND_ONLY_TRIGGER_NAMES,
+    prana_runtime,
+)
 from app.utils.karma.paap import classify_paap_action
 
 
@@ -74,6 +80,28 @@ def request_json(method: str, path: str, **kwargs):
     if response.status_code >= 400:
         raise requests.HTTPError(f"{response.status_code} {response.text}", response=response)
     return response.json()
+
+
+def prana_ingest_request(
+    *,
+    submission_id: str,
+    event_type: str,
+    timestamp: str,
+    payload: dict,
+    source_system: str,
+) -> dict:
+    return {
+        "registry_reference": {
+            "registry": PRANA_CONTRACT_REGISTRY_NAME,
+            "event_type": event_type,
+            "version": "1.0.0",
+        },
+        "submission_id": submission_id,
+        "event_type": event_type,
+        "timestamp": timestamp,
+        "payload": payload,
+        "source_system": source_system,
+    }
 
 
 def wait_for_ready() -> None:
@@ -154,8 +182,11 @@ def verify_no_prana_triggers() -> dict:
     prana_trigger_rows = sqlite_query(
         "SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'prana_integrity_log';"
     )
-    require(len(prana_trigger_rows) == 0, f"Unexpected prana_integrity_log triggers remain: {prana_trigger_rows}")
-    log("Verified prana_integrity_log has no enforcement triggers")
+    require(
+        sorted(row[0] for row in prana_trigger_rows) == sorted(SQLITE_APPEND_ONLY_TRIGGER_NAMES),
+        f"Expected append-only triggers {SQLITE_APPEND_ONLY_TRIGGER_NAMES}, found {prana_trigger_rows}",
+    )
+    log("Verified prana_integrity_log append-only triggers are installed")
     return {
         "all_triggers": [row[0] for row in trigger_rows],
         "prana_integrity_log_triggers": [row[0] for row in prana_trigger_rows],
@@ -203,18 +234,30 @@ def verify_selected_events(event_ids: list[str], *, source_system: str) -> dict:
 
     db = SessionLocal()
     try:
-        validations = [prana_runtime.verify_event(db, event_id) for event_id in unique_event_ids]
+        replay_report = prana_replay_orchestrator.orchestrate_replay(
+            db,
+            dataset={source_system: {"event_ids": unique_event_ids}},
+        )
     finally:
         db.close()
 
-    mismatches = [validation for validation in validations if validation["status"] != "MATCH"]
+    system_result = replay_report["system_results"][source_system]
+    mismatches = [
+        {
+            "event_id": row["event_id"],
+            "submission_id": row["submission_id"],
+            "stored_hash": row["payload_hash"],
+            "recomputed_hash": row["recomputed_hash"],
+        }
+        for row in system_result["mismatches"]
+    ]
     return {
         "source_system": source_system,
-        "status": "VALID" if not mismatches else "INVALID",
-        "events_verified": len(validations),
-        "matches": len(validations) - len(mismatches),
+        "status": "VALID" if system_result["replay_status"] == "MATCH" else "INVALID",
+        "events_verified": system_result["events_replayed"],
+        "matches": system_result["events_replayed"] - len(mismatches),
         "mismatches": mismatches,
-        "validation_ids": [validation["validation_id"] for validation in validations],
+        "validation_ids": system_result["validation_ids"],
     }
 
 
@@ -335,19 +378,19 @@ def validate_prana_runtime() -> dict:
         request_json(
             "POST",
             "/api/v1/prana/ingest",
-            json={
-                "submission_id": stream_id,
-                "event_type": "integrity_probe",
-                "timestamp": (base_time + timedelta(seconds=sequence)).isoformat(),
-                "payload": {
+            json=prana_ingest_request(
+                submission_id=stream_id,
+                event_type="integrity_probe",
+                timestamp=(base_time + timedelta(seconds=sequence)).isoformat(),
+                payload={
                     "sequence": sequence,
                     "status": "ok",
                     "probe": "baseline",
                     "index": sequence,
                     "run_id": RUN_ID,
                 },
-                "source_system": "gurukul",
-            },
+                source_system="gurukul",
+            ),
         )
 
     anomaly_cases = [
@@ -395,26 +438,36 @@ def validate_prana_runtime() -> dict:
         },
     ]
     for payload in anomaly_cases:
-        request_json("POST", "/api/v1/prana/ingest", json=payload)
+        request_json(
+            "POST",
+            "/api/v1/prana/ingest",
+            json=prana_ingest_request(
+                submission_id=payload["submission_id"],
+                event_type=payload["event_type"],
+                timestamp=payload["timestamp"],
+                payload=payload["payload"],
+                source_system=payload["source_system"],
+            ),
+        )
 
     burst_base_time = datetime.now(timezone.utc)
     for idx in range(6):
         request_json(
             "POST",
             "/api/v1/prana/ingest",
-            json={
-                "submission_id": burst_stream_id,
-                "event_type": "integrity_probe",
-                "timestamp": (burst_base_time + timedelta(milliseconds=idx * 100)).isoformat(),
-                "payload": {
+            json=prana_ingest_request(
+                submission_id=burst_stream_id,
+                event_type="integrity_probe",
+                timestamp=(burst_base_time + timedelta(milliseconds=idx * 100)).isoformat(),
+                payload={
                     "sequence": idx + 1,
                     "status": "ok",
                     "probe": "burst",
                     "index": idx,
                     "run_id": RUN_ID,
                 },
-                "source_system": "gurukul",
-            },
+                source_system="gurukul",
+            ),
         )
         time.sleep(0.05)
 
@@ -594,13 +647,13 @@ def validate_append_only_observation() -> dict:
     response = request_json(
         "POST",
         "/api/v1/prana/ingest",
-        json={
-            "submission_id": f"append-only-{RUN_ID.lower()}",
-            "event_type": "integrity_probe",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "payload": {"sequence": 1, "status": "ok", "probe": "append_only_observation", "run_id": RUN_ID},
-            "source_system": "PRANA_AUDIT",
-        },
+        json=prana_ingest_request(
+            submission_id=f"append-only-{RUN_ID.lower()}",
+            event_type="integrity_probe",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            payload={"sequence": 1, "status": "ok", "probe": "append_only_observation", "run_id": RUN_ID},
+            source_system="PRANA_AUDIT",
+        ),
     )
     event_id = response["event_id"]
 
@@ -608,35 +661,50 @@ def validate_append_only_observation() -> dict:
     try:
         event_row = db.get(PranaIntegrityLog, event_id)
         require(event_row is not None, "Append-only audit seed event missing")
-        event_row.replay_status = "OBSERVED_UPDATE"
-        db.commit()
-        db.delete(event_row)
-        db.commit()
+        update_blocked = False
+        delete_blocked = False
 
-        violations = (
-            db.query(PranaIntegrityLog)
-            .filter(
-                PranaIntegrityLog.submission_id == f"append-only-{RUN_ID.lower()}",
-                PranaIntegrityLog.source_system == "PRANA_AUDIT",
-                PranaIntegrityLog.event_type == "APPEND_ONLY_VIOLATION",
-            )
-            .order_by(PranaIntegrityLog.received_at.asc())
-            .all()
-        )
+        try:
+            event_row.replay_status = "OBSERVED_UPDATE"
+            db.commit()
+        except AppendOnlyViolationError:
+            update_blocked = True
+            db.rollback()
+
+        event_row = db.get(PranaIntegrityLog, event_id)
+        require(event_row is not None, "Seed event disappeared after blocked update")
+
+        try:
+            db.delete(event_row)
+            db.commit()
+        except AppendOnlyViolationError:
+            delete_blocked = True
+            db.rollback()
     finally:
         db.close()
 
-    require(len(violations) >= 2, f"Expected update/delete append-only observations, found {len(violations)}")
-    operations = sorted({(row.payload or {}).get("operation_type") for row in violations})
-    require(operations == ["DELETE", "UPDATE"], f"Unexpected append-only operations observed: {operations}")
-    verify_result = verify_selected_events([row.event_id for row in violations], source_system="PRANA_AUDIT")
-    require(verify_result["status"] == "VALID", "Append-only violation replay validation failed")
-    log(f"Validated append-only observation for seed event {event_id}")
+    update_response = requests.put(f"{BASE_URL}/api/v1/prana/events/{event_id}", timeout=30)
+    delete_response = requests.delete(f"{BASE_URL}/api/v1/prana/events/{event_id}", timeout=30)
+
+    require(update_blocked, "Direct ORM update was not blocked")
+    require(delete_blocked, "Direct ORM delete was not blocked")
+    require(update_response.status_code == 409, f"Expected API update rejection 409, found {update_response.status_code}")
+    require(delete_response.status_code == 409, f"Expected API delete rejection 409, found {delete_response.status_code}")
+
+    update_payload = update_response.json()
+    delete_payload = delete_response.json()
+    require(update_payload.get("error") == "APPEND_ONLY_VIOLATION", f"Unexpected API update payload: {update_payload}")
+    require(delete_payload.get("error") == "APPEND_ONLY_VIOLATION", f"Unexpected API delete payload: {delete_payload}")
+    require(update_payload.get("operation") == "UPDATE", f"Unexpected update operation payload: {update_payload}")
+    require(delete_payload.get("operation") == "DELETE", f"Unexpected delete operation payload: {delete_payload}")
+    log(f"Validated enforced append-only blocking for seed event {event_id}")
     return {
         "seed_event_id": event_id,
-        "operations": operations,
-        "violation_event_ids": [row.event_id for row in violations],
-        "verify_run": verify_result,
+        "operations": ["UPDATE", "DELETE"],
+        "db_enforced": True,
+        "api_enforced": True,
+        "update_response": update_payload,
+        "delete_response": delete_payload,
     }
 
 
@@ -661,13 +729,13 @@ def build_review_packet(report: dict) -> str:
             "## 2. CORE EXECUTION FLOW (ONLY 3 FILES)",
             "",
             f"Path: `{ROOT_DIR / 'app' / 'services' / 'prana_runtime.py'}`",
-            "Explanation: Ingestion, hashing, gap detection, anomaly signals, vitality metrics, replay verification, and append-only violation observation.",
+            "Explanation: Ingestion, hashing, gap detection, anomaly signals, vitality metrics, replay verification, and append-only enforcement.",
             "",
             f"Path: `{ROOT_DIR / 'app' / 'routers' / 'prana.py'}`",
             "Explanation: Live PRANA runtime endpoints for ingest, events, vitality, and replay verification.",
             "",
             f"Path: `{ROOT_DIR / 'scripts' / 'run_prana_validation.py'}`",
-            "Explanation: Single-run validator for Gurukul, Bucket, Karma, append-only observation, and artifact generation.",
+            "Explanation: Single-run validator for Gurukul, Bucket, Karma, append-only enforcement, and artifact generation.",
             "",
             "## 3. LIVE FLOW (CRITICAL)",
             "",
@@ -696,7 +764,7 @@ def build_review_packet(report: dict) -> str:
             "- Deterministic SHA-256 hashing with canonical JSON serialization",
             "- Gap detection, out-of-order detection, burst detection, repeated-failure detection",
             "- Replay validation with VALID / INVALID chain checks",
-            "- Append-only violation observation in code without database enforcement",
+            "- Enforced append-only protection with DB triggers and API rejection responses",
             "- Fresh run-scoped artifacts generated for this run only",
             "",
             "## 5. FAILURE CASES",
@@ -706,11 +774,11 @@ def build_review_packet(report: dict) -> str:
             "- Out-of-order timestamp -> out_of_order_timestamp anomaly",
             "- Burst events -> threshold-crossing burst_events anomaly",
             "- Repeated failures -> repeated_failures anomaly",
-            "- UPDATE / DELETE on prana_integrity_log -> APPEND_ONLY_VIOLATION observed, operation allowed",
+            "- UPDATE / DELETE on prana_integrity_log -> rejected at DB and API layers",
             "",
             "## 6. PROOF",
             "",
-            f"- Trigger-free DB verification: `{report['trigger_validation']['prana_integrity_log_triggers']}`",
+            f"- Append-only DB triggers: `{report['trigger_validation']['prana_integrity_log_triggers']}`",
             f"- Gurukul integration proof: summary `{gurukul['summary_id']}`, flashcard `{gurukul['flashcard_id']}`",
             f"- Bucket validation proof: packet `{bucket['packet_id']}`, status `{bucket['verify_run']['status']}`",
             f"- Karma validation proof: submission `{karma['submission_id']}`, status `{karma['verify_run']['status']}`",
@@ -745,7 +813,7 @@ def write_artifacts(report: dict) -> None:
         "- Out-of-order timestamp simulation: executed",
         "- Burst simulation: executed",
         "- Repeated failure simulation: executed",
-        "- Append-only observation simulation: executed",
+        "- Append-only enforcement simulation: executed",
         "- Bucket validation: executed",
         "- Karma validation: executed",
         "",
@@ -779,7 +847,6 @@ def main() -> None:
         + gurukul_integration["run_event_ids"]
         + bucket_validation["run_event_ids"]
         + karma_validation["run_event_ids"]
-        + append_only_validation["violation_event_ids"]
     )
 
     report = {
@@ -816,17 +883,20 @@ def main() -> None:
                 runtime_validation["verify_run"],
                 bucket_validation["verify_run"],
                 karma_validation["verify_run"],
-                append_only_validation["verify_run"],
             ]
         ) else "FAIL",
         "gurukul_integration_validated": "PASS" if gurukul_integration["verify_run"]["status"] == "VALID" else "FAIL",
         "bucket_integration_validated": "PASS" if bucket_validation["verify_run"]["status"] == "VALID" else "FAIL",
         "karma_integration_validated": "PASS" if karma_validation["verify_run"]["status"] == "VALID" else "FAIL",
-        "no_enforcement_triggers": "PASS" if len(trigger_validation["prana_integrity_log_triggers"]) == 0 else "FAIL",
+        "append_only_triggers_installed": "PASS" if len(trigger_validation["prana_integrity_log_triggers"]) == len(SQLITE_APPEND_ONLY_TRIGGER_NAMES) else "FAIL",
+        "append_only_enforcement_working": "PASS" if append_only_validation["db_enforced"] and append_only_validation["api_enforced"] else "FAIL",
         "artifacts_generated_today": "PASS" if artifact_validation["generated_today"] and artifact_validation["all_exist"] else "FAIL",
         "single_run_artifacts_only": "PASS" if artifact_validation["single_run_only"] else "FAIL",
         "deterministic_results_confirmed": "PASS" if deterministic_hashing["status"] == "PASS" else "FAIL",
-        "append_only_violation_observed": "PASS" if append_only_validation["verify_run"]["status"] == "VALID" else "FAIL",
+        "append_only_api_responses_structured": "PASS" if (
+            append_only_validation["update_response"].get("error") == "APPEND_ONLY_VIOLATION"
+            and append_only_validation["delete_response"].get("error") == "APPEND_ONLY_VIOLATION"
+        ) else "FAIL",
     }
     report["artifact_validation"] = artifact_validation
     report["checks"] = checks

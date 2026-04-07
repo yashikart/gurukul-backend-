@@ -28,6 +28,12 @@ try:
     from app.core.config import settings
     from app.core.database import engine, Base
     from app.core.karma_database import get_db as get_mongo_db
+    from app.services.prana_contract_registry import IngressContractViolationError
+    from app.services.prana_runtime import (
+        AppendOnlyViolationError,
+        append_only_violation_from_exception,
+        ensure_prana_integrity_append_only_guards,
+    )
     print("[Main] [OK] FastAPI and core imports successful")
 except Exception as e:
     print(f"[Main] [FAIL] Error importing FastAPI/core modules: {e}")
@@ -183,6 +189,7 @@ async def startup_event():
             
             # Create tables in a thread since it's a blocking operation
             await asyncio.to_thread(Base.metadata.create_all, bind=engine)
+            await asyncio.to_thread(ensure_prana_integrity_append_only_guards, engine)
             print("[Startup] [OK] SQL database tables initialized")
             sys.stdout.flush()
         except Exception as e:
@@ -716,6 +723,17 @@ async def global_exception_handler(request: Request, exc: Exception):
     Global exception handler that ensures CORS headers are included
     even when unhandled exceptions occur.
     """
+    append_only_violation = append_only_violation_from_exception(exc)
+    if append_only_violation is not None:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content=append_only_violation.to_response(),
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
     logger.error(f"Unhandled exception: {str(exc)}")
     logger.error(traceback.format_exc())
     content = {
@@ -730,6 +748,30 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=content,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+@app.exception_handler(AppendOnlyViolationError)
+async def append_only_violation_handler(request: Request, exc: AppendOnlyViolationError):
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content=exc.to_response(),
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+@app.exception_handler(IngressContractViolationError)
+async def ingress_contract_violation_handler(request: Request, exc: IngressContractViolationError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_response(),
         headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",

@@ -112,6 +112,9 @@ async def unified_event_endpoint(request: UnifiedEventRequest, db: Session = Dep
             classification_input = request.data.get("context") or request.data.get("note") or request.data.get("action") or request.type
             classification_action = request.data.get("action")
             classification_result = classify_paap_action(classification_action) if classification_action else None
+            run_id = None
+            if isinstance(classification_input, str) and "run_id=" in classification_input:
+                run_id = classification_input.split("run_id=", 1)[1].split()[0]
             prana_runtime.ingest_event(
                 db,
                 submission_id=event_id,
@@ -124,6 +127,7 @@ async def unified_event_endpoint(request: UnifiedEventRequest, db: Session = Dep
                     "classification_input": classification_input,
                     "classification_action": classification_action,
                     "classification_result": classification_result,
+                    "run_id": run_id,
                     "source": request.source or "Karma",
                     "status": "processed",
                 },
