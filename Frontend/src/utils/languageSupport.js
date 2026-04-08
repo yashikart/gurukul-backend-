@@ -8,14 +8,14 @@
  * Get current language preference
  */
 export const getCurrentLanguage = () => {
-    return localStorage.getItem('gurukul_language') || 'en';
+    return localStorage.getItem('selected_language') || 'en';
 };
 
 /**
  * Set language preference
  */
 export const setLanguage = (lang) => {
-    localStorage.setItem('gurukul_language', lang);
+    localStorage.setItem('selected_language', lang);
     applyLanguageSettings(lang);
 };
 

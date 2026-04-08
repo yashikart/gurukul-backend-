@@ -12,7 +12,7 @@ const PrivateRoute = ({ children }) => {
 
     // If not logged in, redirect to login page
     if (!user) {
-        return <Navigate to="/signin" />;
+        return <Navigate to="/signup" />;
     }
 
     // If logged in, check if assessment is completed (only for students)

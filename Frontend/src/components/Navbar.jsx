@@ -242,28 +242,28 @@ const Navbar = () => {
         }
 
         // Method 3: Use cookie-based approach (Google Translate uses cookies)
-        // Get current domain for cookie
-        const domain = window.location.hostname;
         const cookiePath = '/';
 
         if (langCode === 'en') {
-          // Remove translation cookie to show English
-          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${cookiePath};`;
-          document.cookie = `googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${cookiePath};`;
+          // Thoroughly remove translation cookies to show English
+          const expireDate = 'Thu, 01 Jan 1970 00:00:00 UTC';
+          document.cookie = `googtrans=; expires=${expireDate}; path=${cookiePath};`;
+          document.cookie = `googtrans=/en/en; expires=${expireDate}; path=${cookiePath};`;
+          
+          // Also try without path just in case
+          document.cookie = `googtrans=; expires=${expireDate};`;
+          document.cookie = `googtrans=/en/en; expires=${expireDate};`;
         } else {
-          // Set translation cookie - don't set domain to avoid cookie rejection
+          // Set translation cookie
           const expireDate = new Date();
           expireDate.setFullYear(expireDate.getFullYear() + 1);
           document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=${cookiePath}; SameSite=Lax`;
         }
 
-        // Method 4: Reload page with translation cookie (last resort)
-        if (langCode !== 'en') {
-          window.location.reload();
-          return true;
-        }
-
-        return false;
+        // Method 4: Always reload page as a last resort to ensure clean state
+        // This is the most reliable way to reset Google Translate when switching back
+        window.location.reload();
+        return true;
       } catch (err) {
         // Silent error handling - translation will fallback to cookie/reload
         if (process.env.NODE_ENV === 'development') {
@@ -294,12 +294,16 @@ const Navbar = () => {
             // Cleanup timeouts before fallback
             timeoutIds.forEach(id => clearTimeout(id));
             // Final fallback: reload page with cookie
-            if (langCode !== 'en') {
-              const expireDate = new Date();
-              expireDate.setFullYear(expireDate.getFullYear() + 1);
+            const expireDate = new Date();
+            expireDate.setFullYear(expireDate.getFullYear() + 1);
+            if (langCode === 'en') {
+              const oldDate = 'Thu, 01 Jan 1970 00:00:00 UTC';
+              document.cookie = `googtrans=; expires=${oldDate}; path=/;`;
+              document.cookie = `googtrans=/en/en; expires=${oldDate}; path=/;`;
+            } else {
               document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=/;`;
-              window.location.reload();
             }
+            window.location.reload();
           }
         } catch (err) {
           // Cleanup on error
@@ -483,8 +487,8 @@ const Navbar = () => {
                   </button>
                 </div>
               ) : (
-                <Link to="/signin" className="text-xs font-bold px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all border border-white/5 shadow-lg">
-                  Sign In
+                <Link to="/signup" className="text-xs font-bold px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all border border-white/5 shadow-lg">
+                  Sign Up
                 </Link>
               )}
             </div>
