@@ -1,12 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { FaUserCircle, FaBars, FaTimes, FaGlobe, FaChevronDown, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
-import { Link, useNavigate } from 'react-router-dom';
-
-import logo from '../assets/logo.svg';
-import { useAuth } from '../contexts/AuthContext';
-import { useSidebar } from '../contexts/SidebarContext';
-import { useDemo } from '../contexts/DemoContext';
-import { useVoice } from './VoiceManager';
+import { getCurrentLanguage, setLanguage, applyLanguageSettings } from '../utils/languageSupport';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -40,7 +32,7 @@ const Navbar = () => {
     };
 
     // Load saved language preference
-    const savedLang = localStorage.getItem('selected_language');
+    const savedLang = localStorage.getItem('selected_language') || 'en';
     const langNames = {
       'en': 'English',
       'hi': 'हिंदी',
@@ -66,8 +58,28 @@ const Navbar = () => {
       'ur': 'اردو'
     };
 
-    if (savedLang && langNames[savedLang]) {
+    if (langNames[savedLang]) {
       setCurrentLang(langNames[savedLang]);
+      applyLanguageSettings(savedLang);
+    }
+
+    // Special case for 'en' to prevent Google Translate from persisting Hindi on refresh
+    if (savedLang === 'en') {
+      const domains = [
+        window.location.hostname,
+        '.' + window.location.hostname,
+        window.location.hostname.split('.').slice(-2).join('.'),
+        '.' + window.location.hostname.split('.').slice(-2).join('.')
+      ];
+      const paths = ['/', '/app', '/gurukul'];
+      const expireDate = 'Thu, 01 Jan 1970 00:00:00 UTC';
+      
+      domains.forEach(domain => {
+        paths.forEach(path => {
+          document.cookie = `googtrans=; expires=${expireDate}; path=${path}; domain=${domain};`;
+          document.cookie = `googtrans=; expires=${expireDate}; path=${path};`;
+        });
+      });
     }
 
     // Wait for Google Translate to load, then initialize
@@ -79,7 +91,7 @@ const Navbar = () => {
       attempts++;
       if (initTranslate()) {
         // Successfully initialized, now set language if saved
-        if (savedLang) {
+        if (savedLang && savedLang !== 'en') {
           const timeoutId = setTimeout(() => {
             const select = document.querySelector('.goog-te-combo');
             if (select && select.value !== savedLang) {
@@ -87,16 +99,12 @@ const Navbar = () => {
               const event = new Event('change', { bubbles: true });
               select.dispatchEvent(event);
             }
-          }, 300);
+          }, 400);
           timeoutIds.push(timeoutId);
         }
       } else if (attempts < maxAttempts) {
         const timeoutId = setTimeout(tryInit, 100);
         timeoutIds.push(timeoutId);
-      } else {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Google Translate failed to load after multiple attempts');
-        }
       }
     };
 
@@ -174,102 +182,54 @@ const Navbar = () => {
     // Function to trigger Google Translate using multiple methods (with error handling)
     const triggerTranslation = () => {
       try {
-        // Method 1: Try to find and use the select element directly
-        const selectors = [
-          '.goog-te-combo',
-          'select.goog-te-combo',
-          '#\\:0\\.targetLanguage',
-          'select[id*="targetLanguage"]',
-          'select[class*="goog-te"]'
-        ];
+        const isEnglish = langCode === 'en';
+        
+        // Sync local settings (RTL, etc.)
+        applyLanguageSettings(langCode);
 
-        for (const selector of selectors) {
-          try {
-            const select = document.querySelector(selector);
-            if (select && select.tagName === 'SELECT') {
-              // Set the value
-              if (select.value !== langCode) {
-                select.value = langCode;
-              }
-
-              // Create and dispatch change event
-              const changeEvent = new Event('change', { bubbles: true, cancelable: true });
-              select.dispatchEvent(changeEvent);
-
-              // Also try input event
-              const inputEvent = new Event('input', { bubbles: true, cancelable: true });
-              select.dispatchEvent(inputEvent);
-
-              // Try onchange if it exists
-              if (typeof select.onchange === 'function') {
-                try {
-                  select.onchange(changeEvent);
-                } catch (e) {
-                  // Ignore errors
-                }
-              }
-
-              return true;
-            }
-          } catch (e) {
-            // Continue to next selector
-          }
-        }
-
-        // Method 2: Try to access Google Translate iframe
-        try {
-          const iframes = document.querySelectorAll('iframe');
-          for (const iframe of iframes) {
-            try {
-              if (iframe.src && iframe.src.includes('translate.google.com')) {
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                if (iframeDoc) {
-                  const iframeSelect = iframeDoc.querySelector('select');
-                  if (iframeSelect) {
-                    iframeSelect.value = langCode;
-                    const changeEvent = new Event('change', { bubbles: true });
-                    iframeSelect.dispatchEvent(changeEvent);
-                    return true;
-                  }
-                }
-              }
-            } catch (e) {
-              // Cross-origin restrictions, continue
-            }
-          }
-        } catch (e) {
-          // Ignore iframe access errors
-        }
-
-        // Method 3: Use cookie-based approach (Google Translate uses cookies)
-        const cookiePath = '/';
-
-        if (langCode === 'en') {
-          // Thoroughly remove translation cookies to show English
+        // Method A: Aggressive Cookie Clearing for English
+        if (isEnglish) {
+          const domains = [
+            window.location.hostname,
+            '.' + window.location.hostname,
+            window.location.hostname.split('.').slice(-2).join('.'),
+            '.' + window.location.hostname.split('.').slice(-2).join('.')
+          ];
+          const paths = ['/', '/app', '/gurukul'];
           const expireDate = 'Thu, 01 Jan 1970 00:00:00 UTC';
-          document.cookie = `googtrans=; expires=${expireDate}; path=${cookiePath};`;
-          document.cookie = `googtrans=/en/en; expires=${expireDate}; path=${cookiePath};`;
           
-          // Also try without path just in case
-          document.cookie = `googtrans=; expires=${expireDate};`;
-          document.cookie = `googtrans=/en/en; expires=${expireDate};`;
-        } else {
-          // Set translation cookie
-          const expireDate = new Date();
-          expireDate.setFullYear(expireDate.getFullYear() + 1);
-          document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=${cookiePath}; SameSite=Lax`;
+          domains.forEach(domain => {
+            paths.forEach(path => {
+              document.cookie = `googtrans=; expires=${expireDate}; path=${path}; domain=${domain};`;
+              document.cookie = `googtrans=/en/en; expires=${expireDate}; path=${path}; domain=${domain};`;
+            });
+          });
+          
+          // Fallback to page reload for English as it's the safest way to clear Google state
+          window.location.reload();
+          return true;
         }
 
-        // Method 4: Always reload page as a last resort to ensure clean state
-        // This is the most reliable way to reset Google Translate when switching back
+        // Method 1: Try to find and use the select element directly
+        const selector = '.goog-te-combo';
+        const select = document.querySelector(selector);
+        if (select && select.tagName === 'SELECT') {
+          select.value = langCode;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
+        }
+
+        // Method 3: Use cookie-based approach for non-English
+        const expireDate = new Date();
+        expireDate.setFullYear(expireDate.getFullYear() + 1);
+        document.cookie = `googtrans=/en/${langCode}; expires=${expireDate.toUTCString()}; path=/; SameSite=Lax`;
+        
+        // Reload for consistency across all engines
         window.location.reload();
         return true;
       } catch (err) {
-        // Silent error handling - translation will fallback to cookie/reload
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Google Translate trigger failed:', err);
-        }
-        return false;
+        window.location.reload();
+        return true;
       }
     };
 
