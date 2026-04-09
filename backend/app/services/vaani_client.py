@@ -1,9 +1,11 @@
+import io
 import os
 import hashlib
 import requests
 import logging
 from typing import Optional, Dict, Any
 from app.core.config import settings
+from gtts import gTTS
 
 logger = logging.getLogger(__name__)
 
@@ -30,24 +32,17 @@ class VaaniClient:
     async def generate_tts(self, text: str, language: str = "en") -> Dict[str, Any]:
         """
         Calls the tiered TTS Service to generate audio.
-        Returns metadata including audio_id (hash) and binary content.
+        Falls back to internal gTTS if the service is unreachable or errors out.
         """
         text_hash = self.generate_hash(text, language)
         
         try:
-            # The tiered TTS service (8007) expects Form data at /api/generate
-            # Mapping: agents.py uses 'text' and 'language', 
-            # but tts.py currently only takes 'text' (uses default English).
-            # We will send 'text' as a form field.
-            payload = {
-                "text": text
-            }
-            
+            payload = {"text": text}
             logger.info(f"Calling TTS Service at {self.base_url}/api/generate")
             response = self.session.post(
                 f"{self.base_url}/api/generate",
                 data=payload,
-                timeout=90 # Increased timeout for heavy XTTS generation
+                timeout=10 # Fast timeout to trigger fallback quickly on Render
             )
             
             if response.status_code == 200:
@@ -55,30 +50,47 @@ class VaaniClient:
                 if res_data.get("status") == "success":
                     audio_url = res_data.get("audio_url")
                     if audio_url:
-                        # Fetch the actual audio binary from the provided URL
-                        # Note: res_data['audio_url'] is usually /api/audio/{filename}
                         download_url = f"{self.base_url}{audio_url}"
-                        logger.info(f"Downloading generated audio from {download_url}")
-                        
                         audio_response = self.session.get(download_url, timeout=30)
                         if audio_response.status_code == 200:
                             return {
                                 "status": "success",
                                 "audio_id": text_hash,
                                 "audio_data": audio_response.content,
-                                "media_type": "audio/mpeg" # Layer 8007 returns MP3
+                                "media_type": "audio/mpeg"
                             }
-                        else:
-                            return {"status": "error", "message": f"Failed to download audio from {audio_url}"}
+            
+            logger.warning(f"TTS Service returned {response.status_code}. Falling back to internal gTTS.")
+            return await self._generate_gtts_fallback(text, language, text_hash)
                 
-                return {"status": "error", "message": res_data.get("message", "Audio generation reported failure")}
-            else:
-                logger.error(f"Vaani API error: {response.status_code} - {response.text}")
-                return {"status": "error", "message": f"Vaani service error: {response.status_code}"}
-                
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            logger.warning(f"TTS Service unreachable: {e}. Falling back to internal gTTS.")
+            return await self._generate_gtts_fallback(text, language, text_hash)
         except Exception as e:
             logger.exception("Vaani generation failed")
-            return {"status": "error", "message": f"Vaani Client Request failed: {str(e)}"}
+            return await self._generate_gtts_fallback(text, language, text_hash)
+
+    async def _generate_gtts_fallback(self, text: str, language: str, text_hash: str) -> Dict[str, Any]:
+        """Internal fallback using the lightweight gTTS library."""
+        try:
+            import asyncio
+            def _serve():
+                tts = gTTS(text=text, lang=language if language != 'auto' else 'en')
+                fp = io.BytesIO()
+                tts.write_to_fp(fp)
+                return fp.getvalue()
+            
+            audio_data = await asyncio.to_thread(_serve)
+            return {
+                "status": "success",
+                "audio_id": text_hash,
+                "audio_data": audio_data,
+                "media_type": "audio/mpeg",
+                "engine": "gtts_fallback"
+            }
+        except Exception as e:
+            logger.error(f"gTTS fallback failed: {e}")
+            return {"status": "error", "message": f"TTS failed: {str(e)}"}
 
     async def download_audio(self, audio_id: str):
         """
