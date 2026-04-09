@@ -232,13 +232,13 @@ const Navbar = () => {
           const oneYear = new Date();
           oneYear.setFullYear(oneYear.getFullYear() + 1);
           document.cookie = `googtrans=/en/${langCode}; expires=${oneYear.toUTCString()}; path=/;`;
-
-          // Also try setting via the select element directly (no reload needed)
+          // NOTE: We always reload here — even if the select element exists.
+          // Google Translate cannot re-translate an already-translated page in-place;
+          // it needs a fresh load to translate again from the original English source.
           const select = document.querySelector('.goog-te-combo');
           if (select && select.tagName === 'SELECT') {
             select.value = langCode;
             select.dispatchEvent(new Event('change', { bubbles: true }));
-            return true; // No reload required if the select element handled it
           }
         }
 
