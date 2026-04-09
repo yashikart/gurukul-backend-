@@ -130,9 +130,10 @@ def _load_local_model():
         _local_model = WhisperModel(WHISPER_MODEL_SIZE, device="cpu", compute_type="int8")
         logger.info("[STT] faster-whisper model loaded successfully")
         return _local_model
-    except ImportError:
+    except (ImportError, Exception) as e:
+        logger.warning(f"[STT] faster-whisper is not available: {e}. Falling back to Cloud STT (Groq).")
         raise RuntimeError(
-            "faster-whisper not installed. Run: pip install faster-whisper"
+            f"Local STT engine (faster-whisper) not available or failed to load: {e}"
         )
 
 
