@@ -1,3 +1,11 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { FaUserCircle, FaBars, FaTimes, FaGlobe, FaChevronDown, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import logo from '../assets/logo.svg';
+import { useAuth } from '../contexts/AuthContext';
+import { useSidebar } from '../contexts/SidebarContext';
+import { useDemo } from '../contexts/DemoContext';
+import { useVoice } from './VoiceManager';
 import { getCurrentLanguage, setLanguage, applyLanguageSettings } from '../utils/languageSupport';
 
 const Navbar = () => {
