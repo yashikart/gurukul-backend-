@@ -325,6 +325,7 @@ async def text_to_speech_stream(text: str = Form(...)):
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
+    try:
         return {
             "status": "healthy",
             "service": "TTS",
@@ -335,7 +336,6 @@ async def health_check():
             "output_directory": OUTPUT_DIR,
             "audio_files_count": len([f for f in os.listdir(OUTPUT_DIR) if f.endswith('.mp3')])
         }
-
     except Exception as e:
         return {
             "status": "unhealthy",
@@ -348,10 +348,12 @@ if __name__ == "__main__":
     print("Starting Gurukul TTS Service...")
     print(f"Output directory: {os.path.abspath(OUTPUT_DIR)}")
 
-    # Run on all interfaces so it can be accessed from other machines
+    # Run on the port specified by environment (needed for Render) or default to 8007
+    port = int(os.getenv("PORT", "8007"))
+    
     uvicorn.run(
         app,
         host="0.0.0.0",  # Listen on all interfaces
-        port=8007,       # Use port 8007 for TTS service
+        port=port,
         log_level="info"
     )

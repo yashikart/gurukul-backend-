@@ -58,41 +58,53 @@ async def agent_generate_tts(request: TTSAgentRequest):
     text_hash = vaani_client.generate_hash(text, request.language)
     
     try:
-        db = get_db()
-        # 1. Caching Check
-        cached = db.tts_cache.find_one({"text_hash": text_hash})
-        if cached:
-            return {
-                "status": "success",
-                "audio_id": text_hash,
-                "cached": True,
-                "audio_url": f"/api/v1/agent/download-audio?audio_id={text_hash}"
-            }
+        db = None
+        try:
+            db = get_db()
+        except Exception as db_err:
+            print(f"Agent TTS: MongoDB not available, proceeding without cache: {db_err}")
+
+        # 1. Caching Check (skipped if DB is None)
+        if db is not None:
+            try:
+                cached = db.tts_cache.find_one({"text_hash": text_hash})
+                if cached:
+                    return {
+                        "status": "success",
+                        "audio_id": text_hash,
+                        "cached": True,
+                        "audio_url": f"/api/v1/agent/download-audio?audio_id={text_hash}"
+                    }
+            except Exception as cache_err:
+                print(f"Agent TTS Cache check failed: {cache_err}")
 
         # 2. Generation
         result = await vaani_client.generate_tts(text, request.language)
         
         if result["status"] == "success":
-            # 3. Store in Cache
-            # Note: In production, audio_data might be stored in a Blob/S3
-            # For this consolidated version, we store reference in MongoDB
-            db.tts_cache.insert_one({
-                "text_hash": text_hash,
-                "text": text,
-                "language": request.language,
-                "created_at": datetime.datetime.now(datetime.timezone.utc),
-                "audio_data": result["audio_data"] # Storing binary in Mongo for now as per "sovereign" requirement
-            })
+            # 3. Store in Cache (if DB is available)
+            if db is not None:
+                try:
+                    db.tts_cache.insert_one({
+                        "text_hash": text_hash,
+                        "text": text,
+                        "language": request.language,
+                        "created_at": datetime.datetime.now(datetime.timezone.utc),
+                        "audio_data": result["audio_data"],
+                        "media_type": result.get("media_type", "audio/wav")
+                    })
 
-            # 4. Telemetry (insightflow_logs)
-            db.insightflow_logs.insert_one({
-                "event": "tts_generation",
-                "text": text[:100],
-                "language": request.language,
-                "audio_id": text_hash,
-                "timestamp": datetime.datetime.now(datetime.timezone.utc),
-                "source": "vaani_sentinel"
-            })
+                    # 4. Telemetry (insightflow_logs)
+                    db.insightflow_logs.insert_one({
+                        "event": "tts_generation",
+                        "text": text[:100],
+                        "language": request.language,
+                        "audio_id": text_hash,
+                        "timestamp": datetime.datetime.now(datetime.timezone.utc),
+                        "source": "vaani_sentinel"
+                    })
+                except Exception as store_err:
+                    print(f"Agent TTS Cache storage failed: {store_err}")
 
             return {
                 "status": "success",
@@ -103,6 +115,8 @@ async def agent_generate_tts(request: TTSAgentRequest):
         else:
             raise HTTPException(status_code=500, detail=result.get("message", "Generation failed"))
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Agent TTS Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -124,9 +138,9 @@ async def download_agent_audio(audio_id: str):
 
         return Response(
             content=cached["audio_data"],
-            media_type="audio/wav",
+            media_type=cached.get("media_type", "audio/wav"),
             headers={
-                "Content-Disposition": f"attachment; filename={audio_id}.wav"
+                "Content-Disposition": f"attachment; filename={audio_id}.{'mp3' if 'mpeg' in cached.get('media_type', '') else 'wav'}"
             }
         )
     except Exception as e:
