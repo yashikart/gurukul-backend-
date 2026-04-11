@@ -13,16 +13,19 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-# Load environment variables from centralized configuration
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from shared_config import load_shared_config
-
-# Load centralized configuration
-load_shared_config("tts_service")
+# Load environment variables from .env if available
+try:
+    from dotenv import load_dotenv
+    env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+except ImportError:
+    pass  # dotenv not installed, rely on system env vars
 
 # Logging
-from utils.logging_config import configure_logging
-logger = configure_logging("tts_service")
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger("tts_service")
 
 app = FastAPI(title="Gurukul TTS Service", description="Text-to-Speech service for lesson content")
 

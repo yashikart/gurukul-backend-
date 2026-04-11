@@ -186,7 +186,8 @@ class ServiceWatchdog:
 
     def _recover_vaani(self, signal: ServiceSignal) -> tuple[bool, str]:
         """Try to restart the Vaani TTS engine."""
-        vaani_url = "http://localhost:8008"
+        import os
+        vaani_url = os.getenv("VAANI_API_URL", "http://localhost:8007")
 
         # Step 1: ask Vaani to restart cleanly (if it supports it)
         try:
