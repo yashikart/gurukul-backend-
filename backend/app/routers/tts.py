@@ -11,31 +11,20 @@ class TTSRequest(BaseModel):
 @router.get("/voices")
 async def get_available_voices():
     """
-    Get list of available TTS voices on the system
+    Get list of available TTS voices (Sovereign Vaani Engine)
     """
-    try:
-        import pyttsx3
-        engine = pyttsx3.init()
-        voices = engine.getProperty('voices')
-        
-        voice_list = []
-        if voices:
-            for voice in voices:
-                voice_list.append({
-                    "name": voice.name,
-                    "id": voice.id,
-                    "languages": voice.languages if hasattr(voice, 'languages') else [],
-                    "gender": voice.gender if hasattr(voice, 'gender') else "Unknown",
-                    "age": voice.age if hasattr(voice, 'age') else "Unknown"
-                })
-        
-        return {
-            "voices": voice_list,
-            "total": len(voice_list)
-        }
-    except Exception as e:
-        print(f"[TTS] Error getting voices: {e}")
-        return {"voices": [], "total": 0, "error": str(e)}
+    return {
+        "voices": [
+            {
+                "name": "Vaani Teacher",
+                "id": "vaani_teacher",
+                "languages": ["en", "hi", "ar", "es", "fr", "ja"],
+                "gender": "Female",
+                "age": "Adult"
+            }
+        ],
+        "total": 1
+    }
 
 @router.post("/speak")
 async def text_to_speech(request: TTSRequest):
@@ -48,13 +37,10 @@ async def text_to_speech(request: TTSRequest):
         if not request.text or not request.text.strip():
             raise HTTPException(status_code=400, detail="Text is required")
         
-        # Log the language being used
-        print(f"[Vaani] Standard API - Request received - Language: {request.language}")
+        # Use our sovereign engine (Vaani)
+        audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=False)
         
-        # Use our sovereign engine (redirected inside text_to_speech_stream)
-        audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
-        
-        # Vaani engine returns WAV by default in our current setup
+        # Vaani engine returns WAV
         media_type = "audio/wav"
         file_ext = "wav"
         
@@ -100,10 +86,8 @@ async def vaani_text_to_speech(request: TTSRequest):
         if not request.text or not request.text.strip():
             raise HTTPException(status_code=400, detail="Text is required")
         
-        print(f"[Vaani] Sovereign Endpoint - Request received - Language: {request.language}")
-        
-        # Use our sovereign engine (redirected inside text_to_speech_stream)
-        audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=True)
+        # Use our sovereign engine (Vaani)
+        audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=False)
         
         return Response(
             content=audio_data,

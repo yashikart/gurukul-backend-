@@ -10,13 +10,30 @@ python-dotenv==1.0.1
 requests==2.32.3
 PyPDF2==3.0.1
 Pillow==10.3.0
-pytesseract==0.3.10
+pyttesseract==0.3.10
 pdf2image==1.17.0
 python-docx==1.1.2
 google-generativeai==0.8.3
 fpdf2==2.8.6
 groq==0.30.0
 numpy<2.0.0
+openai>=1.0.0
+gtts>=2.3.2
+
+# DISABLED - Memory hogs (512MB limit). Summarizer is disabled.
+# torch>=2.0.0
+# transformers>=4.30.0
+# sentence-transformers>=2.7.0
+# peft>=0.8.0
+# accelerate>=0.24.0
+# chromadb>=0.5.0
+# qdrant-client>=1.8.0
+# weaviate-client>=4.9.0
+# pinecone-client>=3.0.0
+
+sentencepiece>=0.1.99
+gdown>=4.7.0
+
 python-multipart
 passlib[bcrypt]
 bcrypt
@@ -30,7 +47,7 @@ dnspython==2.6.1
 
 # --- Voice & AI (Cloud-First for Render Compatibility) ---
 # Note: Heavy models (TTS, torch, faster-whisper) are moved to requirements-ai.txt
-# This backend relies on Groq Whisper for STT and routes TTS to port 8007
+# This backend relies on Groq Whisper for STT and routes TTS to Vaani
 gTTS==2.5.1
 pyttsx3==2.90
 
@@ -42,3 +59,6 @@ aiohttp==3.9.5
 
 # --- Testing ---
 pytest==8.2.2
+
+# STT (Speech-to-Text) — Multilingual support
+faster-whisper>=1.0.0

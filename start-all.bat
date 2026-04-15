@@ -38,9 +38,6 @@ start "EMS Backend" cmd /k "cd /d %~dp0EMS System && echo EMS Backend starting o
 REM Wait a bit
 timeout /t 1 /nobreak >nul
 
-REM Start TTS Service
-start "TTS Service" cmd /k "cd /d %~dp0tts_service && echo TTS Service starting on http://localhost:8007 && python tts.py"
-
 REM Wait a bit
 timeout /t 1 /nobreak >nul
 
@@ -65,7 +62,7 @@ echo.
 echo Service URLs:
 echo   - Gurukul Backend:  http://localhost:3000 (includes Karma Tracker)
 echo   - EMS Backend:      http://localhost:8000
-echo   - TTS Service:      http://localhost:8007
+echo   - Vaani Engine:     http://localhost:8008
 echo   - Gurukul Frontend: http://localhost:5173
 echo   - EMS Frontend:     http://localhost:3001
 echo   - Bucket Consumer:  Processing PRANA packets (integrated mode)

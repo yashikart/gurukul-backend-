@@ -16,6 +16,8 @@ import hashlib
 import time
 import logging
 import requests
+import io
+from gtts import gTTS
 from typing import Dict, Any, Optional
 from app.services.voice_engine_interface import VoiceEngineInterface
 from app.core.config import settings
@@ -111,16 +113,10 @@ class VoiceProvider(VoiceEngineInterface):
                         self._call_vaani_engine(text, language),
                         timeout=self.request_timeout
                     )
-                except asyncio.TimeoutError:
-                    self.stats["timeouts"] += 1
-                    self.stats["failures"] += 1
-                    logger.error(
-                        f"[TIMEOUT] Inference aborted after {self.request_timeout}s | "
-                        f"total_timeouts={self.stats['timeouts']}"
-                    )
-                    raise TimeoutError(
-                        f"Voice inference timed out after {self.request_timeout} seconds"
-                    )
+                except (asyncio.TimeoutError, ConnectionError, RuntimeError) as exc:
+                    # IMPLEMENTATION OF FALLBACK: Use gTTS if local engine is down or timeout
+                    logger.warning(f"[FALLBACK] Local engine failed/timed out: {exc}. Using gTTS.")
+                    audio_data = await self._call_gtts(text, language)
 
             # ── 5. Cache Result ──────────────────────────────
             self._cache_put(cache_key, audio_data)
@@ -212,6 +208,17 @@ class VoiceProvider(VoiceEngineInterface):
             )
         except requests.exceptions.ConnectionError as e:
             raise ConnectionError(f"Cannot reach Vaani engine at {self.vaani_url}: {e}")
+
+    async def _call_gtts(self, text: str, language: str) -> bytes:
+        """Fallback generator using Google TTS."""
+        try:
+            tts = await asyncio.to_thread(gTTS, text=text, lang=language)
+            fp = io.BytesIO()
+            await asyncio.to_thread(tts.write_to_fp, fp)
+            return fp.getvalue()
+        except Exception as e:
+            logger.error(f"[gTTS] Critical fallback failure: {e}")
+            raise RuntimeError(f"Both Vaani and gTTS fallback failed: {e}")
 
     def _cache_key(self, text: str, language: str) -> str:
         """Generate deterministic cache key using SHA-256."""

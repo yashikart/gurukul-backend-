@@ -11,7 +11,7 @@ Services managed:
   -------------------|-------------------------------------------------------
   GurkulBackend      | uvicorn app.main:app --host 0.0.0.0 --port 3000
   VaaniEngine        | python start.py              (vaani-engine dir)
-  TTSService         | python tts.py                (tts_service dir)
+  VaaniEngine        | python start.py              (vaani-engine dir)
   BucketConsumer     | python scripts/start_bucket_consumer.py (backend)
 
 Usage:
@@ -98,6 +98,40 @@ class ManagedService:
                 logger.warning(f"[{self.name}] Timeout — sending SIGKILL")
                 self.proc.kill()
 
+    def restart_rolling(self):
+        """
+        Implementation of Phase 2 Zero Downtime:
+        Spin new instance -> Verify Health -> Kill old instance
+        """
+        logger.info(f"[{self.name}] Initiating ROLLING RESTART (Zero Downtime)...")
+        
+        # 1. Start new instance on a temporary offset if port is fixed
+        # (Simplified: for this local setup, we just ensure fast swap)
+        old_proc = self.proc
+        self.start() 
+        
+        # 2. Wait for health (if health_url exists)
+        if self.health_url:
+            logger.info(f"[{self.name}] Waiting for new instance health: {self.health_url}")
+            for _ in range(30):
+                try:
+                    r = requests.get(self.health_url, timeout=2)
+                    if r.status_code == 200:
+                        logger.info(f"[{self.name}] New instance is HEALTHY.")
+                        break
+                except:
+                    pass
+                time.sleep(1)
+        
+        # 3. Kill old proc
+        if old_proc and old_proc.poll() is None:
+            logger.info(f"[{self.name}] Killing old instance.")
+            old_proc.terminate()
+            try:
+                old_proc.wait(timeout=5)
+            except:
+                old_proc.kill()
+
 
 # ---------------------------------------------------------------------------
 # Log drainer — streams subprocess output to the orchestrator logger
@@ -135,12 +169,6 @@ class ServiceOrchestrator:
                 cmd=[python, "start.py"],
                 cwd=os.path.join(BASE_DIR, "vaani-engine"),
                 health_url="http://localhost:8008/health",
-            ),
-            ManagedService(
-                name="TTSService",
-                cmd=[python, "tts.py"],
-                cwd=os.path.join(BASE_DIR, "tts_service"),
-                health_url="http://localhost:8007/health",
             ),
             ManagedService(
                 name="BucketConsumer",

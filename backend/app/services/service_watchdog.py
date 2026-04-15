@@ -38,9 +38,11 @@ logger = logging.getLogger("ServiceWatchdog")
 # Configuration
 # ---------------------------------------------------------------------------
 
-POLL_INTERVAL: int = 60          # seconds between full health sweeps
-MAX_RECOVERY_ATTEMPTS: int = 3   # per service per watchdog cycle
-RECOVERY_COOLDOWN: int = 120     # seconds before retrying a failed recovery
+POLL_INTERVAL: int = 30          # seconds between health sweeps
+MAX_RECOVERY_ATTEMPTS: int = 5   # per service per window
+RECOVERY_COOLDOWN: int = 180     # 3 minutes cooldown
+GLOBAL_FAILURE_THRESHOLD: int = 20 # Max failures before safe fallback
+RESTART_THRESHOLD_WINDOW: int = 3600 # 1 hour
 
 
 # ---------------------------------------------------------------------------
@@ -141,9 +143,11 @@ class ServiceWatchdog:
 
         if attempts >= MAX_RECOVERY_ATTEMPTS:
             logger.critical(
-                f"[Watchdog] {name} exceeded {MAX_RECOVERY_ATTEMPTS} recovery attempts "
-                f"this window. Manual intervention required."
+                f"[Watchdog] {name} exceeded {MAX_RECOVERY_ATTEMPTS} attempts. "
+                f"Sinking service into SAFE FALLBACK state."
             )
+            # Safe Fallback: Stop attempting and notify Pravah/Logs
+            self._record_event(name, "safe_fallback", "Max retries exceeded")
             return
 
         logger.warning(

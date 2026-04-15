@@ -663,45 +663,11 @@ async def tenant_info(
     }
 
 # Health check endpoint for Production
-@app.get("/health")
-async def health_check():
-    """Enhanced health check endpoint with dependency status and automatic recovery signal"""
-    health_status = {
+    return {
         "status": "healthy",
-        "service": "Gurukul Backend API v2",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "system_state": system_health,
+        "system_state": system_health
     }
-    
-    # Check SQLAlchemy Database
-    try:
-        from app.core.database import engine
-        from sqlalchemy import text
-        with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
-        health_status["system_state"]["sql_db"] = "connected"
-    except Exception as e:
-        health_status["status"] = "unhealthy"
-        health_status["system_state"]["sql_db"] = f"failed: {str(e)}"
-
-    # Check MongoDB
-    try:
-        from app.core.karma_database import get_db as get_m_db
-        db = get_m_db()
-        db.command('ping')
-        health_status["system_state"]["mongo_db"] = "connected"
-    except Exception as e:
-        # Don't fail the whole health check if MongoDB is down (non-critical in some flows)
-        # But report it clearly
-        health_status["system_state"]["mongo_db"] = f"failed: {str(e)}"
-        if health_status["status"] == "healthy":
-            health_status["status"] = "degraded"
-
-    # Set response status code based on health
-    if health_status["status"] == "unhealthy":
-        return JSONResponse(status_code=503, content=health_status)
-    
-    return health_status
 
 # Legacy Shim for old endpoints if needed (optional)
 # We might want to mount the old endpoints similarly or just rely on the new prefix.

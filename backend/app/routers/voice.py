@@ -179,19 +179,43 @@ async def converse(
         "audio_response": None,
     }
 
-    # Step 3 ── TTS (optional) ─────────────────────────────────────────
-    if return_audio and ai_text:
-        import base64
+    return response_payload
+
+
+# ---------------------------------------------------------------------------
+# POST /voice/respond  — AI Response + TTS
+# ---------------------------------------------------------------------------
+
+@router.post("/respond")
+async def respond(
+    text: str = Form(..., description="Text to synthesize to speech"),
+    language: Optional[str] = Form(default="en", description="Language code"),
+    return_audio: bool = Form(default=True, description="If true, return TTS audio"),
+):
+    """
+    Generate an AI voice response for given text.
+    Strictly uses the unified Vaani pipeline.
+    """
+    import base64
+    import time
+    from app.services.voice_provider import provider as voice_provider
+
+    response_payload = {
+        "success": True,
+        "text": text,
+        "audio_response": None,
+    }
+
+    if return_audio:
         t_tts = time.perf_counter()
         try:
-            from app.services.voice_provider import provider as voice_provider
-            audio_data = await voice_provider.generate_audio(ai_text, stt_result.language)
+            audio_data = await voice_provider.generate_audio(text, language)
             record_voice_latency((time.perf_counter() - t_tts) * 1000)
             response_payload["audio_response"] = base64.b64encode(audio_data).decode("utf-8")
             response_payload["audio_format"] = "wav"
         except Exception as e:
-            logger.warning(f"[Converse] TTS failed (non-fatal): {e}")
-            response_payload["audio_response"] = None
+            logger.warning(f"[Respond] TTS failed: {e}")
+            raise HTTPException(status_code=503, detail=f"TTS failed: {e}")
 
     return response_payload
 

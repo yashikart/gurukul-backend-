@@ -147,7 +147,21 @@ async def get_metrics():
     except Exception as exc:
         watchdog_status = {"error": f"Could not read watchdog: {exc}"}
 
+    # Include detailed diagnostics from system_monitor
+    diagnostics = {}
+    try:
+        from app.services.system_monitor import _check_vaani_health, _check_gpu, START_TIME, _check_disk_usage
+        diagnostics = {
+            "vaani": _check_vaani_health(),
+            "gpu": _check_gpu(),
+            "disk": _check_disk_usage(),
+            "uptime_min": int((time.time() - START_TIME) / 60)
+        }
+    except Exception as exc:
+        diagnostics = {"error": str(exc)}
+
     return {
+        "status": "healthy" if diagnostics.get("vaani", {}).get("reachable") else "degraded",
         "uptime_seconds": round(uptime_s, 1),
         "uptime_human": _format_uptime(uptime_s),
         "requests": {
@@ -169,6 +183,7 @@ async def get_metrics():
                 "samples": ai_samples,
             },
         },
+        "diagnostics": diagnostics,
         "watchdog": watchdog_status,
     }
 
