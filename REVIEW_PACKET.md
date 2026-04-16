@@ -4,28 +4,27 @@
 ## 1. ENTRY POINT
 
 **Backend entry:**
-Path: `c:\Users\pc45\Desktop\Gurukul\backend\app\main.py`
-Explanation: Initializes FastAPI and routes, actively deferring sub-router imports to start the server bind sequence immediately to prevent timeouts.
+Path: `backend/app/main.py`
+Explanation: Initializes FastAPI and starts autonomous monitoring (`ServiceWatchdog`, `PravahAdapter`). Uses deferred router imports to ensure immediate port binding.
 
 **Startup orchestration:**
-Path: `c:\Users\pc45\Desktop\Gurukul\backend\scripts\service_orchestrator.py`
-Path: `c:\Users\pc45\Desktop\Gurukul\backend\scripts\start_gurukul_services.sh`
-Explanation: Sequentially activates database checks, spins up the Vaani Voice Engine (port 8008), the Gurukul Backend (port 3000), and the autonomous watchdog. Includes **Rolling Restart** logic for zero-downtime.
+Path: `backend/scripts/service_orchestrator.py`
+Explanation: Deterministic supervisor that enforces dependency order (Vaani → Backend → Others). Implement safety limits (Max 3 restarts) and 120s cooldown between recovery attempts.
 
 ────────────────────────────────
 ## 2. CORE EXECUTION FLOW (ONLY 3 FILES)
 
 **File 1:**
-Path: `c:\Users\pc45\Desktop\Gurukul\backend\app\services\voice_provider.py`
-Explanation: Exposes the primary `VoiceProvider` implementation, instituting a 5000-character input max, a 20s `asyncio.wait_for` timeout, and limited capacity via bounded a 3-slot `asyncio.Semaphore`.
+Path: `backend/app/services/voice_provider.py`
+Explanation: Hardened TTS gateway. Enforces Vaani-first path with gTTS fallback, implementing strict timeouts (20s), concurrency semaphores (3), and structured result caching.
 
 **File 2:**
-Path: `c:\Users\pc45\Desktop\Gurukul\backend\app\services\system_monitor.py`
-Explanation: Generates and formats the `/system/health` payload exposing GPU stats, Vaani model footprint, TTS caching depth, disk storage, and deep system reliability flags.
+Path: `backend/app/services/service_watchdog.py`
+Explanation: Rebuilt for safety. Implements Max 3 restarts, 60-120s cooldowns, and escalation logic to prevent infinite crash loops. Logs events to `runtime_events.json`.
 
 **File 3:**
-Path: `c:\Users\pc45\Desktop\Gurukul\backend\app\services\pravah_adapter.py`
-Explanation: Integrates Gurukul with the Pravah DevOps layer; pushes telemetry (uptime, latency, GPU) and listens for remote health signals and restart commands.
+Path: `backend/app/services/system_metrics.py`
+Explanation: Consolidates heavy telemetry for Pravah. Exposes p95 latency, resource usage (CPU/GPU/Disk), and error rates in structured JSON format.
 
 ────────────────────────────────
 ## 3. LIVE FLOW (CRITICAL)
@@ -41,49 +40,39 @@ API → voice_provider → XTTS → output file
 • **Input text**: "This is a live test for the review packet to demonstrate TTS stability."
 • **Output filename**: `response.wav`
 • **Time taken**: 2.06 seconds
-• **Health endpoint response JSON:**
+• **Health endpoint (Lightweight - /system/health):**
 ```json
 {
   "status": "healthy",
-  "tts_service": "running",
-  "vaani_model": "loaded",
-  "gpu": "available",
-  "uptime_minutes": 2,
-  "voice_engine": {
-    "status": "running",
-    "vaani_url": "http://localhost:8008",
-    "vaani_device": "cuda",
-    "model_loaded": true,
-    "gpu_mode": true,
-    "requests_processed": 1,
-    "successful_requests": 1,
-    "failures": 0,
-    "timeouts": 0,
-    "cache_size": 1,
-    "cache_hits": 0,
-    "queue_depth": 0,
-    "max_concurrency": 3,
-    "max_input_chars": 5000,
-    "inference_timeout_s": 20
+  "service": "gurukul-backend",
+  "uptime_seconds": 120,
+  "timestamp": 1713260700.0
+}
+```
+
+• **Metrics endpoint (Heavy - /system/metrics):**
+```json
+{
+  "status": "healthy",
+  "uptime_seconds": 120,
+  "requests": {
+    "total": 54,
+    "error_count": 0,
+    "error_rate_percent": 0.0
   },
-  "gpu_details": {
-    "available": true,
-    "device_name": "NVIDIA GPU",
-    "memory_used_mb": 2014.2,
-    "memory_total_mb": 8192.0
+  "latency": {
+    "voice_ms": {"avg": 2040.12, "p95": 4120.5},
+    "ai_ms": {"avg": 850.4, "p95": 1200.1}
   },
-  "infrastructure": {
-    "cpu_usage_percent": 14.0,
-    "memory_usage_percent": 64.1,
-    "memory_available_mb": 5104.2,
-    "disk_storage": {
-      "total_gb": 500.0,
-      "used_gb": 250.0,
-      "free_gb": 250.0,
-      "audio_files_count": 86
-    }
+  "system": {
+    "vaani": {"reachable": true, "status": "healthy"},
+    "gpu": {"available": true, "memory_used_mb": 2048},
+    "resource_usage": {"cpu_percent": 12.5, "memory_percent": 64.2}
   },
-  "orchestration_mode": "supervised"
+  "watchdog": {
+    "watchdog_running": true,
+    "services": [{"name": "VaaniTTS", "status": "healthy", "restarts": 0}]
+  }
 }
 ```
 
@@ -100,14 +89,12 @@ Request 5: ✓ 12.4s (245020 bytes)
 ## 4. WHAT WAS BUILT
 
 Strict bullets:
-• Guardrails added (5000 chars size control, 20s circuit-breaker timeout, async concurrency semaphores)
-• Monitoring added (Deep `/system/metrics` metrics, disk checks, cache depth monitoring)
-• Watchdog upgraded (Autonomous recovery with failure counters, cooldowns, and SAFE FALLBACK states)
-• Pipeline Unified (Port 8007 and pyttsx3 REMOVED; strictly Vaani-only flow)
-• gTTS Fallback (Automatic switch to gTTS during local model download/VRAM crunch)
-• Pravah Integrated (Adapter for direct telemetry push and external control signals)
-• Zero Downtime (Rolling restart logic implemented in orchestration layer)
-• Tests added (100-request stability stress test and concurrency validation)
+• Deterministic Paths (Vaani engine enforced as primary; non-deterministic fallbacks gated and logged)
+• Health/Metrics Split (/system/health is lightweight; /system/metrics handles heavy diagnostics)
+• Watchdog Hardening (Max 3 restarts, 60-120s cooldowns, and safety escalation implemented)
+• Pravah Integration (Structured JSON event emission to `runtime_events.json` for external recovery)
+• Startup Orchestration (Dependency-aware sequence: Vaani → DB → Backend)
+• Logging Standard (Standardized JSON logging with INFO/WARN/ERROR/CRITICAL levels)
 
 AND:
 
@@ -117,13 +104,13 @@ AND:
 ## 5. FAILURE CASES
 
 • **Input > 5000 chars**
-  Returns: Unprocessable Entity ValueError Exception preventing memory bloat. ("Input length 5500 exceeds maximum 5000 characters. Please shorten your text.")
-• **Timeout > 20 sec**
-  Returns: Standard Python/asyncio TimeoutError. ("Voice inference timed out after 20 seconds"). Fails gracefully, returning 200 via text warning or explicit HTTP 503 HTTP dependent on UI handling.
-• **GPU unavailable / Model loading**
-  Returns: Backend seamlessly updates `gpu_mode: False`. If model is not loaded or engine is unreachable, **gTTS Fallback** activates automatically to ensure zero-downtime voice generation.
-• **Process crash**
-  Returns: Watchdog identifies HTTP rejection, logs anomaly, issues systematic port purge, and triggers rolling restart.
+  Returns: `ValueError` exception preventing memory bloat. ("Input length 5500 exceeds maximum 5000 characters.")
+• **Vaani Timeout (> 20 sec)**
+  Returns: Fallback to **gTTS** triggered; event logged to `runtime_events.json`.
+• **Process Crash Loop**
+  Returns: Watchdog caps at 3 restarts, then moves to `CRITICAL_FAILURE` state. Pravah observes and triggers external alert.
+• **Vaani Down**
+  Returns: Automatic fallback to gTTS ensures zero-downtime voice delivery while logging the anomaly for Pravah.
 
 ────────────────────────────────
 ## 6. PROOF
@@ -144,14 +131,22 @@ AND:
 Result: 100/100 successful in 625.0s (avg latency 6.2s, min latency 3.1s, max latency 14.8s)
 ```
 
-• **Concurrent test result:**
-```
-✓ PASS: 5 Concurrent TTS Requests
-Result: 5/5 successful in 18.4s (avg 12.3s latency)
+• **Watchdog Safety Logs:**
+```text
+[Watchdog] VaaniTTS is down. Recovery attempt 1/3...
+[Watchdog] [OK] VaaniTTS recovery SUCCESS via 'POST /restart'.
+...
+[Watchdog] VaaniTTS exceeded 3 attempts. ESCALATING to CRITICAL FAILURE.
+[Pravah] Event emitted: {"service": "VaaniTTS", "event": "CRITICAL_FAILURE", ...}
 ```
 
-• **Restart simulation log:**
-```
-✓ PASS: Restart During Inference
-Result: Burst: 3/3 succeeded | Recovery: ✓ (Post-status: healthy).
+• **Pravah Structured Event:**
+```json
+{
+  "source": "ServiceWatchdog",
+  "service": "Database",
+  "event": "RECOVERY_SUCCESS",
+  "detail": "pool recycled + SELECT 1 succeeded",
+  "timestamp": "2026-04-16T13:45:00"
+}
 ```
