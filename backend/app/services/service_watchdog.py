@@ -32,6 +32,10 @@ import requests
 
 from app.services.runtime_monitor import RuntimeMonitor, ServiceSignal
 
+import json
+from datetime import datetime
+from app.services.runtime_monitor import RuntimeMonitor, ServiceSignal
+
 logger = logging.getLogger("ServiceWatchdog")
 
 # ---------------------------------------------------------------------------
@@ -39,10 +43,9 @@ logger = logging.getLogger("ServiceWatchdog")
 # ---------------------------------------------------------------------------
 
 POLL_INTERVAL: int = 30          # seconds between health sweeps
-MAX_RECOVERY_ATTEMPTS: int = 5   # per service per window
-RECOVERY_COOLDOWN: int = 180     # 3 minutes cooldown
-GLOBAL_FAILURE_THRESHOLD: int = 20 # Max failures before safe fallback
-RESTART_THRESHOLD_WINDOW: int = 3600 # 1 hour
+MAX_RECOVERY_ATTEMPTS: int = 3   # Max 3 attempts before escalation
+RECOVERY_COOLDOWN: int = 120     # 2 minutes cooldown
+RUNTIME_EVENTS_FILE: str = "runtime_events.json"
 
 
 # ---------------------------------------------------------------------------
@@ -52,13 +55,7 @@ RESTART_THRESHOLD_WINDOW: int = 3600 # 1 hour
 class ServiceWatchdog:
     """
     Background watchdog thread that monitors and auto-recovers services.
-
-    Start it with:
-        watchdog = ServiceWatchdog()
-        watchdog.start()
-
-    Query status with:
-        watchdog.get_status()
+    Enforces deterministic recovery paths and safety cooldowns.
     """
 
     def __init__(self, poll_interval: int = POLL_INTERVAL):
@@ -144,17 +141,16 @@ class ServiceWatchdog:
         if attempts >= MAX_RECOVERY_ATTEMPTS:
             logger.critical(
                 f"[Watchdog] {name} exceeded {MAX_RECOVERY_ATTEMPTS} attempts. "
-                f"Sinking service into SAFE FALLBACK state."
+                "ESCALATING to CRITICAL FAILURE. No more automated restarts."
             )
-            # Safe Fallback: Stop attempting and notify Pravah/Logs
-            self._record_event(name, "safe_fallback", "Max retries exceeded")
+            self._record_event(name, "CRITICAL_FAILURE", "Max retries exceeded - automated recovery suspended")
             return
 
         logger.warning(
             f"[Watchdog] {name} is {signal.status}. "
-            f"Attempting recovery (#{attempts + 1})..."
+            f"Recovery attempt {attempts + 1}/{MAX_RECOVERY_ATTEMPTS}..."
         )
-        self._record_event(name, "recovery_attempt", signal.message)
+        self._record_event(name, "RECOVERY_START", f"Reason: {signal.message}")
 
         success = False
         action = "unknown"
@@ -168,21 +164,20 @@ class ServiceWatchdog:
             elif name == "PRANA":
                 success, action = self._recover_prana(signal)
             elif name == "GurkulBackend":
-                logger.critical(
-                    "[Watchdog] Backend is reporting unhealthy from within — "
-                    "this is unexpected. Please check manually."
-                )
+                logger.critical("[Watchdog] Backend internal health alert - check manually.")
                 action = "alert_only"
                 success = False
         except Exception as exc:
             logger.exception(f"[Watchdog] Recovery for {name} raised: {exc}")
             action = f"exception: {exc}"
 
-        self._recovery_attempts[name] = attempts + 1
-        self._last_recovery_time[name] = now
-        outcome = "success" if success else "failed"
+        with self._lock:
+            self._recovery_attempts[name] = attempts + 1
+            self._last_recovery_time[name] = now
+            
+        outcome = "SUCCESS" if success else "FAILED"
         logger.info(f"[Watchdog] {name} recovery {outcome} via '{action}'.")
-        self._record_event(name, f"recovery_{outcome}", action)
+        self._record_event(name, f"RECOVERY_{outcome}", action)
 
     # ------------------------------------------------------------------
     # Individual recovery actions
@@ -288,16 +283,31 @@ class ServiceWatchdog:
     # ------------------------------------------------------------------
 
     def _record_event(self, service: str, event_type: str, detail: str):
+        """Record watchdog event locally and to runtime_events.json for Pravah."""
+        timestamp_str = datetime.now().isoformat()
         entry = {
             "service": service,
             "event": event_type,
             "detail": detail[:200],
-            "timestamp": time.time(),
+            "timestamp": timestamp_str,
+            "unix_time": time.time()
         }
+        
         with self._lock:
             self._recovery_log.append(entry)
             if len(self._recovery_log) > 200:
                 self._recovery_log.pop(0)
+
+        # Write to JSON for Pravah (External Monitoring)
+        try:
+            # We append as individual lines for easy ingestion (JSONL style)
+            # or overwrite with the latest event for simple polling.
+            # Requirement says "write it on runtime_events.json"
+            # I'll use append mode for history.
+            with open(RUNTIME_EVENTS_FILE, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+        except Exception as e:
+            logger.error(f"Failed to write to {RUNTIME_EVENTS_FILE}: {e}")
 
     def get_status(self) -> dict:
         """Return current watchdog metrics for the /system/metrics endpoint."""

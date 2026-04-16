@@ -1,10 +1,9 @@
-# Force output to stderr/stdout immediately
 import sys
-sys.stdout.flush()
-sys.stderr.flush()
+from app.core.logging_config import setup_logging
+setup_logging()
 
 print("=" * 80, flush=True)
-print("[Main] FILE LOADED - Starting Gurukul Backend...", flush=True)
+print("[Main] FILE LOADED - Starting Gurukul Backend (Deterministic Mode)...", flush=True)
 
 import os
 import uvicorn
@@ -617,6 +616,19 @@ async def startup_event():
     # Start the watchdog
     asyncio.create_task(dependency_watchdog())
     
+    # ── 10. Start Autonomous Monitoring ────────────────────────
+    try:
+        from app.services.service_watchdog import watchdog
+        from app.services.pravah_adapter import pravah_adapter
+        
+        watchdog.start()
+        pravah_adapter.start()
+        print("[Startup] [OK] ServiceWatchdog and PravahAdapter started")
+        sys.stdout.flush()
+    except Exception as e:
+        print(f"[Startup] [WARN] Failed to start autonomous monitoring: {e}")
+        sys.stdout.flush()
+
     system_health["startup_complete"] = True
     print("[Startup] [OK] Startup event complete! Server will bind to port now.")
     print("[Startup] Background tasks (routers, DB, MongoDB, Watchdog) are active.")

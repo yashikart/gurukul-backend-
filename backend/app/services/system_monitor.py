@@ -114,42 +114,28 @@ def _check_disk_usage() -> dict:
 @router.get("/health")
 async def get_health():
     """
-    Lightweight, fast, non-blocking health check for Pravah and Orchestration.
+    ULTRA-LIGHTWEIGHT health check.
+    Used by load balancers and Pravah 'alive' signals.
     """
     return {
         "status": "healthy",
         "service": "gurukul-backend",
+        "uptime_seconds": int(time.time() - START_TIME),
         "timestamp": time.time()
     }
 
 @router.get("/diagnostics")
 async def get_system_diagnostics():
     """
+    [DEPRECATED] Use /system/metrics for full telemetry.
     Deep diagnostics for 24x7 stability monitoring.
-    Includes GPU, Disk, and Vaani health.
     """
-    # 1. Voice Engine Stats
-    voice_stats = provider.get_status()
-
-    # 2. Vaani Engine Health (direct ping)
     vaani_health = _check_vaani_health()
-
-    # 3. GPU Status
-    gpu_info = _check_gpu()
-
-    # 4. Infrastructure
-    uptime_min = (time.time() - START_TIME) / 60
-    disk_info = _check_disk_usage()
-
     return {
         "status": "healthy" if vaani_health["reachable"] else "degraded",
+        "vaani": vaani_health,
         "infrastructure": {
-            "uptime_minutes": int(uptime_min),
             "cpu_usage_percent": psutil.cpu_percent(),
             "memory_usage_percent": psutil.virtual_memory().percent,
-            "disk": disk_info
-        },
-        "gpu": gpu_info,
-        "vaani": vaani_health,
-        "voice_stats": voice_stats
+        }
     }

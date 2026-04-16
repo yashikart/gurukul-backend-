@@ -53,35 +53,42 @@ class PravahAdapter:
             await asyncio.sleep(self.interval)
 
     async def _push_metrics(self):
-        """Aggregate telemetry from metrics and monitor services and push to Pravah."""
-        metrics = await get_metrics()
-        health = await get_system_health()
+        """Aggregate telemetry and write to runtime_events.json for Pravah ingestion."""
+        try:
+            metrics = await get_metrics()
+            
+            # Use the new lightweight health check
+            health = await get_system_health()
 
-        payload = {
-            "source": "gurukul-backend",
-            "timestamp": time.time(),
-            "uptime": metrics.get("uptime_seconds"),
-            "latency": {
-                "voice_avg_ms": metrics.get("latency", {}).get("voice_inference", {}).get("avg_ms"),
-                "ai_avg_ms": metrics.get("latency", {}).get("ai_inference", {}).get("avg_ms"),
-            },
-            "failures": metrics.get("requests", {}).get("error_count"),
-            "gpu": {
-                "available": health.get("gpu_details", {}).get("available"),
-                "memory_used_mb": health.get("gpu_details", {}).get("memory_used_mb"),
-            },
-            "queue_depth": health.get("voice_engine", {}).get("queue_depth"),
-            "status": health.get("status"),
-        }
+            payload = {
+                "source": "PravahAdapter",
+                "timestamp": datetime.now().isoformat(),
+                "unix_time": time.time(),
+                "uptime": metrics.get("uptime_seconds"),
+                "status": metrics.get("status", "unknown"),
+                "telemetry": {
+                    "voice_avg_ms": metrics.get("latency", {}).get("voice_ms", {}).get("avg"),
+                    "ai_avg_ms": metrics.get("latency", {}).get("ai_ms", {}).get("avg"),
+                    "failure_count": metrics.get("requests", {}).get("error_count", 0),
+                    "error_rate": metrics.get("requests", {}).get("error_rate_percent", 0),
+                },
+                "system": metrics.get("system", {}),
+                "watchdog": metrics.get("watchdog", {})
+            }
 
-        # In a real integration, this would be a POST to Pravah
-        # For now, we log it and simulate the call
-        logger.info(f"[TELEMETRY] Pushing to Pravah: {payload['status']} | uptime={payload['uptime']}s")
-        
-        # try:
-        #     requests.post(self.pravah_url, json=payload, timeout=5)
-        # except Exception as e:
-        #     logger.warning(f"Could not reach Pravah endpoint: {e}")
+            # Write to JSON for Pravah
+            try:
+                # Root is 3 levels up from app/services/
+                root_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+                event_file = os.path.join(root_path, "runtime_events.json")
+                with open(event_file, "a") as f:
+                    f.write(json.dumps(payload) + "\n")
+                logger.info(f"Pashed telemetry to runtime_events.json | status={payload['status']}")
+            except Exception as fe:
+                logger.error(f"Failed to write telemetry: {fe}")
+
+        except Exception as e:
+            logger.error(f"Pash metrics failed: {e}")
 
     async def receive_command(self, command: str):
         """Handle control signals from Pravah."""

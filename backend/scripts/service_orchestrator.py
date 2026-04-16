@@ -31,12 +31,15 @@ import sys
 import time
 import signal
 import threading
+import json
+from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional, List
 
 # ---------------------------------------------------------------------------
-# Logging
+# Configuration & Constants
 # ---------------------------------------------------------------------------
+RUNTIME_EVENTS_FILE = "runtime_events.json"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,14 +48,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Orchestrator")
 
-# ---------------------------------------------------------------------------
-# Base directory (Gurukul root, two levels up from this script)
-# ---------------------------------------------------------------------------
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# backend/scripts/ → backend/ → Gurukul/
 BASE_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "..", ".."))
 
+# ---------------------------------------------------------------------------
+# Logging helper
+# ---------------------------------------------------------------------------
+
+def record_event(service: str, event_type: str, detail: str):
+    """Record orchestrator event to runtime_events.json."""
+    entry = {
+        "source": "Orchestrator",
+        "service": service,
+        "event": event_type,
+        "detail": detail[:200],
+        "timestamp": datetime.now().isoformat(),
+        "unix_time": time.time()
+    }
+    try:
+        with open(os.path.join(BASE_DIR, RUNTIME_EVENTS_FILE), "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as e:
+        logger.error(f"Failed to write to {RUNTIME_EVENTS_FILE}: {e}")
 
 # ---------------------------------------------------------------------------
 # Service definition
@@ -63,18 +80,26 @@ class ManagedService:
     name: str
     cmd: List[str]
     cwd: str
-    health_url: Optional[str] = None     # HTTP GET for liveness check
-    restart_delay: int = 5               # seconds before restarting
-    max_restarts: int = 10               # 0 = unlimited
+    health_url: Optional[str] = None
+    restart_delay: int = 60              # Cooldown seconds (60-120 range)
+    max_restarts: int = 3                # Strict limit
+    depends_on: Optional[str] = None     # Name of service that must be healthy first
     restart_count: int = field(default=0, init=False)
     proc: Optional[subprocess.Popen] = field(default=None, init=False)
     _stop: bool = field(default=False, init=False)
+    _last_restart: float = field(default=0.0, init=False)
 
     def is_alive(self) -> bool:
         return self.proc is not None and self.proc.poll() is None
 
     def start(self):
+        if self.restart_count >= self.max_restarts:
+            logger.critical(f"[{self.name}] Max restarts ({self.max_restarts}) reached. Manual intervention required.")
+            record_event(self.name, "TERMINATED", "Max restarts reached")
+            return False
+
         logger.info(f"[{self.name}] Starting: {' '.join(self.cmd)}")
+        record_event(self.name, "STARTING", f"Attempt #{self.restart_count + 1}")
         try:
             self.proc = subprocess.Popen(
                 self.cmd,
@@ -82,67 +107,25 @@ class ManagedService:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == "nt" else 0
             )
-        except FileNotFoundError as exc:
-            logger.error(f"[{self.name}] Could not start — command not found: {exc}")
-            self.proc = None
+            self._last_restart = time.time()
+            return True
+        except Exception as exc:
+            logger.error(f"[{self.name}] Failed to start: {exc}")
+            record_event(self.name, "START_FAILED", str(exc))
+            return False
 
     def stop(self):
         self._stop = True
         if self.proc and self.proc.poll() is None:
-            logger.info(f"[{self.name}] Sending SIGTERM...")
+            logger.info(f"[{self.name}] Stopping...")
             self.proc.terminate()
             try:
-                self.proc.wait(timeout=8)
-            except subprocess.TimeoutExpired:
-                logger.warning(f"[{self.name}] Timeout — sending SIGKILL")
-                self.proc.kill()
-
-    def restart_rolling(self):
-        """
-        Implementation of Phase 2 Zero Downtime:
-        Spin new instance -> Verify Health -> Kill old instance
-        """
-        logger.info(f"[{self.name}] Initiating ROLLING RESTART (Zero Downtime)...")
-        
-        # 1. Start new instance on a temporary offset if port is fixed
-        # (Simplified: for this local setup, we just ensure fast swap)
-        old_proc = self.proc
-        self.start() 
-        
-        # 2. Wait for health (if health_url exists)
-        if self.health_url:
-            logger.info(f"[{self.name}] Waiting for new instance health: {self.health_url}")
-            for _ in range(30):
-                try:
-                    r = requests.get(self.health_url, timeout=2)
-                    if r.status_code == 200:
-                        logger.info(f"[{self.name}] New instance is HEALTHY.")
-                        break
-                except:
-                    pass
-                time.sleep(1)
-        
-        # 3. Kill old proc
-        if old_proc and old_proc.poll() is None:
-            logger.info(f"[{self.name}] Killing old instance.")
-            old_proc.terminate()
-            try:
-                old_proc.wait(timeout=5)
+                self.proc.wait(timeout=10)
             except:
-                old_proc.kill()
-
-
-# ---------------------------------------------------------------------------
-# Log drainer — streams subprocess output to the orchestrator logger
-# ---------------------------------------------------------------------------
-
-def _drain_output(service: ManagedService):
-    if service.proc is None or service.proc.stdout is None:
-        return
-    for line in service.proc.stdout:
-        logger.info(f"  [{service.name}] {line.rstrip()}")
-
+                self.proc.kill()
+            record_event(self.name, "STOPPED", "Graceful shutdown")
 
 # ---------------------------------------------------------------------------
 # Orchestrator
@@ -158,59 +141,66 @@ class ServiceOrchestrator:
         python = sys.executable
         services = [
             ManagedService(
-                name="GurkulBackend",
-                cmd=[python, "-m", "uvicorn", "app.main:app",
-                     "--host", "0.0.0.0", "--port", "3000"],
-                cwd=os.path.join(BASE_DIR, "backend"),
-                health_url="http://localhost:3000/system/health",
-            ),
-            ManagedService(
                 name="VaaniEngine",
                 cmd=[python, "start.py"],
                 cwd=os.path.join(BASE_DIR, "vaani-engine"),
                 health_url="http://localhost:8008/health",
             ),
             ManagedService(
+                name="GurkulBackend",
+                cmd=[python, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"],
+                cwd=os.path.join(BASE_DIR, "backend"),
+                health_url="http://localhost:3000/system/health",
+                depends_on="VaaniEngine"
+            ),
+            ManagedService(
                 name="BucketConsumer",
                 cmd=[python, "scripts/start_bucket_consumer.py"],
                 cwd=os.path.join(BASE_DIR, "backend"),
-                health_url=None,   # uses sentinel file
+                depends_on="GurkulBackend"
             ),
         ]
-
         if include_frontend:
             services += [
-                ManagedService(
-                    name="GurkulFrontend",
-                    cmd=["npm", "run", "dev"],
-                    cwd=os.path.join(BASE_DIR, "Frontend"),
-                ),
-                ManagedService(
-                    name="EMSFrontend",
-                    cmd=["npm", "run", "dev"],
-                    cwd=os.path.join(BASE_DIR, "EMS System", "frontend"),
-                ),
+                ManagedService(name="GurkulFrontend", cmd=["npm", "run", "dev"], cwd=os.path.join(BASE_DIR, "Frontend")),
+                ManagedService(name="EMSFrontend", cmd=["npm", "run", "dev"], cwd=os.path.join(BASE_DIR, "EMS System", "frontend")),
             ]
         return services
 
-    # ------------------------------------------------------------------
-
     def start_all(self):
-        logger.info("=== Gurukul Orchestrator: Starting all services ===")
+        logger.info("=== Gurukul Orchestrator: Deterministic Startup Sequence ===")
+        record_event("System", "ORCHESTRATION_START", "Initiating service sequence")
+        
         for svc in self._services:
-            svc.start()
-            time.sleep(2)
-            # Drain in background thread
-            t = threading.Thread(target=_drain_output, args=(svc,), daemon=True)
-            t.start()
+            # Check dependency
+            if svc.depends_on:
+                logger.info(f"[{svc.name}] Waiting for dependency: {svc.depends_on}")
+                while not self._is_service_healthy(svc.depends_on) and not self._stop_event.is_set():
+                    time.sleep(5)
 
-    def stop_all(self):
-        logger.info("=== Gurukul Orchestrator: Stopping all services ===")
-        for svc in reversed(self._services):
-            svc.stop()
+            if self._stop_event.is_set(): break
+            
+            if svc.start():
+                time.sleep(5) # Give it a moment to bind ports
+                threading.Thread(target=self._drain_output, args=(svc,), daemon=True).start()
+
+    def _is_service_healthy(self, name: str) -> bool:
+        svc = next((s for s in self._services if s.name == name), None)
+        if not svc or not svc.is_alive(): return False
+        if not svc.health_url: return True # Assume alive if proc is up
+        try:
+            import requests
+            r = requests.get(svc.health_url, timeout=2)
+            return r.status_code == 200
+        except:
+            return False
+
+    def _drain_output(self, service: ManagedService):
+        if service.proc and service.proc.stdout:
+            for line in service.proc.stdout:
+                logger.info(f"  [{service.name}] {line.rstrip()}")
 
     def run(self):
-        """Start services and keep them alive."""
         self.start_all()
         signal.signal(signal.SIGINT, self._handle_exit)
         signal.signal(signal.SIGTERM, self._handle_exit)
@@ -224,45 +214,30 @@ class ServiceOrchestrator:
 
     def _check_and_recover(self):
         for svc in self._services:
-            if svc._stop:
-                continue
+            if svc._stop: continue
             if not svc.is_alive():
-                if svc.max_restarts and svc.restart_count >= svc.max_restarts:
-                    logger.critical(
-                        f"[{svc.name}] Exceeded {svc.max_restarts} restarts. Not restarting."
-                    )
-                    svc._stop = True
-                    continue
-                logger.warning(
-                    f"[{svc.name}] Detected as dead (exit={svc.proc.returncode if svc.proc else 'N/A'}). "
-                    f"Restarting in {svc.restart_delay}s..."
-                )
-                time.sleep(svc.restart_delay)
-                svc.start()
+                now = time.time()
+                if now - svc._last_restart < svc.restart_delay:
+                    continue # In cooldown
+
+                logger.warning(f"[{svc.name}] Dead. Attempting recovery...")
                 svc.restart_count += 1
-                t = threading.Thread(target=_drain_output, args=(svc,), daemon=True)
-                t.start()
-                logger.info(f"[{svc.name}] Restarted (attempt #{svc.restart_count}).")
+                if svc.start():
+                    threading.Thread(target=self._drain_output, args=(svc,), daemon=True).start()
+
+    def stop_all(self):
+        logger.info("=== Gurukul Orchestrator: Shutdown ===")
+        for svc in reversed(self._services):
+            svc.stop()
 
     def _handle_exit(self, signum, frame):
-        logger.info(f"Received signal {signum}. Initiating graceful shutdown...")
         self._stop_event.set()
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Gurukul Service Orchestrator")
-    parser.add_argument("--no-frontend", action="store_true",
-                        help="Skip frontend dev servers (headless mode)")
-    parser.add_argument("--poll", type=int, default=30,
-                        help="Health check poll interval in seconds (default: 30)")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--no-frontend", action="store_true")
+    parser.add_argument("--poll", type=int, default=30)
     args = parser.parse_args()
 
-    orchestrator = ServiceOrchestrator(
-        poll_interval=args.poll,
-        include_frontend=not args.no_frontend,
-    )
-    orchestrator.run()
+    orch = ServiceOrchestrator(poll_interval=args.poll, include_frontend=not args.no_frontend)
+    orch.run()

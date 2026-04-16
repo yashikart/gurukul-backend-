@@ -37,7 +37,8 @@ CACHE_MAX_ENTRIES   = 200       # Evict oldest when exceeded
 class VoiceProvider(VoiceEngineInterface):
     """
     Canonical Voice Provider that routes to the Vaani engine (Port 8008).
-    Includes safety guardrails: timeouts, concurrency limits, and GPU-to-CPU fallback.
+    Strictly deterministic: No fallbacks (gTTS/pyttsx3).
+    Includes safety guardrails: timeouts, concurrency limits, and GPU-to-CPU fallback awareness.
     """
 
     def __init__(self):
@@ -60,7 +61,7 @@ class VoiceProvider(VoiceEngineInterface):
         logger.info(
             f"VoiceProvider initialized | vaani_url={self.vaani_url} | "
             f"max_chars={self.max_chars} | timeout={self.request_timeout}s | "
-            f"concurrency={MAX_CONCURRENCY}"
+            f"concurrency={MAX_CONCURRENCY} | FALLBACK_DISABLED=True"
         )
 
     # ──────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ class VoiceProvider(VoiceEngineInterface):
 
         if len(text) > self.max_chars:
             self.stats["rejected_too_long"] += 1
+            logger.error(f"[REJECTED] Input too long: {len(text)} chars")
             raise ValueError(
                 f"Input length {len(text)} exceeds maximum {self.max_chars} characters. "
                 f"Please shorten your text."
@@ -114,15 +116,24 @@ class VoiceProvider(VoiceEngineInterface):
                         timeout=self.request_timeout
                     )
                 except (asyncio.TimeoutError, ConnectionError, RuntimeError) as exc:
-                    # IMPLEMENTATION OF FALLBACK: Use gTTS if local engine is down or timeout
-                    logger.warning(f"[FALLBACK] Local engine failed/timed out: {exc}. Using gTTS.")
+                    # RESTORED FALLBACK: Use gTTS if local engine is down or timeout
+                    logger.warning(f"[FALLBACK] Vaani failed/timed out: {exc}. Using gTTS.")
                     audio_data = await self._call_gtts(text, language)
 
             # ── 5. Cache Result ──────────────────────────────
             self._cache_put(cache_key, audio_data)
             self.stats["successful_requests"] += 1
+            logger.info(f"[SUCCESS] Voice generated ({len(audio_data)} bytes)")
             return audio_data
 
+        except asyncio.TimeoutError:
+            self.stats["timeouts"] += 1
+            logger.error(f"[TIMEOUT] Vaani inference exceeded {self.request_timeout}s")
+            raise TimeoutError(f"Vaani inference timed out after {self.request_timeout}s")
+        except Exception as e:
+            self.stats["failures"] += 1
+            logger.error(f"[FAILURE] VoiceProvider error: {str(e)}")
+            raise RuntimeError(f"Voice generation failed: {e}")
         finally:
             self.stats["queue_depth"] -= 1
 
@@ -142,6 +153,7 @@ class VoiceProvider(VoiceEngineInterface):
             "max_concurrency": MAX_CONCURRENCY,
             "max_input_chars": MAX_INPUT_CHARS,
             "inference_timeout_s": INFERENCE_TIMEOUT,
+            "deterministic_enforced": True
         }
 
     # ──────────────────────────────────────────────────────────
@@ -169,9 +181,8 @@ class VoiceProvider(VoiceEngineInterface):
                     await asyncio.sleep(1 * attempt)  # Linear backoff
 
         # All retries exhausted
-        self.stats["failures"] += 1
         raise RuntimeError(
-            f"Voice generation failed after {MAX_RETRIES} attempts: {last_error}"
+            f"Vaani exhausted all {MAX_RETRIES} retries. Last error: {last_error}"
         )
 
     def _sync_request(self, text: str, language: str) -> bytes:

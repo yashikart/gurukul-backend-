@@ -147,18 +147,25 @@ async def get_metrics():
     except Exception as exc:
         watchdog_status = {"error": f"Could not read watchdog: {exc}"}
 
-    # Include detailed diagnostics from system_monitor
+    # Include detailed diagnostics from system_monitor (HEAVY)
     diagnostics = {}
     try:
-        from app.services.system_monitor import _check_vaani_health, _check_gpu, START_TIME, _check_disk_usage
+        from app.services.system_monitor import _check_vaani_health, _check_gpu, _check_disk_usage
+        import psutil
+        
+        vaani_h = _check_vaani_health()
         diagnostics = {
-            "vaani": _check_vaani_health(),
+            "vaani": vaani_h,
             "gpu": _check_gpu(),
             "disk": _check_disk_usage(),
-            "uptime_min": int((time.time() - START_TIME) / 60)
+            "resource_usage": {
+                "cpu_percent": psutil.cpu_percent(),
+                "memory_percent": psutil.virtual_memory().percent,
+                "thread_count": threading.active_count()
+            }
         }
     except Exception as exc:
-        diagnostics = {"error": str(exc)}
+        diagnostics = {"error": f"Diagnostics failed: {exc}"}
 
     return {
         "status": "healthy" if diagnostics.get("vaani", {}).get("reachable") else "degraded",
@@ -168,22 +175,14 @@ async def get_metrics():
             "total": total,
             "error_count": errors,
             "error_rate_percent": error_rate,
-            "by_status_code": status_snapshot,
+            "status_codes": status_snapshot,
             "top_routes": route_snapshot,
         },
         "latency": {
-            "voice_inference": {
-                "avg_ms": voice_avg,
-                "p95_ms": voice_p95,
-                "samples": voice_samples,
-            },
-            "ai_inference": {
-                "avg_ms": ai_avg,
-                "p95_ms": ai_p95,
-                "samples": ai_samples,
-            },
+            "voice_ms": {"avg": voice_avg, "p95": voice_p95, "samples": voice_samples},
+            "ai_ms": {"avg": ai_avg, "p95": ai_p95, "samples": ai_samples},
         },
-        "diagnostics": diagnostics,
+        "system": diagnostics,
         "watchdog": watchdog_status,
     }
 
