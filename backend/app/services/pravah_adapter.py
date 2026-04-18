@@ -19,10 +19,14 @@ import asyncio
 import logging
 import time
 import requests
-from typing import Dict, Any
+import os
+import json
+from datetime import datetime
+from typing import Dict, Any, Optional
 from app.services.system_metrics import get_metrics
 from app.services.system_monitor import get_system_health
 from app.core.config import settings
+from app.core.context import get_trace_id
 
 logger = logging.getLogger("PravahAdapter")
 
@@ -73,22 +77,48 @@ class PravahAdapter:
                     "error_rate": metrics.get("requests", {}).get("error_rate_percent", 0),
                 },
                 "system": metrics.get("system", {}),
-                "watchdog": metrics.get("watchdog", {})
+                "watchdog": metrics.get("watchdog", {}),
+                "trace_id": get_trace_id()
             }
 
             # Write to JSON for Pravah
-            try:
-                # Root is 3 levels up from app/services/
-                root_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-                event_file = os.path.join(root_path, "runtime_events.json")
-                with open(event_file, "a") as f:
-                    f.write(json.dumps(payload) + "\n")
-                logger.info(f"Pashed telemetry to runtime_events.json | status={payload['status']}")
-            except Exception as fe:
-                logger.error(f"Failed to write telemetry: {fe}")
+            self._write_event(payload)
 
         except Exception as e:
-            logger.error(f"Pash metrics failed: {e}")
+            logger.error(f"Push metrics failed: {e}")
+
+    def emit_signal(self, event_type: str, action: str, status: str = "success", payload: Optional[Dict[str, Any]] = None):
+        """
+        Emit a structured signal to Pravah.
+        Called from various parts of the system for event-driven observability.
+        """
+        signal = {
+            "source": "GurukulSignal",
+            "trace_id": get_trace_id(),
+            "timestamp": datetime.now().isoformat(),
+            "event_type": event_type,
+            "action": action,
+            "status": status,
+            "payload": payload or {}
+        }
+        
+        # Write synchronously for immediate reporting
+        try:
+            self._write_event(signal)
+            logger.debug(f"Signal emitted: {event_type} | action={action}")
+        except Exception as e:
+            logger.error(f"Failed to emit signal: {e}")
+
+    def _write_event(self, event_data: Dict[str, Any]):
+        """Internal helper to write event data to runtime_events.json."""
+        try:
+            # Root is 3 levels up from app/services/
+            root_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+            event_file = os.path.join(root_path, "runtime_events.json")
+            with open(event_file, "a") as f:
+                f.write(json.dumps(event_data) + "\n")
+        except Exception as fe:
+            logger.error(f"Failed to write event to file: {fe}")
 
     async def receive_command(self, command: str):
         """Handle control signals from Pravah."""

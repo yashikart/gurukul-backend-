@@ -142,8 +142,11 @@ app.add_middleware(
 # API security: rate limit, then payload size (last added = first run). Use BaseHTTPMiddleware so Starlette passes (app).
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.api_security_layer import payload_size_middleware, rate_limit_middleware
+from app.middleware.trace_middleware import trace_id_middleware
+
 app.add_middleware(BaseHTTPMiddleware, dispatch=payload_size_middleware)
 app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
+app.add_middleware(BaseHTTPMiddleware, dispatch=trace_id_middleware)
 
 # Metrics middleware — transparent request counter & latency tracker
 try:

@@ -11,6 +11,8 @@ from app.core.database import get_db
 from app.routers.auth import get_current_user
 from app.models.all_models import User
 from app.services.knowledge_base_helper import get_knowledge_base_context, enhance_prompt_with_context
+from app.services.pravah_adapter import pravah_adapter
+from app.services.bucket_adapter import bucket_adapter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -50,6 +52,13 @@ async def chat_endpoint(
     # Scope conversation_id to user to prevent cross-user access
     conversation_id = request.conversation_id or str(uuid.uuid4())
     user_conversation_key = f"{current_user.id}:{conversation_id}"
+    
+    # Emit Signal: User interaction started
+    pravah_adapter.emit_signal(
+        event_type="user_action",
+        action="chat_request",
+        payload={"conversation_id": conversation_id, "use_rag": request.use_rag}
+    )
     
     # Step 1: Try to get context from knowledge base
     kb_result = get_knowledge_base_context(
@@ -125,6 +134,26 @@ async def chat_endpoint(
     # Save messages to chat history (scoped to user)
     _chat_history[user_conversation_key].append({"role": "user", "content": request.message})
     _chat_history[user_conversation_key].append({"role": "assistant", "content": response_text})
+    
+    # Emit Memory to Bucket
+    bucket_adapter.emit_memory(
+        user_id=str(current_user.id),
+        session_id=conversation_id,
+        action="chat_interaction",
+        outcome="success" if groq_used else "failure",
+        payload={
+            "message_len": len(request.message),
+            "response_len": len(response_text),
+            "rag_used": kb_result["knowledge_base_used"]
+        }
+    )
+
+    # Emit Signal: Interaction complete
+    pravah_adapter.emit_signal(
+        event_type="user_action",
+        action="chat_response_generated",
+        status="success" if groq_used else "failure"
+    )
     
     return {
         "response": response_text,

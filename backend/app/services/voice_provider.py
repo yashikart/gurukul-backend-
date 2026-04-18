@@ -21,6 +21,7 @@ from gtts import gTTS
 from typing import Dict, Any, Optional
 from app.services.voice_engine_interface import VoiceEngineInterface
 from app.core.config import settings
+from app.services.pravah_adapter import pravah_adapter
 
 logger = logging.getLogger("VoiceProvider")
 
@@ -111,6 +112,13 @@ class VoiceProvider(VoiceEngineInterface):
 
                 # ── 4. Timeout Enforcement ───────────────────
                 try:
+                    logger.info(f"[TTS START] text_len={len(text)}")
+                    pravah_adapter.emit_signal(
+                        event_type="system_event",
+                        action="tts_start",
+                        payload={"text_len": len(text), "language": language}
+                    )
+                    
                     audio_data = await asyncio.wait_for(
                         self._call_vaani_engine(text, language),
                         timeout=self.request_timeout
@@ -124,15 +132,34 @@ class VoiceProvider(VoiceEngineInterface):
             self._cache_put(cache_key, audio_data)
             self.stats["successful_requests"] += 1
             logger.info(f"[SUCCESS] Voice generated ({len(audio_data)} bytes)")
+            
+            pravah_adapter.emit_signal(
+                event_type="system_event",
+                action="tts_completed",
+                status="success",
+                payload={"bytes": len(audio_data)}
+            )
             return audio_data
 
         except asyncio.TimeoutError:
             self.stats["timeouts"] += 1
             logger.error(f"[TIMEOUT] Vaani inference exceeded {self.request_timeout}s")
+            pravah_adapter.emit_signal(
+                event_type="system_event",
+                action="tts_failed",
+                status="timeout",
+                payload={"reason": "inference_timeout"}
+            )
             raise TimeoutError(f"Vaani inference timed out after {self.request_timeout}s")
         except Exception as e:
             self.stats["failures"] += 1
             logger.error(f"[FAILURE] VoiceProvider error: {str(e)}")
+            pravah_adapter.emit_signal(
+                event_type="system_event",
+                action="tts_failed",
+                status="error",
+                payload={"reason": str(e)}
+            )
             raise RuntimeError(f"Voice generation failed: {e}")
         finally:
             self.stats["queue_depth"] -= 1

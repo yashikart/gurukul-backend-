@@ -3,6 +3,7 @@ import json
 import sys
 import os
 from datetime import datetime
+from app.core.context import get_trace_id
 
 class JsonFormatter(logging.Formatter):
     """
@@ -18,6 +19,7 @@ class JsonFormatter(logging.Formatter):
             "module": record.module,
             "funcName": record.funcName,
             "line": record.lineno,
+            "trace_id": get_trace_id(),
         }
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
