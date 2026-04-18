@@ -18,6 +18,7 @@ import DraggableAvatar from './components/DraggableAvatar';
 // Lazy load heavy pages for code splitting
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const SuperAdminDashboard = React.lazy(() => import('./pages/superadmin/SuperAdminDashboard'));
 const TeacherDashboard = React.lazy(() => import('./pages/teacher/TeacherDashboard'));
 const ParentDashboard = React.lazy(() => import('./pages/parent/ParentDashboard'));
 // const Summarizer = React.lazy(() => import('./pages/Summarizer')); // PDF summarizer commented out
@@ -368,6 +369,16 @@ const AppContent = () => {
                         <PrivateRoute>
                           <RoleGuard allowedRoles={['admin']}>
                             <AdminDashboard />
+                          </RoleGuard>
+                        </PrivateRoute>
+                      }
+                    />
+                    <Route
+                      path="/superadmin"
+                      element={
+                        <PrivateRoute>
+                          <RoleGuard allowedRoles={['admin']}>
+                            <SuperAdminDashboard />
                           </RoleGuard>
                         </PrivateRoute>
                       }
