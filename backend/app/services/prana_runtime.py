@@ -4,7 +4,7 @@ from threading import Lock
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from sqlalchemy import event, func, inspect as sa_inspect, select
+from sqlalchemy import event, func, inspect as sa_inspect, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -85,39 +85,39 @@ def ensure_prana_integrity_append_only_guards(engine: Engine) -> None:
     with engine.begin() as connection:
         dialect = connection.dialect.name
         if dialect == "sqlite":
-            connection.exec_driver_sql(
-                f"""
+            connection.execute(
+                text(f"""
                 CREATE TRIGGER IF NOT EXISTS {SQLITE_APPEND_ONLY_TRIGGER_NAMES[0]}
                 BEFORE UPDATE ON {APPEND_ONLY_RESOURCE}
                 BEGIN
                     SELECT RAISE(ABORT, '{_append_only_trigger_message("UPDATE")}');
                 END;
-                """
+                """)
             )
-            connection.exec_driver_sql(
-                f"""
+            connection.execute(
+                text(f"""
                 CREATE TRIGGER IF NOT EXISTS {SQLITE_APPEND_ONLY_TRIGGER_NAMES[1]}
                 BEFORE DELETE ON {APPEND_ONLY_RESOURCE}
                 BEGIN
                     SELECT RAISE(ABORT, '{_append_only_trigger_message("DELETE")}');
                 END;
-                """
+                """)
             )
             return
 
         if dialect == "postgresql":
-            connection.exec_driver_sql(
-                f"""
+            connection.execute(
+                text(f"""
                 CREATE OR REPLACE FUNCTION {POSTGRES_APPEND_ONLY_FUNCTION_NAME}()
                 RETURNS trigger AS $$
                 BEGIN
                     RAISE EXCEPTION '{APPEND_ONLY_RESOURCE} is append-only; % is forbidden', TG_OP;
                 END;
                 $$ LANGUAGE plpgsql;
-                """
+                """)
             )
-            connection.exec_driver_sql(
-                f"""
+            connection.execute(
+                text(f"""
                 DO $$
                 BEGIN
                     IF NOT EXISTS (
@@ -131,7 +131,7 @@ def ensure_prana_integrity_append_only_guards(engine: Engine) -> None:
                         EXECUTE FUNCTION {POSTGRES_APPEND_ONLY_FUNCTION_NAME}();
                     END IF;
                 END $$;
-                """
+                """)
             )
 
 

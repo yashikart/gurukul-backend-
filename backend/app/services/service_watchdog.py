@@ -204,7 +204,7 @@ class ServiceWatchdog:
             os.path.dirname(__file__), "..", "..", "..", "vaani-engine"
         )
         vaani_dir = os.path.normpath(vaani_dir)
-        start_script = os.path.join(vaani_dir, "start.py")
+        start_script = os.path.join(vaani_dir, "main.py")
 
         if not os.path.exists(start_script):
             return False, f"Vaani start script not found at {start_script}"
