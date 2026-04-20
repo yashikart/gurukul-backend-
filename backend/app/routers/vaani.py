@@ -9,6 +9,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
+from app.services.pravah_adapter import pravah_adapter
 from app.services.prosody_mapper import (
     generate_prosody_hint,
     validate_prosody_hint,
@@ -79,6 +80,13 @@ async def compose_prosody_map(request: ProsodyMapRequest):
         ProsodyMapResponse with prosody hint and configuration
     """
     try:
+        # Emit Signal: Prosody Mapping Started
+        pravah_adapter.emit_signal(
+            event_type="voice_action",
+            action="prosody_mapping_started",
+            payload={"lang": request.language, "tone": request.tone}
+        )
+
         # Generate prosody hint
         prosody_config = generate_prosody_hint(
             text=request.text,
@@ -95,8 +103,14 @@ async def compose_prosody_map(request: ProsodyMapRequest):
         # Validate prosody hint
         is_valid = validate_prosody_hint(prosody_config)
         
-        prosody_hint = prosody_config.get("prosody_hint", "default")
-        
+        # Emit Signal: Prosody Mapping Success
+        pravah_adapter.emit_signal(
+            event_type="voice_action",
+            action="prosody_mapping_success",
+            status="success",
+            payload={"prosody_hint": prosody_hint}
+        )
+
         return ProsodyMapResponse(
             prosody_hint=prosody_hint,
             prosody_config=prosody_config,

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response
 from pydantic import BaseModel
+from app.services.pravah_adapter import pravah_adapter
+from app.services.bucket_adapter import bucket_adapter
 
 router = APIRouter()
 
@@ -37,9 +37,33 @@ async def text_to_speech(request: TTSRequest):
         if not request.text or not request.text.strip():
             raise HTTPException(status_code=400, detail="Text is required")
         
+        # Emit Signal: TTS Request Started
+        pravah_adapter.emit_signal(
+            event_type="voice_action",
+            action="tts_request_started",
+            payload={"lang": request.language, "text_len": len(request.text)}
+        )
+
         # Use our sovereign engine (Vaani)
         audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=False)
         
+        # Emit Signal: TTS Success
+        pravah_adapter.emit_signal(
+            event_type="voice_action",
+            action="tts_generation_success",
+            status="success",
+            payload={"lang": request.language, "engine": "vaani"}
+        )
+
+        # Emit Memory (Anonymous since no user dependency in this route)
+        bucket_adapter.emit_memory(
+            user_id="anonymous_tts",
+            session_id="tts_session",
+            action="voice_generation",
+            outcome="success",
+            payload={"engine": "vaani", "lang": request.language}
+        )
+
         # Vaani engine returns WAV
         media_type = "audio/wav"
         file_ext = "wav"
@@ -86,9 +110,29 @@ async def vaani_text_to_speech(request: TTSRequest):
         if not request.text or not request.text.strip():
             raise HTTPException(status_code=400, detail="Text is required")
         
+        # Emit Signal: Vaani TTS Started
+        pravah_adapter.emit_signal(
+            event_type="voice_action",
+            action="vaani_tts_started",
+            payload={"lang": request.language}
+        )
+
         # Use our sovereign engine (Vaani)
         audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=False)
         
+        # Emit Signal & Memory
+        pravah_adapter.emit_signal(
+            event_type="voice_action",
+            action="vaani_tts_success",
+            status="success"
+        )
+        bucket_adapter.emit_memory(
+            user_id="anonymous_vaani",
+            session_id="vaani_session",
+            action="vaani_voice_generation",
+            outcome="success"
+        )
+
         return Response(
             content=audio_data,
             media_type="audio/wav",
@@ -98,6 +142,13 @@ async def vaani_text_to_speech(request: TTSRequest):
         )
     
     except Exception as e:
+        # Emit failure signal
+        pravah_adapter.emit_signal(
+            event_type="voice_action",
+            action="vaani_tts_failed",
+            status="failure",
+            payload={"error": str(e)}
+        )
         print(f"[Vaani TTS] Error: {e}")
         raise HTTPException(
             status_code=500,
