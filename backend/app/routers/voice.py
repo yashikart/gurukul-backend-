@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse
 
 from app.services.speech_provider import speech_provider
 from app.services.system_metrics import record_ai_latency, record_voice_latency
+from app.services.pravah_adapter import pravah_adapter
+from app.services.bucket_adapter import bucket_adapter
 
 logger = logging.getLogger("VoiceRouter")
 
@@ -71,17 +73,48 @@ async def listen(
 
     # ── Transcribe ────────────────────────────────────────────────────
     try:
+        # Emit Signal: STT Started
+        pravah_adapter.emit_signal(
+            event_type="stt_action",
+            action="stt_request_started",
+            payload={"lang": language or "auto"}
+        )
+
         result = await speech_provider.transcribe(
             audio_bytes=audio_bytes,
             filename=filename,
             language=language or "auto",
         )
         record_ai_latency(result.duration_ms)   # Track in telemetry
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except TimeoutError as e:
-        raise HTTPException(status_code=504, detail=str(e))
-    except RuntimeError as e:
+
+        # Emit Signal: STT Success
+        pravah_adapter.emit_signal(
+            event_type="stt_action",
+            action="stt_request_success",
+            status="success",
+            payload={"engine": result.engine, "lang": result.language}
+        )
+        
+        # Emit Memory
+        bucket_adapter.emit_memory(
+            user_id="anonymous",
+            session_id="stt_session",
+            action="speech_to_text",
+            outcome="success",
+            payload={"engine": result.engine, "duration_ms": result.duration_ms}
+        )
+    except Exception as e:
+        # Emit Failure Signal
+        pravah_adapter.emit_signal(
+            event_type="stt_action",
+            action="stt_request_failed",
+            status="failure",
+            payload={"error": str(e)}
+        )
+        if isinstance(e, ValueError):
+            raise HTTPException(status_code=400, detail=str(e))
+        if isinstance(e, TimeoutError):
+            raise HTTPException(status_code=504, detail=str(e))
         raise HTTPException(status_code=503, detail=str(e))
 
     return {
@@ -163,8 +196,29 @@ async def converse(
         ai_text = resp.choices[0].message.content.strip()
         record_ai_latency((time.perf_counter() - t_llm) * 1000)
     except Exception as e:
+        # Emit Signal: LLM Failure
+        pravah_adapter.emit_signal(
+            event_type="converse_action",
+            action="llm_failed",
+            status="failure",
+            payload={"error": str(e)}
+        )
         logger.error(f"[Converse] LLM failed: {e}")
         ai_text = f"I received your message: '{user_text}', but my reasoning engine is currently unavailable."
+
+    # Emit Memory & Final Signal
+    bucket_adapter.emit_memory(
+        user_id="anonymous",
+        session_id="converse_session",
+        action="voice_conversation",
+        outcome="success",
+        payload={"user_text_len": len(user_text), "ai_text_len": len(ai_text)}
+    )
+    pravah_adapter.emit_signal(
+        event_type="converse_action",
+        action="conversation_loop_complete",
+        status="success"
+    )
 
     response_payload = {
         "success": True,

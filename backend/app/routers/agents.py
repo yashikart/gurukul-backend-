@@ -6,6 +6,8 @@ from app.services.llm import call_groq_api, call_ollama_api
 from app.core.config import settings
 import io
 import logging
+from app.services.pravah_adapter import pravah_adapter
+from app.services.bucket_adapter import bucket_adapter
 
 logger = logging.getLogger("AgentsRouter")
 
@@ -154,8 +156,39 @@ async def agent_generate_tts(request: TTSAgentRequest):
 
     # Generate audio
     try:
+        # Emit Signal: Agent TTS Started
+        pravah_adapter.emit_signal(
+            event_type="agent_action",
+            action="agent_tts_started",
+            payload={"lang": request.language, "text_len": len(text)}
+        )
+
         audio_bytes, engine = await asyncio.to_thread(_generate_audio, text, request.language)
+
+        # Emit Signal: Agent TTS Success
+        pravah_adapter.emit_signal(
+            event_type="agent_action",
+            action="agent_tts_success",
+            status="success",
+            payload={"engine": engine, "lang": request.language}
+        )
+
+        # Emit Memory
+        bucket_adapter.emit_memory(
+            user_id="agent_user",
+            session_id=f"agent_tts_{text_hash[:8]}",
+            action="agent_voice_generation",
+            outcome="success",
+            payload={"engine": engine, "lang": request.language, "text_hash": text_hash}
+        )
     except RuntimeError as e:
+        # Emit Failure Signal
+        pravah_adapter.emit_signal(
+            event_type="agent_action",
+            action="agent_tts_failed",
+            status="failure",
+            payload={"error": str(e)}
+        )
         raise HTTPException(status_code=503, detail=str(e))
 
     # Optional cache store — non-fatal if MongoDB is unavailable

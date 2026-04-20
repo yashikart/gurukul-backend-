@@ -18,7 +18,8 @@ Signals are emitted for critical system and user events to the Pravah adapter.
 - **Adapter**: `app.services.pravah_adapter`
 - **Signals emitted**:
     - `user_action`: `chat_request`, `chat_response_generated`
-    - `system_event`: `tts_start`, `tts_completed`, `tts_failed`
+    - `voice_action`: `tts_request_started`, `tts_generation_success`, `vaani_tts_started`, `vaani_tts_success`, `vaani_tts_failed`
+    - `agent_action`: `agent_tts_started`, `agent_tts_success`, `agent_tts_failed`
 - **Target**: Written to `runtime_events.json` for ingestion by Pravah.
 
 ## 3. Memory Emission (Bucket)
