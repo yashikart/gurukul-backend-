@@ -5,7 +5,7 @@
 
 **Backend entry:**
 Path: `backend/app/main.py`
-Explanation: Initializes FastAPI and starts autonomous monitoring (`ServiceWatchdog`, `PravahAdapter`). Uses deferred router imports to ensure immediate port binding.
+Explanation: Initializes FastAPI and starts autonomous monitoring (`ServiceWatchdog`, `PravahAdapter`). Uses deferred router imports to ensure immediate port binding. **Integrated with TANTRA Trace Middleware for request tracking.**
 
 **Startup orchestration:**
 Path: `backend/scripts/service_orchestrator.py`
@@ -23,8 +23,8 @@ Path: `backend/app/services/service_watchdog.py`
 Explanation: Rebuilt for safety. Implements Max 3 restarts, 60-120s cooldowns, and escalation logic to prevent infinite crash loops. Logs events to `runtime_events.json`.
 
 **File 3:**
-Path: `backend/app/services/system_metrics.py`
-Explanation: Consolidates heavy telemetry for Pravah. Exposes p95 latency, resource usage (CPU/GPU/Disk), and error rates in structured JSON format.
+Path: `backend/app/middleware/trace_middleware.py`
+Explanation: TANTRA integration layer. Extracts `x-trace-id` from incoming headers and propagates it using `contextvars`, ensuring all logs and emitted signals are traceable.
 
 ────────────────────────────────
 ## 3. LIVE FLOW (CRITICAL)
@@ -93,8 +93,9 @@ Strict bullets:
 • Health/Metrics Split (/system/health is lightweight; /system/metrics handles heavy diagnostics)
 • Watchdog Hardening (Max 3 restarts, 60-120s cooldowns, and safety escalation implemented)
 • Pravah Integration (Structured JSON event emission to `runtime_events.json` for external recovery)
+• TANTRA Integration (Trace propagation, Signal emission, and Memory emission layers added to TTS and Agent services)
 • Startup Orchestration (Dependency-aware sequence: Vaani → DB → Backend)
-• Logging Standard (Standardized JSON logging with INFO/WARN/ERROR/CRITICAL levels)
+• Logging Standard (Standardized JSON logging with Trace ID support and INFO/WARN/ERROR/CRITICAL levels)
 
 AND:
 
@@ -148,5 +149,29 @@ Result: 100/100 successful in 625.0s (avg latency 6.2s, min latency 3.1s, max la
   "event": "RECOVERY_SUCCESS",
   "detail": "pool recycled + SELECT 1 succeeded",
   "timestamp": "2026-04-16T13:45:00"
+}
+```
+
+• **TANTRA Trace Propagation:**
+```json
+{
+  "timestamp": "2026-04-20T16:30:00.000",
+  "level": "INFO",
+  "logger": "VoiceRouter",
+  "message": "STT Request Success",
+  "trace_id": "tantra-request-abc-123"
+}
+```
+
+• **Bucket Memory Event:**
+```json
+{
+  "trace_id": "tantra-request-abc-123",
+  "user_id": "agent_user",
+  "session_id": "agent_tts_5a7b8c9d",
+  "action": "agent_voice_generation",
+  "outcome": "success",
+  "payload": {"engine": "vaani", "lang": "en"},
+  "timestamp": "2026-04-20T16:30:06.000"
 }
 ```
