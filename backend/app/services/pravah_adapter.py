@@ -23,15 +23,11 @@ import os
 import json
 from datetime import datetime
 from typing import Dict, Any, Optional
-from app.services.system_metrics import get_metrics
-from app.services.system_monitor import get_system_health
-from app.core.config import settings
-from app.core.context import get_trace_id
-
 logger = logging.getLogger("PravahAdapter")
 
 class PravahAdapter:
     def __init__(self, interval: int = 60):
+        from app.core.config import settings
         self.interval = interval
         self.pravah_url = getattr(settings, "PRAVAH_URL", "http://localhost:9000/telemetry")
         self._running = False
@@ -58,11 +54,14 @@ class PravahAdapter:
 
     async def _push_metrics(self):
         """Aggregate telemetry and write to runtime_events.json for Pravah ingestion."""
+        from app.services.system_metrics import get_metrics
+        from app.services.system_monitor import get_health
+        from app.core.context import get_trace_id
         try:
             metrics = await get_metrics()
             
             # Use the new lightweight health check
-            health = await get_system_health()
+            health = await get_health()
 
             payload = {
                 "source": "PravahAdapter",
@@ -92,6 +91,7 @@ class PravahAdapter:
         Emit a structured signal to Pravah.
         Called from various parts of the system for event-driven observability.
         """
+        from app.core.context import get_trace_id
         signal = {
             "source": "GurukulSignal",
             "trace_id": get_trace_id(),
