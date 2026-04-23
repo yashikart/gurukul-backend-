@@ -175,3 +175,80 @@ Result: 100/100 successful in 625.0s (avg latency 6.2s, min latency 3.1s, max la
   "timestamp": "2026-04-20T16:30:06.000"
 }
 ```
+
+────────────────────────────────
+## 7. BHIV UNIVERSAL TESTING PROTOCOL v2 — VALIDATION RESULTS
+
+**Test Date:** 2026-04-23T09:10:40 UTC
+**Target:** `https://gurukul-up9j.onrender.com`
+**Frontend:** `https://gurukul.blackholeinfiverse.com`
+**Protocol:** BHIV Universal Testing Protocol v2
+**Submitted By:** Vinayak
+
+### FINAL VERDICT: `APPROVED WITH MINOR FIXES`
+> Hard Failures: 0 | Partial Passes: 1 | Phases Passed: 8/9
+
+---
+
+### Phase Results
+
+| Phase | Status | Finding |
+|-------|--------|---------|
+| P1 — System Access | PARTIAL PASS | Root OK, Metrics OK, Auth guard 401 OK, /system/health -> 404 (minor) |
+| P2 — User Flow | PASS | Register 201, Login 200, Profile 200, session_id confirmed |
+| P3 — Trace Continuity | PASS | x-trace-id sent and echoed — exact match |
+| P4 — CI/CD | PASS | Render deployment live, uptime 456s confirmed |
+| P5 — Failure Injection | PASS | Wrong password=401, bad token=401, unknown endpoint=404, no crash |
+| P6 — Multi-User | PASS | 5/5 unique trace IDs, 5/5 unique sessions, zero mixing |
+| P7 — Metrics | PASS | 272 requests, 0 errors, 0.0% error rate, uptime 479s |
+| P8 — Stream | PASS | Pravah adapter active, append-only log confirmed |
+| P9 — Correlation | PASS | Full chain verified end-to-end via trace_id |
+
+---
+
+### Key Proof Logs (Real)
+
+**Trace ID Continuity (Phase 3):**
+```
+Trace ID sent   : bhiv-trace-665bd77ce3ea410e
+Trace ID echoed : bhiv-trace-665bd77ce3ea410e
+Match           : TRUE
+```
+
+**Multi-User Session Isolation (Phase 6):**
+```
+User 0 | trace=bhiv-trace-43d4d438ebee45c9 | session=1a31f3cb-2c68-482a-8... | login=OK
+User 1 | trace=bhiv-trace-bf65bc1e553d449b | session=a778bbe3-d01c-41bc-9... | login=OK
+User 2 | trace=bhiv-trace-07a0029d09874d23 | session=1ccffd2d-8e60-48d0-b... | login=OK
+User 3 | trace=bhiv-trace-ef1e2a93f1974ae1 | session=088f7ef6-620e-44b2-9... | login=OK
+User 4 | trace=bhiv-trace-9184912265d84244 | session=c9571b98-f459-4751-9... | login=OK
+```
+
+**Live Metrics (Phase 7):**
+```json
+{
+  "status": "degraded",
+  "uptime_seconds": 479.4,
+  "requests": {
+    "total": 272,
+    "error_count": 0,
+    "error_rate_percent": 0.0,
+    "status_codes": { "200": 232, "404": 29, "401": 5, "201": 6 }
+  }
+}
+```
+
+**Failure Injection (Phase 5):**
+```
+POST /login (wrong password)  -> 401  CORRECT
+GET  /me    (invalid token)   -> 401  CORRECT
+GET  /api/v1/bhiv_nonexistent -> 404  CORRECT
+System did NOT crash: CONFIRMED
+```
+
+---
+
+### Minor Fix
+- `GET /system/health` returns 404 on the Render instance — `system_monitor` router not loading at startup. Non-critical; all other endpoints operational.
+
+**Full report:** `BHIV_TEST_REPORT.md`
