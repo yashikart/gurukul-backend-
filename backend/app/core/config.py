@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     # Vaani Sovereign TTS
     VAANI_API_URL: str = os.getenv("VAANI_API_URL", "http://localhost:8008")
 
+    # TANTRA Integration
+    PRAVAH_URL: Optional[str] = os.getenv("PRAVAH_URL", None)          # e.g. https://pravah.tantra.io/ingest
+    BUCKET_URL: Optional[str] = os.getenv("BUCKET_URL", None)          # e.g. https://bucket.tantra.io/write
+    TANTRA_API_KEY: Optional[str] = os.getenv("TANTRA_API_KEY", None)  # Shared secret for TANTRA auth
+    TANTRA_DEBUG_LOG: bool = os.getenv("TANTRA_DEBUG_LOG", "false").lower() == "true"  # Write to runtime_events.json for debug
+
     # Database
     DATABASE_URL: Optional[str] = None # postgresql://user:password@host:port/db or sqlite:///./gurukul.db
 

@@ -22,6 +22,8 @@ from typing import Dict, Any, Optional
 from app.services.voice_engine_interface import VoiceEngineInterface
 from app.core.config import settings
 from app.services.pravah_adapter import pravah_adapter
+from app.services.vaani_manager import vaani_manager
+
 
 logger = logging.getLogger("VoiceProvider")
 
@@ -107,8 +109,17 @@ class VoiceProvider(VoiceEngineInterface):
         )
 
         try:
+            # ── 3. Readiness check (Fast Fallback) ──────────────────
+            # If the engine isn't ready, don't even try — go straight to gTTS
+            if not await vaani_manager.is_ready():
+                logger.warning("[FAST FALLBACK] Vaani engine not ready. Using gTTS.")
+                audio_data = await self._call_gtts(text, language)
+                self._cache_put(cache_key, audio_data)
+                return audio_data
+
             async with self.semaphore:
                 logger.info(f"[ACQUIRED] semaphore slot | queue_depth={self.stats['queue_depth']}")
+
 
                 # ── 4. Timeout Enforcement ───────────────────
                 try:

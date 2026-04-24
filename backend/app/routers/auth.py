@@ -10,6 +10,9 @@ from app.models.all_models import User, Tenant, Profile, Summary, Flashcard, Ref
 from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse, UpdateProfile
 from typing import Optional
 import logging
+from fastapi import BackgroundTasks
+from app.services.vaani_manager import vaani_manager
+
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +254,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     }
 
 @router.post("/login", response_model=Token)
-async def login(user_data: UserLogin, db: Session = Depends(get_db)):
+async def login(user_data: UserLogin, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Login and get access token"""
     # Find user
     user = db.query(User).filter(User.email == user_data.email).first()
@@ -284,6 +287,10 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     
     # Create access token
     access_token = create_access_token(data={"sub": user.email})
+    
+    # Trigger background XTTS provisioning
+    background_tasks.add_task(vaani_manager.trigger_download)
+
     
     return {
         "access_token": access_token,

@@ -73,6 +73,10 @@ class ServiceWatchdog:
         self._cycle_count: int = 0
         self._start_time: float = time.time()
 
+        # Deduplication: track last emit time per (service, event_type)
+        self._last_emitted: Dict[str, float] = {}   # "service:event" → epoch
+        self._emit_cooldown: int = 60                # seconds between identical events
+
         # Subprocess handles for managed processes
         self._prana_proc: Optional[subprocess.Popen] = None
 
@@ -283,14 +287,23 @@ class ServiceWatchdog:
     # ------------------------------------------------------------------
 
     def _record_event(self, service: str, event_type: str, detail: str):
-        """Record watchdog event locally and to runtime_events.json for Pravah."""
+        """Record watchdog event locally and to runtime_events.json for Pravah.
+        
+        Deduplication: identical (service, event_type) events are suppressed
+        if the same combination was emitted within the last _emit_cooldown seconds.
+        This prevents the Pravah stream from filling up with repeated recovery
+        failures for persistently unavailable services (Redis, Database, etc.).
+        """
+        now = time.time()
+        dedup_key = f"{service}:{event_type}"
+        
         timestamp_str = datetime.now().isoformat()
         entry = {
             "service": service,
             "event": event_type,
             "detail": detail[:200],
             "timestamp": timestamp_str,
-            "unix_time": time.time()
+            "unix_time": now
         }
         
         with self._lock:
@@ -298,12 +311,16 @@ class ServiceWatchdog:
             if len(self._recovery_log) > 200:
                 self._recovery_log.pop(0)
 
-        # Write to JSON for Pravah (External Monitoring)
+            # Check deduplication before writing to Pravah stream
+            last_emit = self._last_emitted.get(dedup_key, 0)
+            if now - last_emit < self._emit_cooldown:
+                # Suppress duplicate — already emitted within cooldown window
+                logger.debug(f"[Watchdog] Suppressing duplicate Pravah event: {dedup_key}")
+                return
+            self._last_emitted[dedup_key] = now
+
+        # Write to runtime_events.json for Pravah ingestion (JSONL format)
         try:
-            # We append as individual lines for easy ingestion (JSONL style)
-            # or overwrite with the latest event for simple polling.
-            # Requirement says "write it on runtime_events.json"
-            # I'll use append mode for history.
             with open(RUNTIME_EVENTS_FILE, "a") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:

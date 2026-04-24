@@ -5,7 +5,7 @@
 
 **Backend entry:**
 Path: `backend/app/main.py`
-Explanation: Initializes FastAPI and starts autonomous monitoring (`ServiceWatchdog`, `PravahAdapter`). Uses deferred router imports to ensure immediate port binding.
+Explanation: Initializes FastAPI and starts autonomous monitoring (`ServiceWatchdog`, `PravahAdapter`). Uses deferred router imports to ensure immediate port binding. **Integrated with TANTRA Trace Middleware for request tracking.**
 
 **Startup orchestration:**
 Path: `backend/scripts/service_orchestrator.py`
@@ -23,8 +23,8 @@ Path: `backend/app/services/service_watchdog.py`
 Explanation: Rebuilt for safety. Implements Max 3 restarts, 60-120s cooldowns, and escalation logic to prevent infinite crash loops. Logs events to `runtime_events.json`.
 
 **File 3:**
-Path: `backend/app/services/system_metrics.py`
-Explanation: Consolidates heavy telemetry for Pravah. Exposes p95 latency, resource usage (CPU/GPU/Disk), and error rates in structured JSON format.
+Path: `backend/app/middleware/trace_middleware.py`
+Explanation: TANTRA integration layer. Extracts `x-trace-id` from incoming headers and propagates it using `contextvars`, ensuring all logs and emitted signals are traceable.
 
 ────────────────────────────────
 ## 3. LIVE FLOW (CRITICAL)
@@ -93,8 +93,9 @@ Strict bullets:
 • Health/Metrics Split (/system/health is lightweight; /system/metrics handles heavy diagnostics)
 • Watchdog Hardening (Max 3 restarts, 60-120s cooldowns, and safety escalation implemented)
 • Pravah Integration (Structured JSON event emission to `runtime_events.json` for external recovery)
+• TANTRA Integration (Trace propagation, Signal emission, and Memory emission layers added to TTS and Agent services)
 • Startup Orchestration (Dependency-aware sequence: Vaani → DB → Backend)
-• Logging Standard (Standardized JSON logging with INFO/WARN/ERROR/CRITICAL levels)
+• Logging Standard (Standardized JSON logging with Trace ID support and INFO/WARN/ERROR/CRITICAL levels)
 
 AND:
 
@@ -150,3 +151,104 @@ Result: 100/100 successful in 625.0s (avg latency 6.2s, min latency 3.1s, max la
   "timestamp": "2026-04-16T13:45:00"
 }
 ```
+
+• **TANTRA Trace Propagation:**
+```json
+{
+  "timestamp": "2026-04-20T16:30:00.000",
+  "level": "INFO",
+  "logger": "VoiceRouter",
+  "message": "STT Request Success",
+  "trace_id": "tantra-request-abc-123"
+}
+```
+
+• **Bucket Memory Event:**
+```json
+{
+  "trace_id": "tantra-request-abc-123",
+  "user_id": "agent_user",
+  "session_id": "agent_tts_5a7b8c9d",
+  "action": "agent_voice_generation",
+  "outcome": "success",
+  "payload": {"engine": "vaani", "lang": "en"},
+  "timestamp": "2026-04-20T16:30:06.000"
+}
+```
+
+────────────────────────────────
+## 7. BHIV UNIVERSAL TESTING PROTOCOL v2 — VALIDATION RESULTS
+
+**Test Date:** 2026-04-23T09:10:40 UTC
+**Target:** `https://gurukul-up9j.onrender.com`
+**Frontend:** `https://gurukul.blackholeinfiverse.com`
+**Protocol:** BHIV Universal Testing Protocol v2
+**Submitted By:** Vinayak
+
+### FINAL VERDICT: `APPROVED WITH MINOR FIXES`
+> Hard Failures: 0 | Partial Passes: 1 | Phases Passed: 8/9
+
+---
+
+### Phase Results
+
+| Phase | Status | Finding |
+|-------|--------|---------|
+| P1 — System Access | PARTIAL PASS | Root OK, Metrics OK, Auth guard 401 OK, /system/health -> 404 (minor) |
+| P2 — User Flow | PASS | Register 201, Login 200, Profile 200, session_id confirmed |
+| P3 — Trace Continuity | PASS | x-trace-id sent and echoed — exact match |
+| P4 — CI/CD | PASS | Render deployment live, uptime 456s confirmed |
+| P5 — Failure Injection | PASS | Wrong password=401, bad token=401, unknown endpoint=404, no crash |
+| P6 — Multi-User | PASS | 5/5 unique trace IDs, 5/5 unique sessions, zero mixing |
+| P7 — Metrics | PASS | 272 requests, 0 errors, 0.0% error rate, uptime 479s |
+| P8 — Stream | PASS | Pravah adapter active, append-only log confirmed |
+| P9 — Correlation | PASS | Full chain verified end-to-end via trace_id |
+
+---
+
+### Key Proof Logs (Real)
+
+**Trace ID Continuity (Phase 3):**
+```
+Trace ID sent   : bhiv-trace-665bd77ce3ea410e
+Trace ID echoed : bhiv-trace-665bd77ce3ea410e
+Match           : TRUE
+```
+
+**Multi-User Session Isolation (Phase 6):**
+```
+User 0 | trace=bhiv-trace-43d4d438ebee45c9 | session=1a31f3cb-2c68-482a-8... | login=OK
+User 1 | trace=bhiv-trace-bf65bc1e553d449b | session=a778bbe3-d01c-41bc-9... | login=OK
+User 2 | trace=bhiv-trace-07a0029d09874d23 | session=1ccffd2d-8e60-48d0-b... | login=OK
+User 3 | trace=bhiv-trace-ef1e2a93f1974ae1 | session=088f7ef6-620e-44b2-9... | login=OK
+User 4 | trace=bhiv-trace-9184912265d84244 | session=c9571b98-f459-4751-9... | login=OK
+```
+
+**Live Metrics (Phase 7):**
+```json
+{
+  "status": "degraded",
+  "uptime_seconds": 479.4,
+  "requests": {
+    "total": 272,
+    "error_count": 0,
+    "error_rate_percent": 0.0,
+    "status_codes": { "200": 232, "404": 29, "401": 5, "201": 6 }
+  }
+}
+```
+
+**Failure Injection (Phase 5):**
+```
+POST /login (wrong password)  -> 401  CORRECT
+GET  /me    (invalid token)   -> 401  CORRECT
+GET  /api/v1/bhiv_nonexistent -> 404  CORRECT
+System did NOT crash: CONFIRMED
+```
+
+---
+
+### Minor Fix
+- `GET /system/health` returns 404 on the Render instance — `system_monitor` router not loading at startup. Non-critical; all other endpoints operational.
+
+**Full report:** `BHIV_TEST_REPORT.md`
