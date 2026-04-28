@@ -35,6 +35,13 @@ const MyTeachers = React.lazy(() => import('./pages/ems/MyTeachers'));
 const Intake = React.lazy(() => import('./assessment/pages/Intake'));
 const AssignmentPage = React.lazy(() => import('./assessment/pages/Assignment'));
 
+// Governance Dashboards
+const TeacherGov = React.lazy(() => import('./pages/governance/TeacherDashboard'));
+const SchoolGov = React.lazy(() => import('./pages/governance/SchoolDashboard'));
+const DistrictGov = React.lazy(() => import('./pages/governance/DistrictDashboard'));
+const StateGov = React.lazy(() => import('./pages/governance/StateDashboard'));
+const MinisterGov = React.lazy(() => import('./pages/governance/MinisterDashboard'));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -403,6 +410,13 @@ const AppContent = () => {
                         </PrivateRoute>
                       }
                     />
+
+                    {/* Governance Intelligence Layer */}
+                    <Route path="/governance/teacher" element={<PrivateRoute><TeacherGov /></PrivateRoute>} />
+                    <Route path="/governance/school" element={<PrivateRoute><SchoolGov /></PrivateRoute>} />
+                    <Route path="/governance/district" element={<PrivateRoute><DistrictGov /></PrivateRoute>} />
+                    <Route path="/governance/state" element={<PrivateRoute><StateGov /></PrivateRoute>} />
+                    <Route path="/governance/minister" element={<PrivateRoute><MinisterGov /></PrivateRoute>} />
 
                     {/* 404 Route - Catch all unmatched routes */}
                     <Route path="*" element={<NotFound />} />
