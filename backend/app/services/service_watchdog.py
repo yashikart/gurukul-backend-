@@ -45,7 +45,6 @@ logger = logging.getLogger("ServiceWatchdog")
 POLL_INTERVAL: int = 30          # seconds between health sweeps
 MAX_RECOVERY_ATTEMPTS: int = 3   # Max 3 attempts before escalation
 RECOVERY_COOLDOWN: int = 120     # 2 minutes cooldown
-RUNTIME_EVENTS_FILE: str = "runtime_events.json"
 
 
 # ---------------------------------------------------------------------------
@@ -319,12 +318,17 @@ class ServiceWatchdog:
                 return
             self._last_emitted[dedup_key] = now
 
-        # Write to runtime_events.json for Pravah ingestion (JSONL format)
-        try:
-            with open(RUNTIME_EVENTS_FILE, "a") as f:
-                f.write(json.dumps(entry) + "\n")
-        except Exception as e:
-            logger.error(f"Failed to write to {RUNTIME_EVENTS_FILE}: {e}")
+        # Emit to Pravah (real ingestion)
+        from app.services.pravah_adapter import pravah_adapter
+        pravah_adapter.emit_signal(
+            event_type="watchdog_event",
+            action=event_type,
+            status="info" if "SUCCESS" in event_type else "warning",
+            payload={
+                "service": service,
+                "detail": detail
+            }
+        )
 
     def get_status(self) -> dict:
         """Return current watchdog metrics for the /system/metrics endpoint."""

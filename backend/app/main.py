@@ -623,10 +623,12 @@ async def startup_event():
     try:
         from app.services.service_watchdog import watchdog
         from app.services.pravah_adapter import pravah_adapter
+        from app.services.bucket_adapter import bucket_adapter
         
         watchdog.start()
         pravah_adapter.start()
-        print("[Startup] [OK] ServiceWatchdog and PravahAdapter started")
+        bucket_adapter.start()
+        print("[Startup] [OK] ServiceWatchdog, PravahAdapter and BucketAdapter started")
         sys.stdout.flush()
     except Exception as e:
         print(f"[Startup] [WARN] Failed to start autonomous monitoring: {e}")

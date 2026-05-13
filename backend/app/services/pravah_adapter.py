@@ -129,10 +129,6 @@ class PravahAdapter:
             logger.error(f"[Pravah] Payload rejected by schema validator: {e}")
             return False
 
-        # 2. Debug log (optional — only if TANTRA_DEBUG_LOG=true)
-        if self.debug_log:
-            self._debug_write(signal)
-
         # 3. Real HTTP emission
         if not self.pravah_url:
             logger.debug("[Pravah] No URL configured — signal not sent (no-op).")
@@ -171,17 +167,6 @@ class PravahAdapter:
             f"(event={signal.get('event_type')} trace={signal.get('trace_id')})"
         )
         return False
-
-    # ── Debug only (not source of truth) ────────────────────────────────────
-    def _debug_write(self, event_data: Dict[str, Any]):
-        """Write event to runtime_events.json for LOCAL DEBUG only. Not transmitted to TANTRA as source of truth."""
-        try:
-            root_path  = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-            event_file = os.path.join(root_path, "runtime_events.json")
-            with open(event_file, "a") as f:
-                f.write(json.dumps(event_data) + "\n")
-        except Exception as fe:
-            logger.debug(f"[Pravah] Debug log write failed: {fe}")
 
     # ── Command receiver ─────────────────────────────────────────────────────
     async def receive_command(self, command: str):

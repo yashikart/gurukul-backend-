@@ -57,6 +57,8 @@ class BucketAdapter:
         self.bucket_url = getattr(settings, "BUCKET_URL", None)
         self.api_key    = getattr(settings, "TANTRA_API_KEY", None)
         self.enabled    = self.bucket_url is not None
+        self._running   = False
+        self._task      = None
 
         # Hash chain state — protected by a lock for thread safety
         self._lock      = threading.Lock()
@@ -69,11 +71,56 @@ class BucketAdapter:
 
         if self.enabled:
             logger.info(f"BucketAdapter configured → {self.bucket_url}")
+            # TANTRA PHASE 1: Initialize hash chain from remote state if possible
+            self._fetch_latest_hash()
+            self.start()
         else:
             logger.warning(
                 "BucketAdapter: BUCKET_URL not set — memory events will be dropped "
                 "(set BUCKET_URL env var to enable)"
             )
+
+    # ── Lifecycle ───────────────────────────────────────────────────────────
+    def start(self):
+        if not self._running:
+            import asyncio
+            self._running = True
+            try:
+                self._task = asyncio.create_task(self._loop())
+                logger.info("BucketAdapter background loop started")
+            except RuntimeError:
+                # Fallback for non-async contexts (e.g. initial import)
+                # In FastAPI, this will be started properly in startup_event
+                pass
+
+    def stop(self):
+        self._running = False
+
+    async def _loop(self):
+        import asyncio
+        while self._running:
+            if len(self._queue) > 0:
+                self.flush_queue()
+            await asyncio.sleep(30) # Retry every 30s
+
+    def _fetch_latest_hash(self):
+        """Fetch the current head hash from the Bucket server to ensure chain continuity."""
+        if not self.bucket_url:
+            return
+            
+        try:
+            # Assumes endpoint /bucket/latest-hash exists on the bucket server
+            base_url = self.bucket_url.split('/bucket/')[0]
+            resp = http_client.get(f"{base_url}/bucket/latest-hash", timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                remote_hash = data.get("latest_hash")
+                if remote_hash and len(remote_hash) == 64:
+                    with self._lock:
+                        self._prev_hash = remote_hash
+                    logger.info(f"[Bucket] Hash chain initialized from remote: {remote_hash[:12]}...")
+        except Exception as e:
+            logger.warning(f"[Bucket] Could not fetch latest hash (using genesis): {e}")
 
     # ── Public API ──────────────────────────────────────────────────────────
     def emit_memory(
