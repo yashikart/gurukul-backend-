@@ -119,6 +119,116 @@ class MarkProcessedRequest(BaseModel):
 router = APIRouter()
 
 
+@router.get(
+    "/bucket/latest-hash",
+    response_model=Dict[str, Any],
+)
+def get_latest_hash(
+    model_type: str = Query("packet", description="Type of chain: 'packet', 'review', or 'task'"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve the current head hash of the cryptographically chained ledger.
+    Used for pipeline chaining and integrity verification.
+    """
+    from app.models.prana_models import PranaPacket, ReviewOutputVersion, NextTaskVersion
+    from app.services.deterministic_repo import deterministic_repo
+    
+    model_map = {
+        "packet": PranaPacket,
+        "review": ReviewOutputVersion,
+        "task": NextTaskVersion
+    }
+    
+    model = model_map.get(model_type.lower())
+    if not model:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid model_type. Must be one of: {list(model_map.keys())}"
+        )
+    
+    last_hash = deterministic_repo.get_last_hash(db, model)
+    return {
+        "latest_hash": last_hash,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "chain": model.__name__
+    }
+
+
+@router.get(
+    "/audit/artifact/{artifact_id}",
+    response_model=Dict[str, Any],
+)
+def get_artifact_audit(
+    artifact_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve an artifact by its ID for read-after-write verification.
+    Matches the BHIV audit protocol for artifact inspection.
+    """
+    if not HAS_PRANA_MODEL:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PRANA model not available"
+        )
+    
+    from app.models.prana_models import PranaPacket
+    
+    packet = db.query(PranaPacket).filter(PranaPacket.packet_id == artifact_id).first()
+    if not packet:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Artifact {artifact_id} not found"
+        )
+    
+    return {
+        "artifact_id": packet.packet_id,
+        "data": {
+            "user_id": packet.user_id,
+            "cognitive_state": packet.cognitive_state,
+            "focus_score": packet.focus_score,
+            "active_seconds": packet.active_seconds,
+            "idle_seconds": packet.idle_seconds,
+            "away_seconds": packet.away_seconds,
+            "raw_signals": packet.raw_signals
+        },
+        "provenance": {
+            "received_at": packet.received_at.isoformat() if packet.received_at else None,
+            "client_timestamp": packet.client_timestamp.isoformat() if packet.client_timestamp else None,
+            "previous_hash": packet.previous_hash,
+            "current_hash": packet.current_hash
+        },
+        "status": "verified" if packet.current_hash else "unhashed"
+    }
+
+
+@router.post(
+    "/bucket/artifact",
+    response_model=PranaPacketResponse,
+    tags=["Contract Alias"]
+)
+def ingest_artifact_alias_direct(payload: PranaPacketIn, db: Session = Depends(get_db)):
+    """
+    Direct alias for /bucket/prana/ingest to match BHIV Core request.
+    """
+    return ingest_prana_packet(payload, db)
+
+
+@router.post(
+    "/bucket/artifact/write",
+    response_model=PranaPacketResponse,
+    tags=["Contract Alias"]
+)
+def ingest_artifact_alias(payload: PranaPacketIn, db: Session = Depends(get_db)):
+    """
+    Alias for /bucket/prana/ingest to match BHIV Core contract.
+    """
+    return ingest_prana_packet(payload, db)
+
+
+
+
 @router.post(
     "/bucket/prana/ingest",
     response_model=PranaPacketResponse,
