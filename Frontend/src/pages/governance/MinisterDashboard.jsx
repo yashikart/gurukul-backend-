@@ -183,6 +183,5 @@ const MinisterDashboard = () => {
   );
 };
 
-export default MinisterDashboard;
 
 export default MinisterDashboard;
