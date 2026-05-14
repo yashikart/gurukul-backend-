@@ -87,6 +87,20 @@ class TruthClassificationPayload(BaseModel):
     run_id: Optional[str] = None
 
 
+class AdaptiveDecisionPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sequence: int
+    decision_id: str
+    user_id: str
+    policy_version: str
+    input_state: Dict[str, Any]
+    output_decision: Dict[str, Any]
+    trace_proof: str
+    determinism_hash: str
+    run_id: Optional[str] = None
+
+
 @dataclass(frozen=True)
 class PranaContractDefinition:
     payload_model: Type[BaseModel]
@@ -116,6 +130,10 @@ PRANA_EVENT_CONTRACTS: Dict[str, PranaContractDefinition] = {
     ),
     "truth_classification": PranaContractDefinition(
         payload_model=TruthClassificationPayload,
+        versions=["1.0.0"],
+    ),
+    "adaptive_decision": PranaContractDefinition(
+        payload_model=AdaptiveDecisionPayload,
         versions=["1.0.0"],
     ),
 }

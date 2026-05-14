@@ -23,6 +23,8 @@ EXCLUDED_EXACT_KEYS = {
     "freshness_timestamp",
     "event_timestamp",
     "replay_timestamp",
+    "determinism_hash",
+    "hash",
 }
 
 

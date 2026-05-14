@@ -19,6 +19,12 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 
+# ── RL BOUNDARY ENFORCEMENT ──────────────────────────────────────────────
+# RL can optimize pacing, sequencing, and personalization.
+# RL CANNOT mutate grading authority, governance semantics, or policy logic.
+# ──────────────────────────────────────────────────────────────────────────
+
+
 def process_lm_output(
     lm_output: str,
     original_text: str,
@@ -58,16 +64,22 @@ def process_lm_output(
         
         reward_value = min(reward_value, 1.0)
         
+        # BOUNDARY GUARD: Ensure reward context does not include grading authority overrides
+        context = {
+            "output_length": output_length,
+            "input_length": input_length,
+            "length_ratio": length_ratio,
+            "has_content": has_content
+        }
+        
         return {
             "source": "lm_core",
             "reward_value": reward_value,
             "reward_type": "quality",
-            "context": {
-                "output_length": output_length,
-                "input_length": input_length,
-                "length_ratio": length_ratio,
-                "has_content": has_content
-            }
+            "context": context,
+            "schema_version": "edu.reward.v1",
+            "provenance": "gurukul.rl_loop.lm_processing",
+            "ownership": "educational_intelligence"
         }
         
     except Exception as e:

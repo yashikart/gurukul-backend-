@@ -14,6 +14,18 @@ from datetime import datetime, timedelta
 logger = logging.getLogger(__name__)
 
 
+# ── AUTHORIZED OPTIMIZATION VARIABLES ────────────────────────────────────
+# Only these keys can be mutated by the RL policy logic.
+# ──────────────────────────────────────────────────────────────────────────
+AUTHORIZED_RL_PARAMETERS = {
+    "learning_rate",
+    "pacing_coefficient",
+    "sequencing_bias",
+    "tone_preference",
+    "reinforcement_density",
+}
+
+
 def add_reward(
     episode_id: str,
     source: str,
@@ -193,11 +205,16 @@ def update_policy(
             policy.average_reward = 0.9 * policy.average_reward + 0.1 * avg_reward
             
             # Update parameters (simplified - in production would use actual RL algorithm)
-            policy.parameters = {
+            # BOUNDARY ENFORCEMENT: Filter parameters to authorized set
+            new_params = {
                 "learning_rate": 0.001,
                 "last_avg_reward": round(avg_reward, 4),
-                "update_count": policy.parameters.get("update_count", 0) + 1
+                "update_count": policy.parameters.get("update_count", 0) + 1,
+                "pacing_coefficient": policy.parameters.get("pacing_coefficient", 1.0)
             }
+            
+            # Ensure no forbidden parameters (e.g. grading_rubric) are present
+            policy.parameters = {k: v for k, v in new_params.items() if k in AUTHORIZED_RL_PARAMETERS or k in ["last_avg_reward", "update_count"]}
         
         db.commit()
         logger.info(f"Policy {policy_name} updated for {language}")

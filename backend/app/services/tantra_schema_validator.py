@@ -28,27 +28,35 @@ class ContractViolationError(Exception):
 
 # ── Pravah Signal Schema ───────────────────────────────────────────────────
 PRAVAH_REQUIRED_FIELDS: Dict[str, type] = {
-    "source":     str,
-    "trace_id":   str,
-    "timestamp":  str,
-    "event_type": str,
-    "action":     str,
-    "status":     str,
-    "payload":    dict,
+    "source":          str,
+    "trace_id":        str,
+    "timestamp":       str,
+    "event_type":      str,
+    "action":          str,
+    "status":          str,
+    "payload":         dict,
+    "schema_version":  str,
+    "provenance":      str,
+    "ownership":       str,
+    "replay_metadata": dict,
 }
 
 # ── Bucket Memory Schema ───────────────────────────────────────────────────
 BUCKET_REQUIRED_FIELDS: Dict[str, type] = {
-    "trace_id":     str,
-    "user_id":      str,
-    "session_id":   str,
-    "action":       str,
-    "outcome":      str,
-    "payload":      dict,
-    "timestamp":    str,
-    "source":       str,
-    "prev_hash":    str,
-    "current_hash": str,
+    "trace_id":        str,
+    "user_id":         str,
+    "session_id":      str,
+    "action":          str,
+    "outcome":         str,
+    "payload":         dict,
+    "timestamp":       str,
+    "source":          str,
+    "prev_hash":       str,
+    "current_hash":    str,
+    "schema_version":  str,
+    "provenance":      str,
+    "ownership":       str,
+    "replay_metadata": dict,
 }
 
 
