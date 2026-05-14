@@ -8,7 +8,18 @@ sys.path.append(os.path.join(os.getcwd(), "backend"))
 from app.core.config import settings
 
 def migrate():
+    # Load .env if it exists
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(os.getcwd(), "backend", ".env"))
+    except ImportError:
+        pass
+
     db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        # Try fallbacks from settings
+        db_url = settings.DATABASE_URL
+        
     if not db_url:
         print("DATABASE_URL not set. Skipping migration.")
         return
