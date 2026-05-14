@@ -192,6 +192,14 @@ async def startup_event():
             # Create tables in a thread since it's a blocking operation
             await asyncio.to_thread(Base.metadata.create_all, bind=engine)
             await asyncio.to_thread(ensure_prana_integrity_append_only_guards, engine)
+            
+            # Run TANTRA Convergence Migrations
+            try:
+                from scripts.migrate_prana_hashes import migrate as run_prana_migration
+                await asyncio.to_thread(run_prana_migration)
+            except Exception as me:
+                print(f"[Startup] [WARN] Prana migration warning: {me}")
+                
             print("[Startup] [OK] SQL database tables initialized")
             sys.stdout.flush()
         except Exception as e:
