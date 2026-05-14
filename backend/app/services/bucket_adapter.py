@@ -188,6 +188,44 @@ class BucketAdapter:
             # Queue for retry — do NOT advance hash chain
             self._enqueue(full_payload)
 
+    def emit_artifact(self, artifact_id: str, content: Dict[str, Any], metadata: Dict[str, Any]):
+        """
+        Emit a general artifact to TANTRA Bucket.
+        Used for non-educational data like maritime signals or system logs.
+        """
+        trace_id = get_trace_id() or "no-trace"
+        
+        event_core = {
+            "trace_id": trace_id,
+            "artifact_id": artifact_id,
+            "content": content,
+            "metadata": metadata,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source": metadata.get("product", "GeneralArtifact"),
+            "action": "artifact_write",
+            "outcome": "success"
+        }
+        
+        with self._lock:
+            self._seq += 1
+            prev_hash = self._prev_hash
+            current_hash = _compute_hash(prev_hash, event_core)
+            seq = self._seq
+
+        full_payload = {
+            **event_core,
+            "prev_hash": prev_hash,
+            "current_hash": current_hash,
+        }
+
+        # Send with retry
+        success = self._http_emit(full_payload)
+        if success:
+            with self._lock:
+                self._prev_hash = current_hash
+        else:
+            self._enqueue(full_payload)
+
     # ── Internal HTTP layer ─────────────────────────────────────────────────
     def _http_emit(self, payload: Dict[str, Any]) -> bool:
         """POST to Bucket. Returns True on success, False after all retries exhausted."""

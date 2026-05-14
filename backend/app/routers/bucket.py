@@ -109,6 +109,14 @@ class PendingPacketsResponse(BaseModel):
     queue_size: int
 
 
+class GeneralArtifactIn(BaseModel):
+    """Flexible schema for maritime signals and general TANTRA artifacts"""
+    artifact_id: str = Field(..., description="Unique identifier for the artifact")
+    content: Dict[str, Any] = Field(..., description="The main payload (e.g. maritime signals)")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Provenance and chain metadata")
+    timestamp: Optional[str] = None
+
+
 class MarkProcessedRequest(BaseModel):
     packet_id: str
     karma_actions: Optional[List[Dict[str, Any]]] = None
@@ -217,14 +225,66 @@ def ingest_artifact_alias_direct(payload: PranaPacketIn, db: Session = Depends(g
 
 @router.post(
     "/bucket/artifact/write",
-    response_model=PranaPacketResponse,
-    tags=["Contract Alias"]
+    response_model=Dict[str, Any],
+    tags=["General Artifacts"]
 )
-def ingest_artifact_alias(payload: PranaPacketIn, db: Session = Depends(get_db)):
+def ingest_general_artifact(payload: GeneralArtifactIn, db: Session = Depends(get_db)):
     """
-    Alias for /bucket/prana/ingest to match BHIV Core contract.
+    General Artifact Ingestion Endpoint.
+    Supports maritime signals, system logs, and other non-educational data.
+    Stores in PranaIntegrityLog with append-only guarantees.
     """
-    return ingest_prana_packet(payload, db)
+    from app.services.prana_runtime import prana_runtime
+    from app.services.bucket_adapter import bucket_adapter
+    
+    received_at = datetime.now(timezone.utc)
+    timestamp = payload.timestamp or received_at.isoformat()
+    
+    # Extract chain metadata if provided
+    parent_hash = payload.metadata.get("parent_hash")
+    trace_id = payload.metadata.get("trace_id", payload.artifact_id)
+    product = payload.metadata.get("product", "general")
+
+    try:
+        # 1. Store in the append-only Integrity Log
+        event_record = prana_runtime.ingest_event(
+            db,
+            submission_id=payload.artifact_id,
+            event_type="artifact_write",
+            timestamp=timestamp,
+            payload={
+                "content": payload.content,
+                "metadata": payload.metadata,
+                "trace_id": trace_id,
+                "parent_hash": parent_hash
+            },
+            source_system=product,
+        )
+        
+        # 2. Forward to external bucket if configured
+        try:
+            bucket_adapter.emit_artifact(
+                artifact_id=payload.artifact_id,
+                content=payload.content,
+                metadata=payload.metadata
+            )
+        except Exception as be:
+            print(f"[Bucket] Forwarding to external bucket failed: {be}")
+
+        return {
+            "status": "success",
+            "artifact_id": payload.artifact_id,
+            "internal_id": event_record["event_id"],
+            "stored_at": received_at.isoformat(),
+            "chain_hash": event_record["payload_hash"]
+        }
+
+    except Exception as e:
+        print(f"[Bucket] Failed to ingest general artifact: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Artifact ingestion failed: {str(e)}"
+        )
 
 
 
