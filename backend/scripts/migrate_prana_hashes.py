@@ -27,27 +27,30 @@ def migrate():
     print(f"Connecting to database...")
     engine = create_engine(db_url)
     
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         print("Checking for missing columns in prana_packets...")
         
-        # Check if columns exist (PostgreSQL syntax)
+        # Check previous_hash
         try:
-            # Check previous_hash
             conn.execute(text("SELECT previous_hash FROM prana_packets LIMIT 1"))
             print("Column 'previous_hash' already exists.")
         except Exception:
             print("Adding column 'previous_hash'...")
-            conn.execute(text("ALTER TABLE prana_packets ADD COLUMN previous_hash VARCHAR(64)"))
-            conn.commit()
+            # We use a new transaction/connection if the old one aborted
+            with engine.connect() as conn2:
+                conn2.execute(text("ALTER TABLE prana_packets ADD COLUMN previous_hash VARCHAR(64)"))
+                conn2.commit()
 
+        # Check current_hash
         try:
-            # Check current_hash
-            conn.execute(text("SELECT current_hash FROM prana_packets LIMIT 1"))
-            print("Column 'current_hash' already exists.")
+            with engine.connect() as conn3:
+                conn3.execute(text("SELECT current_hash FROM prana_packets LIMIT 1"))
+                print("Column 'current_hash' already exists.")
         except Exception:
             print("Adding column 'current_hash'...")
-            conn.execute(text("ALTER TABLE prana_packets ADD COLUMN current_hash VARCHAR(64)"))
-            conn.commit()
+            with engine.connect() as conn4:
+                conn4.execute(text("ALTER TABLE prana_packets ADD COLUMN current_hash VARCHAR(64)"))
+                conn4.commit()
             
     print("Migration complete.")
 
