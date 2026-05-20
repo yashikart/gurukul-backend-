@@ -55,6 +55,10 @@ def test_prana_load_tester_handles_concurrent_ingestion_and_replay(isolated_load
         source_system="gurukul",
     )
 
+    print("\nLOAD TEST RESULT DEBUG:")
+    import pprint
+    pprint.pprint(result)
+
     assert result["load_test"] == "PASS"
     assert result["events_processed"] == 100
     assert result["drift_detected"] is False

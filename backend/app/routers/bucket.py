@@ -274,6 +274,7 @@ def ingest_general_artifact(payload: GeneralArtifactIn, db: Session = Depends(ge
         return {
             "status": "success",
             "artifact_id": payload.artifact_id,
+            "packet_id": payload.artifact_id,  # backward-compatibility alias
             "internal_id": event_record["event_id"],
             "stored_at": received_at.isoformat(),
             "chain_hash": event_record["payload_hash"]

@@ -29,6 +29,20 @@ def calculate_bleu(reference: str, hypothesis: str) -> Dict[str, float]:
         dict: BLEU score and breakdown by n-gram
     """
     try:
+        if reference == hypothesis:
+            ref_tokens = _tokenize(reference)
+            return {
+                "bleu": 1.0,
+                "bleu_score": 1.0,
+                "precision_1": 1.0,
+                "precision_2": 1.0,
+                "precision_3": 1.0,
+                "precision_4": 1.0,
+                "brevity_penalty": 1.0,
+                "reference_length": len(ref_tokens),
+                "hypothesis_length": len(ref_tokens)
+            }
+            
         # Simple BLEU implementation (for production, use sacrebleu library)
         ref_tokens = _tokenize(reference)
         hyp_tokens = _tokenize(hypothesis)
@@ -62,6 +76,7 @@ def calculate_bleu(reference: str, hypothesis: str) -> Dict[str, float]:
         
         return {
             "bleu": round(bleu, 4),
+            "bleu_score": round(bleu, 4),
             **precisions,
             "brevity_penalty": round(brevity_penalty, 4),
             "reference_length": ref_len,
@@ -70,7 +85,7 @@ def calculate_bleu(reference: str, hypothesis: str) -> Dict[str, float]:
         
     except Exception as e:
         logger.error(f"BLEU calculation failed: {e}")
-        return {"bleu": 0.0, "error": str(e)}
+        return {"bleu": 0.0, "bleu_score": 0.0, "error": str(e)}
 
 
 def calculate_rouge(reference: str, hypothesis: str) -> Dict[str, float]:
@@ -137,7 +152,7 @@ def calculate_rouge(reference: str, hypothesis: str) -> Dict[str, float]:
         return {"rouge_1": 0.0, "rouge_2": 0.0, "rouge_l": 0.0, "error": str(e)}
 
 
-def calculate_comet_lite(source: str, reference: str, hypothesis: str) -> Dict[str, float]:
+def calculate_comet_lite(source_or_ref: str, reference_or_hyp: str, hypothesis: Optional[str] = None) -> Dict[str, float]:
     """
     Calculate COMET-lite score (simplified version)
     
@@ -147,14 +162,24 @@ def calculate_comet_lite(source: str, reference: str, hypothesis: str) -> Dict[s
     This is a simplified version. For production, use the full COMET library.
     
     Args:
-        source: Source text (original)
-        reference: Reference translation
-        hypothesis: Hypothesis translation to evaluate
+        source_or_ref: Source text (original) or Reference translation
+        reference_or_hyp: Reference translation or Hypothesis translation
+        hypothesis: Hypothesis translation to evaluate (optional)
         
     Returns:
         dict: COMET-lite score and metadata
     """
     try:
+        if hypothesis is None:
+            # Called as calculate_comet_lite(reference, hypothesis)
+            reference = source_or_ref
+            hypothesis = reference_or_hyp
+            source = ""
+        else:
+            # Called as calculate_comet_lite(source, reference, hypothesis)
+            source = source_or_ref
+            reference = reference_or_hyp
+            
         # Simplified COMET-lite: combination of semantic similarity metrics
         # In production, this would use a neural model
         
@@ -177,13 +202,14 @@ def calculate_comet_lite(source: str, reference: str, hypothesis: str) -> Dict[s
         
         return {
             "comet_lite": round(comet_score, 4),
+            "comet_score": round(comet_score, 4),
             "semantic_similarity": round(semantic_similarity, 4),
             "length_ratio": round(length_ratio, 4)
         }
         
     except Exception as e:
         logger.error(f"COMET-lite calculation failed: {e}")
-        return {"comet_lite": 0.0, "error": str(e)}
+        return {"comet_lite": 0.0, "comet_score": 0.0, "error": str(e)}
 
 
 def _tokenize(text: str) -> List[str]:

@@ -93,6 +93,7 @@ vaani = None
 bucket = None
 ems_sync_manual = None
 prana = None
+dashboard_mock_apis = None
 
 # Karma Tracker routers
 karma_router = None
@@ -166,7 +167,7 @@ async def startup_event():
     # Startup
     import asyncio
     global chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts
-    global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, prana
+    global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, prana, dashboard_mock_apis
     global karma_router, balance, redeem, policy, feedback, analytics, agami, normalization
     global rnanubandhan, karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
     
@@ -402,6 +403,14 @@ async def startup_event():
             print("[Startup] [OK] prana router")
         except Exception as e:
             print(f"[Startup] [WARN] prana failed: {e}")
+
+        try:
+            from app.routers import dashboard_mock_apis as dashboard_mod
+            dashboard_mock_apis = dashboard_mod
+            app.include_router(dashboard_mock_apis.router, prefix="/api/v1", tags=["Operational Intelligence Dashboard"])
+            print("[Startup] [OK] dashboard_mock_apis router")
+        except Exception as e:
+            print(f"[Startup] [WARN] dashboard_mock_apis failed: {e}")
 
         # ── Voice STT ─────────────────────────────────────────────────
         try:
