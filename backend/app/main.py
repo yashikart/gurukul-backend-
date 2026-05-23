@@ -431,8 +431,10 @@ async def startup_event():
         # ── Metrics endpoint ──────────────────────────────────────────
         try:
             from app.services.system_metrics import metrics_router as _metrics_router
+            from app.services.prometheus_exporter import prometheus_router as _prometheus_router
             app.include_router(_metrics_router)
-            print("[Startup] [OK] /system/metrics endpoint registered")
+            app.include_router(_prometheus_router)
+            print("[Startup] [OK] /system/metrics and /metrics endpoints registered")
         except Exception as _me:
             print(f"[Startup] [WARN] metrics_router not loaded: {_me}")
 
