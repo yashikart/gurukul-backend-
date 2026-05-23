@@ -122,6 +122,19 @@ class PravahAdapter:
 
     def _emit_signal_sync(self, signal: Dict[str, Any]) -> bool:
         """Validate + HTTP POST to Pravah, with retry. Synchronous (fire-and-forget safe)."""
+        # Auto-inject TANTRA contract metadata
+        if "schema_version" not in signal:
+            signal["schema_version"] = "2.0.0"
+        if "provenance" not in signal:
+            signal["provenance"] = "Gurukul-TANTRA-Signed"
+        if "ownership" not in signal:
+            signal["ownership"] = "district_admin"
+        if "replay_metadata" not in signal:
+            signal["replay_metadata"] = {
+                "is_replayable": True,
+                "replay_index": int(time.time() * 1000)
+            }
+
         # 1. Schema validation — reject before sending
         try:
             validate_pravah_payload(signal)

@@ -111,8 +111,16 @@ def test_contract_aliases(bucket_client):
     assert "packet_id" in response.json()
     
     # Test POST /bucket/artifact/write
-    payload["timestamp"] = datetime.now(timezone.utc).isoformat()
-    response = bucket_client.post("/api/v1/bucket/artifact/write", json=payload)
+    artifact_payload = {
+        "artifact_id": "test-artifact-123",
+        "content": payload,
+        "metadata": {
+            "trace_id": "trace-123",
+            "product": "test-product"
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    response = bucket_client.post("/api/v1/bucket/artifact/write", json=artifact_payload)
     assert response.status_code == 200
     assert "packet_id" in response.json()
 

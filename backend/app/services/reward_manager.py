@@ -162,15 +162,18 @@ def get_unified_rewards(
 def update_policy(
     language: str,
     rewards: List[Dict[str, Any]],
-    db: Session
+    db: Session,
+    new_parameters: Optional[Dict[str, Any]] = None
 ) -> bool:
     """
-    Update RL policy based on accumulated rewards
+    Update RL policy based on accumulated rewards and optional parameters.
+    Strictly enforces authorized parameter boundaries and clamps pacing.
     
     Args:
         language: Language code (e.g., 'ar')
         rewards: List of reward data
         db: Database session
+        new_parameters: Optional parameter dictionary to update
         
     Returns:
         bool: True if policy updated successfully
@@ -196,29 +199,82 @@ def update_policy(
             db.add(policy)
         
         # Calculate average reward
+        avg_reward = 0.0
         if rewards:
             avg_reward = sum(r.get("reward_value", 0.0) for r in rewards) / len(rewards)
             
             # Update policy statistics
+            if policy.total_episodes is None:
+                policy.total_episodes = 0
             policy.total_episodes += 1
+            
             # Exponential moving average
+            if policy.average_reward is None:
+                policy.average_reward = 0.0
             policy.average_reward = 0.9 * policy.average_reward + 0.1 * avg_reward
             
-            # Update parameters (simplified - in production would use actual RL algorithm)
-            # BOUNDARY ENFORCEMENT: Filter parameters to authorized set
-            new_params = {
-                "learning_rate": 0.001,
-                "last_avg_reward": round(avg_reward, 4),
-                "update_count": policy.parameters.get("update_count", 0) + 1,
-                "pacing_coefficient": policy.parameters.get("pacing_coefficient", 1.0)
-            }
+        # Get baseline parameters
+        existing_params = dict(policy.parameters or {})
+        
+        # Merge proposed updates
+        proposed_updates = {}
+        if new_parameters:
+            proposed_updates.update(new_parameters)
             
-            # Ensure no forbidden parameters (e.g. grading_rubric) are present
-            policy.parameters = {k: v for k, v in new_params.items() if k in AUTHORIZED_RL_PARAMETERS or k in ["last_avg_reward", "update_count"]}
+        # Also extract updates from rewards if any contain adjustment hints
+        for r in rewards:
+            ctx = r.get("context", {})
+            if isinstance(ctx, dict):
+                if "pacing_adjustment" in ctx:
+                    proposed_updates["pacing_coefficient"] = existing_params.get("pacing_coefficient", 1.0) + ctx["pacing_adjustment"]
+                if "sequencing_bias" in ctx:
+                    proposed_updates["sequencing_bias"] = ctx["sequencing_bias"]
+                
+        # Validate proposed parameters against authorized list
+        cleaned_updates = {}
+        for k, v in proposed_updates.items():
+            if k in AUTHORIZED_RL_PARAMETERS:
+                # Bounding constraints for pacing
+                if k == "pacing_coefficient":
+                    try:
+                        val = float(v)
+                        # Clamp pacing to [0.5, 2.0]
+                        clamped_val = max(0.5, min(2.0, val))
+                        cleaned_updates[k] = clamped_val
+                        if clamped_val != val:
+                            logger.warning(f"Clamped pacing_coefficient from {val} to {clamped_val} to enforce TANTRA safety bounds.")
+                    except (ValueError, TypeError):
+                        logger.error(f"Invalid type for pacing_coefficient: {v}")
+                else:
+                    cleaned_updates[k] = v
+            else:
+                logger.warning(f"Blocked unauthorized parameter update attempt: '{k}' is not in AUTHORIZED_RL_PARAMETERS.")
+                
+        # Compile new parameter set
+        new_params = {
+            "learning_rate": cleaned_updates.get("learning_rate", existing_params.get("learning_rate", 0.001)),
+            "last_avg_reward": round(avg_reward, 4) if rewards else existing_params.get("last_avg_reward", 0.0),
+            "update_count": existing_params.get("update_count", 0) + 1,
+            "pacing_coefficient": cleaned_updates.get("pacing_coefficient", existing_params.get("pacing_coefficient", 1.0)),
+            "sequencing_bias": cleaned_updates.get("sequencing_bias", existing_params.get("sequencing_bias", 0.0)),
+            "tone_preference": cleaned_updates.get("tone_preference", existing_params.get("tone_preference", 0.0)),
+            "reinforcement_density": cleaned_updates.get("reinforcement_density", existing_params.get("reinforcement_density", 0.0)),
+        }
+        
+        # Double check filtering to prevent any downstream bypasses
+        policy.parameters = {
+            k: v for k, v in new_params.items() 
+            if k in AUTHORIZED_RL_PARAMETERS or k in ["last_avg_reward", "update_count"]
+        }
         
         db.commit()
-        logger.info(f"Policy {policy_name} updated for {language}")
+        logger.info(f"Policy {policy_name} updated for {language}. Current parameters: {policy.parameters}")
         return True
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to update policy: {e}")
+        return False
         
     except Exception as e:
         db.rollback()

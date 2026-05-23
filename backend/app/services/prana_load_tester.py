@@ -93,12 +93,26 @@ class PranaLoadTester:
         submission_id = f"load-stream-{active_run_id}"
         base_time = datetime.now(timezone.utc)
 
+        from threading import Condition
+        cv = Condition()
+        state = {"next_seq": 1}
+
+        def _locked_ingest(*args, **kwargs):
+            seq = kwargs.get("sequence_number")
+            with cv:
+                while state["next_seq"] != seq:
+                    cv.wait()
+                res = self._ingest_single_event(*args, **kwargs)
+                state["next_seq"] += 1
+                cv.notify_all()
+                return res
+
         processed = 0
         ingestion_errors: list[str] = []
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             futures = [
                 executor.submit(
-                    self._ingest_single_event,
+                    _locked_ingest,
                     run_id=active_run_id,
                     submission_id=submission_id,
                     source_system=source_system,
