@@ -94,6 +94,7 @@ bucket = None
 ems_sync_manual = None
 prana = None
 dashboard_mock_apis = None
+dev_panel = None
 
 # Karma Tracker routers
 karma_router = None
@@ -167,7 +168,7 @@ async def startup_event():
     # Startup
     import asyncio
     global chat, flashcards, learning, ems, summarizer, auth, soul, agents, quiz, journey, tts
-    global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, prana, dashboard_mock_apis
+    global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, prana, dashboard_mock_apis, dev_panel
     global karma_router, balance, redeem, policy, feedback, analytics, agami, normalization
     global rnanubandhan, karma_v1_main, lifecycle, stats, log_action, appeal, atonement, death, event
     
@@ -253,7 +254,7 @@ async def startup_event():
         """Import other routers — each independently fault-isolated so one failure
         does not prevent other routers from loading."""
         global chat, flashcards, learning, ems, summarizer, soul, agents, quiz, journey, tts
-        global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, prana, monitor
+        global ems_student, lesson, sovereign, vaani, bucket, ems_sync_manual, prana, monitor, dev_panel
 
         print("[Startup] Importing other routers (individually fault-isolated)...")
         sys.stdout.flush()
@@ -411,6 +412,15 @@ async def startup_event():
             print("[Startup] [OK] dashboard_mock_apis router")
         except Exception as e:
             print(f"[Startup] [WARN] dashboard_mock_apis failed: {e}")
+
+        try:
+            from app.routers import dev_panel as dev_panel_mod
+            dev_panel = dev_panel_mod
+            app.include_router(dev_panel.router, tags=["Developer Control Panel"])
+            app.include_router(dev_panel.admin_router, tags=["Admin Intelligence"])
+            print("[Startup] [OK] dev_panel & admin routers registered")
+        except Exception as e:
+            print(f"[Startup] [WARN] dev_panel failed: {e}")
 
         # ── Voice STT ─────────────────────────────────────────────────
         try:

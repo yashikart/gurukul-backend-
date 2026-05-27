@@ -44,10 +44,38 @@ _error_count: int = 0          # HTTP 5xx responses
 _status_counts: Dict[int, int] = defaultdict(int)   # {status_code: count}
 _route_counts: Dict[str, int] = defaultdict(int)    # {route: count}
 
+# Visitor Tracking
+_browser_counts: Dict[str, int] = defaultdict(int)  # {browser: count}
+_device_counts: Dict[str, int] = defaultdict(int)   # {device: count}
+_unique_visitors: set = set()                       # set of unique IP hashes/IDs
+
 # Latency rolling windows (last 500 samples each)
 _WINDOW = 500
 _voice_latencies: Deque[float] = deque(maxlen=_WINDOW)
 _ai_latencies: Deque[float] = deque(maxlen=_WINDOW)
+
+# Simple user-agent parser
+def parse_user_agent(ua_string: str) -> tuple:
+    """Parse User-Agent string to extract (browser, device)."""
+    if not ua_string:
+        return "Other", "Desktop"
+    ua = ua_string.lower()
+    if "mobile" in ua or "android" in ua or "iphone" in ua or "ipad" in ua:
+        device = "Mobile"
+    else:
+        device = "Desktop"
+        
+    if "edg/" in ua or "edge" in ua:
+        browser = "Edge"
+    elif "chrome" in ua and "safari" in ua:
+        browser = "Chrome"
+    elif "firefox" in ua:
+        browser = "Firefox"
+    elif "safari" in ua and "chrome" not in ua:
+        browser = "Safari"
+    else:
+        browser = "Other"
+    return browser, device
 
 
 # ---------------------------------------------------------------------------
@@ -95,10 +123,20 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         route = request.url.path
         status = response.status_code
 
+        # Parse user-agent for traffic intelligence
+        ua_string = request.headers.get("user-agent", "")
+        browser, device = parse_user_agent(ua_string)
+
+        # Track unique user identifiers (hash of IP/User-Agent or X-User-ID header)
+        visitor_id = request.headers.get("x-user-id") or request.headers.get("x-forwarded-for") or request.client.host or "anonymous"
+
         with _lock:
             _total_requests += 1
             _status_counts[status] += 1
             _route_counts[route] += 1
+            _browser_counts[browser] += 1
+            _device_counts[device] += 1
+            _unique_visitors.add(visitor_id)
             if status >= 500:
                 _error_count += 1
 
@@ -129,6 +167,9 @@ async def get_metrics():
         errors = _error_count
         status_snapshot = dict(_status_counts)
         route_snapshot = dict(sorted(_route_counts.items(), key=lambda x: -x[1])[:20])
+        browser_snapshot = dict(_browser_counts)
+        device_snapshot = dict(_device_counts)
+        unique_visitor_count = len(_unique_visitors)
         voice_avg = _avg(_voice_latencies)
         voice_p95 = _p95(_voice_latencies)
         voice_samples = len(_voice_latencies)
@@ -178,6 +219,11 @@ async def get_metrics():
             "status_codes": status_snapshot,
             "top_routes": route_snapshot,
         },
+        "traffic": {
+            "unique_visitors": unique_visitor_count,
+            "browsers": browser_snapshot,
+            "devices": device_snapshot,
+        },
         "latency": {
             "voice_ms": {"avg": voice_avg, "p95": voice_p95, "samples": voice_samples},
             "ai_ms": {"avg": ai_avg, "p95": ai_p95, "samples": ai_samples},
@@ -196,6 +242,9 @@ async def reset_metrics():
         _error_count = 0
         _status_counts.clear()
         _route_counts.clear()
+        _browser_counts.clear()
+        _device_counts.clear()
+        _unique_visitors.clear()
         _voice_latencies.clear()
         _ai_latencies.clear()
         _start_time = time.time()
