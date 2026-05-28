@@ -11,6 +11,11 @@ from datetime import datetime
 # Add parent directory to path to import app services
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+# Reconfigure stdout to UTF-8 to prevent CP1252/UnicodeEncodeError on Windows
+if sys.platform.startswith("win"):
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 try:
     from app.services.vector_store import VectorStoreService
     from app.core.config import settings
