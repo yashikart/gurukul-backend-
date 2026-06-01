@@ -6,6 +6,7 @@ import UserManagement from './UserManagement';
 import SystemOverview from './SystemOverview';
 import ReportsAnalytics from './ReportsAnalytics';
 import AdminSettings from './AdminSettings';
+import MduRegistry from './MduRegistry';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
@@ -15,7 +16,7 @@ const AdminDashboard = () => {
     React.useEffect(() => {
         const updateActiveSection = () => {
             const hash = window.location.hash.replace('#', '');
-            if (hash && ['overview', 'users', 'reports', 'settings'].includes(hash)) {
+            if (hash && ['overview', 'users', 'reports', 'settings', 'mdu_registry'].includes(hash)) {
                 setActiveSection(hash);
             } else {
                 // Default to overview if no hash or invalid hash
@@ -52,6 +53,8 @@ const AdminDashboard = () => {
                 return <ReportsAnalytics />;
             case 'settings':
                 return <AdminSettings />;
+            case 'mdu_registry':
+                return <MduRegistry />;
         }
     };
 
