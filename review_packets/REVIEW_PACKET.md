@@ -14,6 +14,7 @@ This section lists the specific, functional components and validation packets bu
 *   **ChromaDB Multi-Field Hardening:** Patched `backend/app/services/vector_store.py` to compile dictionary-based queries into nested `$and` logical lists, forcing strict dynamic board, medium, and class isolation.
 *   **Textbook DB Priming:** Seeded the persistent vector database (`knowledge_store/chroma_db`) with realistic, multi-grade textbook chunks for Standards 6-10 across both Balbharati (Marathi/English) and NCERT (English).
 *   **Master Compliance Evidence Runner:** Built `backend/scripts/run_compliance_evidence.py` to automatically execute compliance tests, check boundaries, and export results directly.
+*   **MDU Operator-Grade Registry & State Reconciliation:** Created a resilient backend operational router (`mdu_registry.py`) and a beautiful dark-mode React interface (`MduRegistry.jsx`) in the admin section with Visual Lineage SVG flows, latency/crash simulators, and authoritative SQL-profile-to-ChromaDB reconciliation trace operators.
 
 ### B. Mandated Compliance Deliverables
 1.  **[Compliance Runtime Proof Packet](file:///c:/Users/pc45/Desktop/Gurukul/COMPLIANCE_RUNTIME_PROOF_PACKET.md)**  
@@ -26,6 +27,12 @@ This section lists the specific, functional components and validation packets bu
     Audits Guest user pathways, safe fallbacks, and identifies strict fail-closed assessment boundaries.
 5.  **[Balbharati Runtime Review Proof](file:///c:/Users/pc45/Desktop/Gurukul/BALBHARATI_RUNTIME_REVIEW_PROOF.md)**  
     Documents **30 reviewer-style queries** across Classes 6-10 and standard subjects, recording a 100% board/medium retrieval correctness rate.
+6.  **[Runtime Integration Report](file:///c:/Users/pc45/Desktop/Gurukul/RUNTIME_INTEGRATION_REPORT.md)**  
+    Documents real-time synchronization flows, network latency recovery, and state reconciliation evidence.
+7.  **[Lineage & Provenance Discipline](file:///c:/Users/pc45/Desktop/Gurukul/LINEAGE_DISCIPLINE.md)**  
+    Details lineage dependencies, parent/child hierarchical structures, and git-style provenance logging.
+8.  **[Claims-To-Proof Matrix](file:///c:/Users/pc45/Desktop/Gurukul/CLAIMS_TO_PROOF.md)**  
+    Detailed matrix mapping all functional claims directly to endpoints, tables, vectors, and test assertions.
 
 ---
 
@@ -84,6 +91,27 @@ Connecting to Vector Store Service...
  -> Created: BOARD_AND_MEDIUM_ISOLATION_REPORT.md
  -> Created: BALBHARATI_RUNTIME_REVIEW_PROOF.md
 Master Compliance Evidence Runner completed all runs successfully!
+```
+
+### C. MDU Registry Hardening Test Proof
+*   **Command:** `pytest backend/tests/test_mdu_registry.py -v`
+*   **Outcome:** All 12 unit tests passed successfully, validating MDU health diagnostics, failures, lineups, actions, and rejections:
+```text
+collected 12 items
+
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_get_mdu_health PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_simulate_failure_states PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_get_datasets_list PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_get_datasets_search_filter PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_get_dataset_lineage PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_get_dataset_lineage_not_found PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_lifecycle_administrative_actions PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_lifecycle_action_validation_fails PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_get_provenance_logs PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_mdu_state_reconciliation PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_schema_mismatch_422 PASSED
+backend/tests/test_mdu_registry.py::TestMduRegistryRouter::test_schema_version_409 PASSED
+======================= 12 passed in 0.80s =======================
 ```
 
 ---
