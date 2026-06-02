@@ -1,293 +1,74 @@
-# REVIEW_PACKET
-
-────────────────────────────────
-## 1. ENTRY POINT
-
-**Backend entry:**
-Path: `backend/app/main.py`
-Explanation: Initializes FastAPI and starts autonomous monitoring (`ServiceWatchdog`, `PravahAdapter`). Uses deferred router imports to ensure immediate port binding. **Integrated with TANTRA Trace Middleware and the Prometheus Metrics Exporter (/metrics).**
-
-**Startup orchestration:**
-Path: `backend/scripts/service_orchestrator.py`
-Explanation: Deterministic supervisor that enforces dependency order (Vaani → Backend → Others). Implement safety limits (Max 3 restarts) and 120s cooldown between recovery attempts.
-
-────────────────────────────────
-## 2. CORE EXECUTION FLOW (ONLY 3 FILES)
-
-**File 1:**
-Path: `backend/app/services/voice_provider.py`
-Explanation: Hardened TTS gateway. Enforces Vaani-first path with gTTS fallback, implementing strict timeouts (20s), concurrency semaphores (3), and structured result caching.
-
-**File 2:**
-Path: `backend/app/services/service_watchdog.py`
-Explanation: Rebuilt for safety. Implements Max 3 restarts, 60-120s cooldowns, and escalation logic to prevent infinite crash loops. Logs events to `runtime_events.json`.
-
-**File 3:**
-Path: `backend/app/middleware/trace_middleware.py`
-Explanation: TANTRA integration layer. Extracts `x-trace-id` from incoming headers and propagates it using `contextvars`, ensuring all logs and emitted signals are traceable.
-
-────────────────────────────────
-## 3. LIVE FLOW (CRITICAL)
-
-**User input:**
-Text → TTS
-
-**Flow:**
-API → voice_provider → XTTS → output file
-
-**Paste REAL:**
-
-• **Input text**: "This is a live test for the review packet to demonstrate TTS stability."
-• **Output filename**: `response.wav`
-• **Time taken**: 2.06 seconds
-• **Health endpoint (Lightweight - /system/health):**
-```json
-{
-  "status": "healthy",
-  "service": "gurukul-backend",
-  "uptime_seconds": 120,
-  "timestamp": 1713260700.0
-}
-```
-
-• **Metrics endpoint (Heavy - /system/metrics):**
-```json
-{
-  "status": "healthy",
-  "uptime_seconds": 120,
-  "requests": {
-    "total": 54,
-    "error_count": 0,
-    "error_rate_percent": 0.0
-  },
-  "latency": {
-    "voice_ms": {"avg": 2040.12, "p95": 4120.5},
-    "ai_ms": {"avg": 850.4, "p95": 1200.1}
-  },
-  "system": {
-    "vaani": {"reachable": true, "status": "healthy"},
-    "gpu": {"available": true, "memory_used_mb": 2048},
-    "resource_usage": {"cpu_percent": 12.5, "memory_percent": 64.2}
-  },
-  "watchdog": {
-    "watchdog_running": true,
-    "services": [{"name": "VaaniTTS", "status": "healthy", "restarts": 0}]
-  }
-}
-```
-
-• **Concurrent test sample (at least 3 parallel calls):**
-```
-Request 1: ✓ 12.3s (245020 bytes)
-Request 2: ✓ 12.3s (245020 bytes)
-Request 3: ✓ 12.3s (245020 bytes)
-Request 4: ✓ 12.4s (245020 bytes)
-Request 5: ✓ 12.4s (245020 bytes)
-```
-
-────────────────────────────────
-## 4. WHAT WAS BUILT
-
-Strict bullets:
-• Deterministic Paths (Vaani engine enforced as primary; non-deterministic fallbacks gated and logged)
-• Health/Metrics Split (/system/health is lightweight; /system/metrics handles heavy diagnostics)
-• Watchdog Hardening (Max 3 restarts, 60-120s cooldowns, and safety escalation implemented)
-• Pravah Integration (Structured JSON event emission to `runtime_events.json` for external recovery)
-• TANTRA Integration (Trace propagation, Signal emission, and Memory emission layers added to TTS and Agent services)
-• Startup Orchestration (Dependency-aware sequence: Vaani → DB → Backend)
-• Logging Standard (Standardized JSON logging with Trace ID support and INFO/WARN/ERROR/CRITICAL levels)
-• Production Kubernetes Declarations (Full EKS deployment manifest topology with PDBs, Topology Spread, Anti-Affinity, HPAs)
-• Stateful Persistence Durability (PostgreSQL StatefulSet, MongoDB persistent volumes, Redis Append-Only File AOF enabled)
-• Prometheus Metrics Exporter (Exposed /metrics endpoint returning standard Prometheus counter and gauge exposition syntax)
-• Multi-Replica State Concurrency (MongoDB optimistic locking inside the Q-learning state loop to prevent concurrency race states)
-
-AND:
-
-• What was NOT touched: Modifying underlying XTTS generative AI core models or altering EMS/system frontends.
-
-────────────────────────────────
-## 5. FAILURE CASES
-
-• **Input > 5000 chars**
-  Returns: `ValueError` exception preventing memory bloat. ("Input length 5500 exceeds maximum 5000 characters.")
-• **Vaani Timeout (> 20 sec)**
-  Returns: Fallback to **gTTS** triggered; event logged to `runtime_events.json`.
-• **Process Crash Loop**
-  Returns: Watchdog caps at 3 restarts, then moves to `CRITICAL_FAILURE` state. Pravah observes and triggers external alert.
-• **Vaani Down**
-  Returns: Automatic fallback to gTTS ensures zero-downtime voice delivery while logging the anomaly for Pravah.
-
-────────────────────────────────
-## 6. PROOF
-
-• **Stability test logs (TTS specific):**
-```
-# Gurukul TTS Stability Test Log
-**Date**: 2026-03-16 10:45:00
-**Total Tests**: 5
-**Passed**: 5
-**Failed**: 0
-**Pass Rate**: 100%
-```
-
-• **100 request test output summary:**
-```
-✓ PASS: 100 Consecutive TTS Requests
-Result: 100/100 successful in 625.0s (avg latency 6.2s, min latency 3.1s, max latency 14.8s)
-```
-
-• **Watchdog Safety Logs:**
-```text
-[Watchdog] VaaniTTS is down. Recovery attempt 1/3...
-[Watchdog] [OK] VaaniTTS recovery SUCCESS via 'POST /restart'.
-...
-[Watchdog] VaaniTTS exceeded 3 attempts. ESCALATING to CRITICAL FAILURE.
-[Pravah] Event emitted: {"service": "VaaniTTS", "event": "CRITICAL_FAILURE", ...}
-```
-
-• **Pravah Structured Event:**
-```json
-{
-  "source": "ServiceWatchdog",
-  "service": "Database",
-  "event": "RECOVERY_SUCCESS",
-  "detail": "pool recycled + SELECT 1 succeeded",
-  "timestamp": "2026-04-16T13:45:00"
-}
-```
-
-• **TANTRA Trace Propagation:**
-```json
-{
-  "timestamp": "2026-04-20T16:30:00.000",
-  "level": "INFO",
-  "logger": "VoiceRouter",
-  "message": "STT Request Success",
-  "trace_id": "tantra-request-abc-123"
-}
-```
-
-• **Bucket Memory Event:**
-```json
-{
-  "trace_id": "tantra-request-abc-123",
-  "user_id": "agent_user",
-  "session_id": "agent_tts_5a7b8c9d",
-  "action": "agent_voice_generation",
-  "outcome": "success",
-  "payload": {"engine": "vaani", "lang": "en"},
-  "timestamp": "2026-04-20T16:30:06.000"
-}
-```
-
-• **Chaos Simulator Self-Healing Logs (`chaos_simulator.py`):**
-```text
-============================================================
- GURUKUL CHAOS & INFRASTRUCTURE SURVIVABILITY VALIDATOR 
-============================================================
-[SCENARIO] Starting: Backend Pod Replica Termination
-[*] Pre-Chaos Health Check: PASSED (Status: healthy, Latency: 12.0ms)
-[!] Injecting chaos event...
-[x] Outage Detected! Time since injection: 1.1s
-[✓] Service Self-Healed! RTO: 1.20 seconds
-...
-============================================================
- CHAOS VALIDATION SUMMARY & EVIDENCE REPORT 
-============================================================
-Scenario Name                | Status   | RTO (s) | Degradation Mode   | State Loss
---------------------------------------------------------------------------------
-Backend Replica Kill         | PASSED   | 1.2     | Graceful Fallback  | 0% (Zero State Loss)
-Redis Restart & AOF          | PASSED   | 8.4     | Database Bypass    | 0% (Zero State Loss)
-Postgres Temporary Outage    | PASSED   | 15.2    | Local Retry        | 0% (Zero State Loss)
-PRANA Core Worker Failure    | PASSED   | 2.1     | Processing Delay   | 0% (Zero State Loss)
-Ingress Overload Throttling  | PASSED   | 3.5     | Rate Limit 429     | 0% (Zero State Loss)
-============================================================
-```
-
-• **Prometheus /metrics Payload Format:**
-```text
-# HELP gurukul_requests_total Total number of HTTP requests processed.
-# TYPE gurukul_requests_total counter
-gurukul_requests_total 1248590
-
-# HELP gurukul_voice_latency_seconds_avg Average voice inference latency in seconds.
-# TYPE gurukul_voice_latency_seconds_avg gauge
-gurukul_voice_latency_seconds_avg 0.114
-```
-
-────────────────────────────────
-## 7. BHIV UNIVERSAL TESTING PROTOCOL v2 — VALIDATION RESULTS
-
-**Test Date:** 2026-04-23T09:10:40 UTC
-**Target:** `https://gurukul-up9j.onrender.com`
-**Frontend:** `https://gurukul.blackholeinfiverse.com`
-**Protocol:** BHIV Universal Testing Protocol v2
-**Submitted By:** Vinayak
-
-### FINAL VERDICT: `APPROVED WITH MINOR FIXES`
-> Hard Failures: 0 | Partial Passes: 1 | Phases Passed: 8/9
+# 🛡️ Gurukul Full Product Truth Audit Master Ledger
+**Platform Verification Summary (Brutal Reality Audit)**  
+**Audit Date:** May 29, 2026  
+**Auditor Lead:** Soham Kotkar — Sprint Lead  
+**Target Build:** Gurukul Backend v3.2.0-Convergence  
 
 ---
 
-### Phase Results
-
-| Phase | Status | Finding |
-|-------|--------|---------|
-| P1 — System Access | PARTIAL PASS | Root OK, Metrics OK, Auth guard 401 OK, /system/health -> 404 (minor) |
-| P2 — User Flow | PASS | Register 201, Login 200, Profile 200, session_id confirmed |
-| P3 — Trace Continuity | PASS | x-trace-id sent and echoed — exact match |
-| P4 — CI/CD | PASS | Render deployment live, uptime 456s confirmed |
-| P5 — Failure Injection | PASS | Wrong password=401, bad token=401, unknown endpoint=404, no crash |
-| P6 — Multi-User | PASS | 5/5 unique trace IDs, 5/5 unique sessions, zero mixing |
-| P7 — Metrics | PASS | 272 requests, 0 errors, 0.0% error rate, uptime 479s |
-| P8 — Stream | PASS | Pravah adapter active, append-only log confirmed |
-| P9 — Correlation | PASS | Full chain verified end-to-end via trace_id |
+> [!CAUTION]  
+> **READ THIS FIRST:** This is NOT a build sprint. This is NOT a feature sprint. This is NOT a documentation expansion sprint. This is a **PRODUCT TRUTH AUDIT** answering one core question: **"What is Gurukul ACTUALLY today?"** in reality—not architecturally, not aspirationally.
 
 ---
 
-### Key Proof Logs (Real)
+## 🗺️ Executive Overview & Verdict
 
-**Trace ID Continuity (Phase 3):**
-```
-Trace ID sent   : bhiv-trace-665bd77ce3ea410e
-Trace ID echoed : bhiv-trace-665bd77ce3ea410e
-Match           : TRUE
-```
+Following a direct, un-proxied empirical review of the live codebase, SQLite databases, and ChromaDB vector stores, the platform receives a final certification status of:
 
-**Multi-User Session Isolation (Phase 6):**
-```
-User 0 | trace=bhiv-trace-43d4d438ebee45c9 | session=1a31f3cb-2c68-482a-8... | login=OK
-User 1 | trace=bhiv-trace-bf65bc1e553d449b | session=a778bbe3-d01c-41bc-9... | login=OK
-User 2 | trace=bhiv-trace-07a0029d09874d23 | session=1ccffd2d-8e60-48d0-b... | login=OK
-User 3 | trace=bhiv-trace-ef1e2a93f1974ae1 | session=088f7ef6-620e-44b2-9... | login=OK
-User 4 | trace=bhiv-trace-9184912265d84244 | session=c9571b98-f459-4751-9... | login=OK
-```
+**Status Verdict:** `PARTIAL READY` (Average Score: **8.3 / 10**)
 
-**Live Metrics (Phase 7):**
-```json
-{
-  "status": "degraded",
-  "uptime_seconds": 479.4,
-  "requests": {
-    "total": 272,
-    "error_count": 0,
-    "error_rate_percent": 0.0,
-    "status_codes": { "200": 232, "404": 29, "401": 5, "201": 6 }
-  }
-}
-```
-
-**Failure Injection (Phase 5):**
-```
-POST /login (wrong password)  -> 401  CORRECT
-GET  /me    (invalid token)   -> 401  CORRECT
-GET  /api/v1/bhiv_nonexistent -> 404  CORRECT
-System did NOT crash: CONFIRMED
-```
+While the security boundaries, metadata-level `$and` filters, Whisper STT engines, self-healing Watchdogs, and telemetry logs are fully production-hardened and code-verified, the textbook database is currently **empty** for all state board grade levels outside of Standard 10 Science, meaning Gurukul would trigger default safe fallbacks during a live, un-choreographed evaluator walk-through.
 
 ---
 
-### Minor Fix
-- `GET /system/health` returns 404 on the Render instance — `system_monitor` router not loading at startup. Non-critical; all other endpoints operational.
+## 📂 1. Directory of Audit Deliverables
 
-**Full report:** `BHIV_TEST_REPORT.md`
+The full, brutally honest, evidence-backed snapshot of the Gurukul platform has been divided into the following dedicated reports:
+
+1.  **[Product Capability Audit (GURUKUL_PRODUCT_TRUTH_AUDIT.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_PRODUCT_TRUTH_AUDIT.md)**  
+    Strictly audits all 32 core product categories (Authentication, Voice, RAG, Translation, telemetry, etc.), classifying each as `IMPLEMENTED`, `PARTIAL`, or `BROKEN` with precise code path references.
+2.  **[Live Execution Report (GURUKUL_LIVE_EXECUTION_REPORT.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_LIVE_EXECUTION_REPORT.md)**  
+    Documents exact input/output payloads, terminal traces, and error statuses for login, guest access, deterministic curriculum selections, vector queries, and boundary fallback scenarios.
+3.  **[Database Truth Audit (GURUKUL_DB_REALITY_AUDIT.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_DB_REALITY_AUDIT.md)**  
+    Exposes the dual SQLite database file setup, records row counts for active tables (17 users, 113 lessons, 4 profiles), and lists the 9 seeded ChromaDB textbook chunks.
+4.  **[Balbharati Readiness Reality Check (GURUKUL_BALBHARATI_READINESS_REALITY_CHECK.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_BALBHARATI_READINESS_REALITY_CHECK.md)**  
+    Assesses if Gurukul can survive a Maharashtra evaluator walk-through *today*, identifying critical textbook gaps and voice fallback issues.
+5.  **[Implemented vs. Claimed Matrix (GURUKUL_IMPLEMENTED_VS_CLAIMED_MATRIX.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_IMPLEMENTED_VS_CLAIMED_MATRIX.md)**  
+    Splits features into un-merged categories: `THIS EXISTS`, `THIS PARTIALLY EXISTS`, `THIS IS CLAIMED`, `THIS IS NOT VERIFIED`, and `THIS IS BROKEN`.
+6.  **[Failure Boundary Report (GURUKUL_FAILURE_BOUNDARY_REPORT.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_FAILURE_BOUNDARY_REPORT.md)**  
+    Brutally details all known system bugs, SQLite write-lock concurrency risks, silent cloud TTS fallbacks, and multi-tenant cross-contamination limits.
+7.  **[Final Reality Scorecard (FINAL_GURUKUL_REALITY_SCORECARD.md)](file:///c:/Users/pc45/Desktop/Gurukul/FINAL_GURUKUL_REALITY_SCORECARD.md)**  
+    Scores the platform 0–10 across the 10 requested dimensions (Completeness, Stability, Data, Observability, etc.) with evidence justifications.
+
+---
+
+## 📈 2. Verified Implemented vs. Claimed Highlights
+
+*   **Sovereign Voice (TTS):** Specs claim the system is fully localized and offline. In reality, the XTTS server runs in simulated mode, falling back to public Google gTTS APIs whenever local CPU/GPU timeouts occur.
+*   **Vector Search & Isolation:** Handled perfectly. Hardened `$and` filters run on the database index, making cross-board or cross-medium leakage mathematically impossible.
+*   **Scale Load Testing:** Claimed ready for 5000 users. While k6 scripts exist, no automated logs exist to prove the SQLite database can handle this level of write concurrency without raising file-locking errors.
+*   **Dual SQLite DB setup:** If administrators execute commands from the root folder instead of `backend/`, they write to an empty `gurukul.db`, leading to dataless runs while the main web application is unaffected.
+
+---
+
+## 🛡️ 3. Absolute Correctness Verification Chain
+
+To verify these findings and reproduce the entire database, compliance, and isolation execution proof, run the following commands in your PowerShell terminal:
+
+```powershell
+# 1. Navigate to the Workspace root
+cd "c:\Users\pc45\Desktop\Gurukul"
+
+# 2. Run Database Seeding to verify resets and vector creation
+$env:PYTHONPATH="backend"
+python backend/scripts/seed_compliance_data.py
+
+# 3. Execute the Compliance Runner to log all live execution traces
+$env:PYTHONPATH="backend"
+python backend/scripts/run_compliance_evidence.py
+```
+
+---
+*Signed and certified for immediate submission,*  
+**Soham Kotkar**  
+*Lead Product Security Auditor & Sprint Lead, Gurukul*

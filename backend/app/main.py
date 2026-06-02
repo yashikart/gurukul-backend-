@@ -430,6 +430,22 @@ async def startup_event():
         except Exception as e:
             print(f"[Startup] [WARN] voice STT router failed: {e}")
 
+        # ── State Board Compliance ────────────────────────────────────
+        try:
+            from app.routers import compliance as compliance_mod
+            app.include_router(compliance_mod.router, prefix="/api/v1", tags=["State Board Compliance"])
+            print("[Startup] [OK] compliance router at /api/v1/compliance")
+        except Exception as e:
+            print(f"[Startup] [WARN] compliance router failed: {e}")
+
+        # ── Master Data Universe Registry ─────────────────────────────
+        try:
+            from app.routers import mdu_registry as mdu_registry_mod
+            app.include_router(mdu_registry_mod.router, prefix="/api/v1", tags=["Master Data Universe"])
+            print("[Startup] [OK] mdu_registry router at /api/v1/mdu")
+        except Exception as e:
+            print(f"[Startup] [WARN] mdu_registry router failed: {e}")
+
         # ── Watchdog ──────────────────────────────────────────────────
         try:
             from app.services.service_watchdog import watchdog as _watchdog

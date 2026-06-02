@@ -5,8 +5,9 @@ from app.config import settings
 
 # Create database engine with lazy connection
 # pool_pre_ping=True will check connections before using them
+db_url = settings.DATABASE_URL.strip() if settings.DATABASE_URL else settings.DATABASE_URL
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     pool_pre_ping=True,
     pool_recycle=3600,
     echo=False,

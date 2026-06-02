@@ -46,6 +46,10 @@ export const authAPI = {
     const response = await api.post('/v1/auth/login-json', { email, password });
     return response.data;
   },
+  register: async (userData) => {
+    const response = await api.post('/v1/auth/register', userData);
+    return response.data;
+  },
   getMe: async () => {
     const response = await api.get('/v1/auth/me');
     return response.data;
@@ -73,6 +77,10 @@ export const authAPI = {
 
 // Schools API
 export const schoolsAPI = {
+  getPublicList: async () => {
+    const response = await api.get('/schools/public/list');
+    return response.data;
+  },
   // Note: GET /schools/ endpoint has been removed
   // Use specific school endpoints instead
   getById: async (schoolId) => {

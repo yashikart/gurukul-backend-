@@ -60,14 +60,66 @@ async def chat_endpoint(
         payload={"conversation_id": conversation_id, "use_rag": request.use_rag}
     )
     
-    # Step 1: Try to get context from knowledge base
-    kb_result = get_knowledge_base_context(
-        query=request.message,
-        top_k=3,
-        use_knowledge_base=request.use_rag
-    )
+    fallback_used = False
+    fallback_context_warning = ""
+    filter_metadata = None
     
-    # Step 2: Build system message with or without context
+    # Step 1: Resolve user's active syllabus preferences from their profile
+    if request.use_rag:
+        if current_user and current_user.profile and isinstance(current_user.profile.data, dict):
+            profile_data = current_user.profile.data
+            board = profile_data.get("board")
+            medium = profile_data.get("medium")
+            class_std = profile_data.get("class") or profile_data.get("class_std") or profile_data.get("class_standard")
+            
+            if board:
+                filter_metadata = {
+                    "board": board.upper(),
+                    "medium": medium.lower() if medium else "en",
+                    "class_std": int(class_std) if class_std else 10
+                }
+
+        # Query database with strict user board filter
+        kb_result = get_knowledge_base_context(
+            query=request.message,
+            top_k=3,
+            filter_metadata=filter_metadata,
+            use_knowledge_base=True
+        )
+        
+        # Step 2: Handle fallback if no matching context is found for active board
+        if filter_metadata and not kb_result["context"] and filter_metadata["board"] != "NCERT":
+            # Fall back deterministically to NCERT English Standard 10
+            ncert_fallback_filter = {
+                "board": "NCERT",
+                "medium": "en",
+                "class_std": 10
+            }
+            logger.info(f"RAG search returned 0 matches for {filter_metadata}. Triggering non-silent fallback to NCERT English Std 10.")
+            
+            kb_result = get_knowledge_base_context(
+                query=request.message,
+                top_k=3,
+                filter_metadata=ncert_fallback_filter,
+                use_knowledge_base=True
+            )
+            
+            if kb_result["context"]:
+                fallback_used = True
+                fallback_context_warning = (
+                    f"\n\n[FALLBACK SYSTEM WARNING] This context is sourced from NCERT (CBSE) English Standard 10 "
+                    f"due to missing active syllabus chunks for Board {filter_metadata['board']} Medium {filter_metadata['medium']} Standard {filter_metadata['class_std']}."
+                )
+                kb_result["context"] = kb_result["context"] + fallback_context_warning
+    else:
+        kb_result = {
+            "context": "",
+            "knowledge_base_used": False,
+            "results": [],
+            "error": None
+        }
+    
+    # Step 3: Build system message with or without context
     base_system_message = "You are Gurukul, an AI coding tutor and educational guide."
     
     if kb_result["knowledge_base_used"] and kb_result["context"]:
@@ -78,6 +130,12 @@ async def chat_endpoint(
             context=kb_result["context"],
             include_context_instruction=True
         )
+        if fallback_used:
+            system_message += (
+                "\n\nCRITICAL CONTEXT DISCIPLINE: Sourced from NCERT CBSE English Standard 10 "
+                "due to missing active board chunks. You MUST explicitly inform the user that this context "
+                "is a fallback sourced from NCERT (CBSE) and not their active board."
+            )
         logger.info(f"Using Knowledge Base + Groq: {len(kb_result['context'])} chars context")
     else:
         # Fallback: Use Groq only (KB failed or disabled)
@@ -87,7 +145,7 @@ async def chat_endpoint(
         else:
             logger.info("Knowledge Base disabled or empty, using Groq only")
     
-    # Step 3: Build message history for context
+    # Step 4: Build message history for context
     # Retrieve previous messages from this conversation
     previous_messages = _chat_history.get(user_conversation_key, [])
     
@@ -105,7 +163,7 @@ async def chat_endpoint(
     # Add current user message
     messages.append({"role": "user", "content": request.message})
     
-    # Step 4: Call Groq with conversation history
+    # Step 5: Call Groq with conversation history
     try:
         from groq import Groq
         
@@ -161,7 +219,7 @@ async def chat_endpoint(
         "knowledge_base_used": kb_result["knowledge_base_used"],
         "groq_used": groq_used,
         "context_length": len(kb_result["context"]) if kb_result["context"] else 0,
-        "fallback_used": not kb_result["knowledge_base_used"] and request.use_rag,
+        "fallback_used": fallback_used,
         "kb_error": kb_result["error"] if not kb_result["knowledge_base_used"] else None,
         "groq_error": groq_error,
         "history_messages_used": len(previous_messages)

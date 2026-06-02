@@ -275,7 +275,13 @@ class VectorStoreService:
         try:
             if self.backend == "chromadb":
                 # Build where clause for filtering
-                where_clause = filter_metadata if filter_metadata else None
+                where_clause = None
+                if filter_metadata:
+                    if len(filter_metadata) == 1:
+                        where_clause = filter_metadata
+                    elif len(filter_metadata) > 1:
+                        # ChromaDB requires explicit logical $and list for multiple conditions
+                        where_clause = {"$and": [{k: v} for k, v in filter_metadata.items()]}
                 
                 # Search in ChromaDB
                 search_results = self.collection.query(
