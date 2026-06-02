@@ -362,3 +362,71 @@ def get_me(current_user: User = Depends(get_current_user)):
         role=current_user.role,
         school_id=current_user.school_id
     )
+
+
+from app.schemas import UserCreate
+from app.models import School
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def register(
+    user_data: UserCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Public registration endpoint. Allows creating users of any role.
+    """
+    # Check if email already exists
+    existing = db.query(User).filter(User.email == user_data.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    school_id = user_data.school_id
+    
+    # If not SUPER_ADMIN, require a school_id or auto-assign to the first school
+    if user_data.role != UserRole.SUPER_ADMIN:
+        if not school_id:
+            # Check if any school exists
+            school = db.query(School).first()
+            if not school:
+                # Create a default school
+                school = School(
+                    name="Gurukul Demo Academy",
+                    address="123 Demo Street, Blackhole Infiverse",
+                    phone="555-DEMO",
+                    email="demo@gurukul.com"
+                )
+                db.add(school)
+                db.commit()
+                db.refresh(school)
+            school_id = school.id
+        else:
+            # Verify school exists
+            school = db.query(School).filter(School.id == school_id).first()
+            if not school:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"School with ID {school_id} does not exist"
+                )
+    else:
+        # SUPER_ADMIN does not belong to a school
+        school_id = None
+
+    hashed_password = get_password_hash(user_data.password)
+    
+    new_user = User(
+        name=user_data.name,
+        email=user_data.email,
+        role=user_data.role,
+        password=hashed_password,
+        school_id=school_id,
+        is_active=True
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+

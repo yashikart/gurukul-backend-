@@ -66,6 +66,16 @@ def generate_random_password(length: int = 12) -> str:
     return password
 
 
+@router.get("/public/list", response_model=List[SchoolResponse])
+def list_schools_public(db: Session = Depends(get_db)):
+    """
+    Public endpoint to list all schools.
+    Does not require authentication. Used by the signup/registration form.
+    """
+    schools = db.query(School).all()
+    return schools
+
+
 @router.post("/", response_model=SchoolResponse, status_code=status.HTTP_201_CREATED)
 async def create_school(
     school_data: SchoolCreate,
