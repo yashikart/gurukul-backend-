@@ -6,7 +6,7 @@ from fastapi import Request
 from app.core.config import settings
 
 # Determine DB URL
-SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL.strip() if settings.DATABASE_URL else settings.DATABASE_URL
 
 # Fallback: Use SQLite for local dev/testing if DATABASE_URL not set
 # For production, set DATABASE_URL to PostgreSQL connection string
