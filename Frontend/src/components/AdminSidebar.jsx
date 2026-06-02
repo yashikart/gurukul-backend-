@@ -9,7 +9,8 @@ import {
     FaSignOutAlt,
     FaUserCircle,
     FaServer,
-    FaDatabase
+    FaDatabase,
+    FaEye
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,6 +27,7 @@ const AdminSidebar = () => {
         ...(!isDemoMode ? [{ icon: FaServer, label: "System Overview", path: "/admin_dashboard#overview", hash: "overview" }] : []),
         ...(!isDemoMode ? [{ icon: FaUsers, label: "User Management", path: "/admin_dashboard#users", hash: "users" }] : []),
         ...(!isDemoMode ? [{ icon: FaDatabase, label: "MDU Registry", path: "/admin_dashboard#mdu_registry", hash: "mdu_registry" }] : []),
+        ...(!isDemoMode ? [{ icon: FaEye, label: "Gurukul Drishti", path: "/admin_dashboard#drishti", hash: "drishti" }] : []),
         { icon: FaChartLine, label: "Reports & Analytics", path: "/admin_dashboard#reports", hash: "reports" },
     ];
 

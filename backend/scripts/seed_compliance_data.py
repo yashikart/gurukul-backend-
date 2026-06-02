@@ -209,6 +209,158 @@ CHUNKS_DATA = [
             "chunk_id": "nc-en-06-s-c1-01",
             "source": "NCERT Class 6 Science - Chapter 1, Page 1"
         }
+    },
+
+    # ── 8. BALBHARATI MARATHI STANDARD 9 ─────────────────────────────────────
+    {
+        "text": (
+            "गतीचे नियम (Laws of Motion): जेव्हा एखाद्या वस्तूची जागा आजूबाजूच्या वस्तूंच्या संदर्भात बदलते, तेव्हा ती वस्तू गतिमान आहे असे म्हणतात. "
+            "न्यूटनचे गतीचे नियम: १. पहिला नियम (जडत्वाचा नियम) - जोपर्यंत वस्तूवर बाह्य बल कार्यरत नसते, तोपर्यंत ती वस्तू स्थिर किंवा एकाच गतीने मार्गक्रमण करत राहते."
+        ),
+        "metadata": {
+            "board": "BALBHARATI",
+            "medium": "mr",
+            "class_std": 9,
+            "subject": "science_and_technology_1",
+            "chapter": 1,
+            "chapter_title": "Laws of Motion",
+            "textbook_code": "MSB-S09-MR",
+            "chunk_id": "bb-mr-09-s1-c1-01",
+            "source": "Balbharati Class 9 Science - Chapter 1, Page 1"
+        }
+    },
+
+    # ── 9. BALBHARATI MARATHI STANDARD 8 ─────────────────────────────────────
+    {
+        "text": (
+            "सजीव सृष्टी व सूक्ष्मजीवांचे वर्गीकरण (Living World and Classification of Microbes): पृथ्वीवरील सजीवांचे वर्गीकरण करण्यासाठी "
+            "रॉबर्ट व्हिटाकर यांनी पाच सृष्टी पद्धती (Five Kingdom System) मांडली. यामध्ये मोनेरा, प्रोटिस्टा, कवक, वनस्पती व प्राणी या पाच सृष्टींचा समावेश होतो."
+        ),
+        "metadata": {
+            "board": "BALBHARATI",
+            "medium": "mr",
+            "class_std": 8,
+            "subject": "science_and_technology_1",
+            "chapter": 1,
+            "chapter_title": "Living World and Classification of Microbes",
+            "textbook_code": "MSB-S08-MR",
+            "chunk_id": "bb-mr-08-s1-c1-01",
+            "source": "Balbharati Class 8 Science - Chapter 1, Page 1"
+        }
+    },
+
+    # ── 10. BALBHARATI MARATHI STANDARD 7 ────────────────────────────────────
+    {
+        "text": (
+            "सजीव सृष्टी: अनुकूलन आणि वर्गीकरण (The Living World: Adaptations and Classification). सजीवांमध्ये त्यांच्या राहण्याच्या आणि "
+            "वातावरणाशी जुळवून घेण्याच्या क्षमतेनुसार जे बदल घडून येतात, त्याला अनुकूलन (Adaptation) म्हणतात. वाळवंटी वनस्पतींमध्ये पाण्याचे बाष्पीभवन रोखण्यासाठी पाने काट्यांमध्ये बदलतात."
+        ),
+        "metadata": {
+            "board": "BALBHARATI",
+            "medium": "mr",
+            "class_std": 7,
+            "subject": "science_and_technology_1",
+            "chapter": 1,
+            "chapter_title": "The Living World: Adaptations and Classification",
+            "textbook_code": "MSB-S07-MR",
+            "chunk_id": "bb-mr-07-s1-c1-01",
+            "source": "Balbharati Class 7 Science - Chapter 1, Page 1"
+        }
+    },
+
+    # ── 11. BALBHARATI MARATHI STANDARD 6 ────────────────────────────────────
+    {
+        "text": (
+            "नैसर्गिक संसाधने - हवा, पाणी आणि जमीन (Natural Resources - Air, Water and Land): पृथ्वीवरील सजीव सृष्टी टिकून राहण्यासाठी "
+            "हवा, पाणी आणि जमीन हे अत्यंत महत्त्वाचे घटक आहेत. हवेमध्ये प्रामुख्याने नायट्रोजन, ऑक्सिजन, कार्बन डायऑक्साइड आणि इतर निष्क्रिय वायूंचा समावेश असतो."
+        ),
+        "metadata": {
+            "board": "BALBHARATI",
+            "medium": "mr",
+            "class_std": 6,
+            "subject": "science_and_technology_1",
+            "chapter": 1,
+            "chapter_title": "Natural Resources - Air, Water and Land",
+            "textbook_code": "MSB-S06-MR",
+            "chunk_id": "bb-mr-06-s1-c1-01",
+            "source": "Balbharati Class 6 Science - Chapter 1, Page 1"
+        }
+    },
+
+    # ── 12. BALBHARATI ENGLISH STANDARD 9 ────────────────────────────────────
+    {
+        "text": (
+            "Laws of Motion: Motion is a relative concept. If the position of an object is changing with respect to its surroundings, "
+            "then it is said to be in motion. Newton's First Law of Motion explains inertia, stating that an object continues at rest unless acted upon by an external unbalanced force."
+        ),
+        "metadata": {
+            "board": "BALBHARATI",
+            "medium": "en",
+            "class_std": 9,
+            "subject": "science_and_technology_1",
+            "chapter": 1,
+            "chapter_title": "Laws of Motion",
+            "textbook_code": "MSB-S09-EN",
+            "chunk_id": "bb-en-09-s1-c1-01",
+            "source": "Balbharati Class 9 Science (English) - Chapter 1, Page 1"
+        }
+    },
+
+    # ── 13. BALBHARATI ENGLISH STANDARD 8 ────────────────────────────────────
+    {
+        "text": (
+            "Living World and Classification of Microbes: Robert Whittaker proposed the Five Kingdom System of classification in 1969. "
+            "The five kingdoms are Monera, Protista, Fungi, Plantae, and Animalia, helping systematic study of biological diversity."
+        ),
+        "metadata": {
+            "board": "BALBHARATI",
+            "medium": "en",
+            "class_std": 8,
+            "subject": "science_and_technology_1",
+            "chapter": 1,
+            "chapter_title": "Living World and Classification of Microbes",
+            "textbook_code": "MSB-S08-EN",
+            "chunk_id": "bb-en-08-s1-c1-01",
+            "source": "Balbharati Class 8 Science (English) - Chapter 1, Page 1"
+        }
+    },
+
+    # ── 14. BALBHARATI ENGLISH STANDARD 7 ────────────────────────────────────
+    {
+        "text": (
+            "The Living World: Adaptations and Classification. Adaptation is the gradual change occurring in the body parts and behavior "
+            "of organisms which helps them to adjust to their surroundings. Plants in desert areas have thorns instead of leaves to reduce transpiration."
+        ),
+        "metadata": {
+            "board": "BALBHARATI",
+            "medium": "en",
+            "class_std": 7,
+            "subject": "science_and_technology_1",
+            "chapter": 1,
+            "chapter_title": "The Living World: Adaptations and Classification",
+            "textbook_code": "MSB-S07-EN",
+            "chunk_id": "bb-en-07-s1-c1-01",
+            "source": "Balbharati Class 7 Science (English) - Chapter 1, Page 1"
+        }
+    },
+
+    # ── 15. BALBHARATI ENGLISH STANDARD 6 ────────────────────────────────────
+    {
+        "text": (
+            "Natural Resources - Air, Water and Land: The substances available in nature which satisfy the basic needs of living things "
+            "are called natural resources. Air, water, and land are crucial natural resources. Air contains nitrogen (78%), oxygen (21%), and other gases."
+        ),
+        "metadata": {
+            "board": "BALBHARATI",
+            "medium": "en",
+            "class_std": 6,
+            "subject": "science_and_technology_1",
+            "chapter": 1,
+            "chapter_title": "Natural Resources - Air, Water and Land",
+            "textbook_code": "MSB-S06-EN",
+            "chunk_id": "bb-en-06-s1-c1-01",
+            "source": "Balbharati Class 6 Science (English) - Chapter 1, Page 1"
+        }
     }
 ]
 
