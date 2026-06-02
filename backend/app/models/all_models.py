@@ -253,3 +253,45 @@ class SubjectData(Base):
     ems_sync_id = Column(String, nullable=True)  # Store EMS record ID after sync
 
     user = relationship("User", back_populates="subject_data")
+
+
+# --- MDU Registry Hardened Persistence Models ---
+
+class MduDataset(Base):
+    __tablename__ = "mdu_datasets"
+
+    id = Column(String, primary_key=True)  # e.g., "NCERT-S10-EN"
+    board = Column(String, nullable=False)
+    medium = Column(String, nullable=False)
+    class_standard = Column(Integer, nullable=False)
+    textbook_code = Column(String, nullable=False)
+    canonical_name = Column(String, nullable=False)
+    schema_version = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="DRAFT")  # ACTIVE, DRAFT, DEPRECATED, ROLLBACK_VERIFIED
+    chunk_count = Column(Integer, nullable=False, default=0)
+    trust_score = Column(Float, nullable=False, default=1.0)
+    onboarding_state = Column(String, nullable=False, default="VALIDATION_STAGE")  # VALIDATION_STAGE, COMPLETED
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    lineage_nodes = Column(JSON, nullable=False)  # Node definitions
+    lineage_links = Column(JSON, nullable=False)  # Link definitions
+
+class MduProvenanceEvent(Base):
+    __tablename__ = "mdu_provenance_events"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    operator = Column(String, nullable=False)
+    action = Column(String, nullable=False)
+    dataset = Column(String, nullable=False)
+    hash = Column(String(64), nullable=False)
+
+class MduReconciliationHistory(Base):
+    __tablename__ = "mdu_reconciliation_history"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    status = Column(String, nullable=False)
+    profile_audit_count = Column(Integer, nullable=False)
+    board_preferences = Column(JSON, nullable=False)
+    leakage_checks = Column(JSON, nullable=False)
+    reconciliation_trace = Column(JSON, nullable=False)

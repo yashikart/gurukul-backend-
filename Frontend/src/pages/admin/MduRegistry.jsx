@@ -375,6 +375,39 @@ const MduRegistry = () => {
                 )}
             </div>
 
+            {/* Implementation Boundaries & Verification Truth Matrix */}
+            {health && health.implementation_bounds && (
+                <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30">
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-orange-400 mb-4 flex items-center gap-2">
+                        <FaServer className="text-xs" />
+                        Infrastructure Implementation Boundaries & Runtime Truth Matrix
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        {Object.entries(health.implementation_bounds).map(([key, value]) => (
+                            <div key={key} className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
+                                        {key.replace(/_/g, ' ')}
+                                    </span>
+                                    <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${
+                                        value.status === 'IMPLEMENTED' 
+                                            ? 'text-green-400 bg-green-500/10 border border-green-500/20' 
+                                            : value.status === 'PARTIAL' 
+                                                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                                                : 'text-blue-400 bg-blue-500/10 border border-blue-500/20'
+                                    }`}>
+                                        {value.status}
+                                    </span>
+                                </div>
+                                <div className="text-[11px] text-gray-300">
+                                    {value.boundary}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Primary content grids */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
@@ -545,7 +578,16 @@ const MduRegistry = () => {
                                                                     <div className="text-[9px] text-gray-500 font-semibold uppercase font-mono tracking-wider">{node.type}</div>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center gap-3">
+                                                            <div className="flex items-center gap-2">
+                                                                {node.implementation_state && (
+                                                                    <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${
+                                                                        node.implementation_state === 'IMPLEMENTED' 
+                                                                            ? 'text-green-400 bg-green-500/10 border border-green-500/20' 
+                                                                            : 'text-blue-400 bg-blue-500/10 border border-blue-500/20'
+                                                                    }`}>
+                                                                        {node.implementation_state}
+                                                                    </span>
+                                                                )}
                                                                 <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${
                                                                     node.status === 'COMPLIANT' 
                                                                         ? 'text-green-400 bg-green-500/10 border border-green-500/20' 
@@ -590,7 +632,12 @@ const MduRegistry = () => {
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <div className="text-[10px] text-gray-500 font-mono">{p.hash.substring(0, 16)}...</div>
-                                                <div className="text-[8px] text-gray-600 font-semibold mt-1 flex items-center gap-1 justify-end">
+                                                <div className="text-[8px] text-gray-600 font-semibold mt-1 flex items-center gap-1.5 justify-end">
+                                                    {p.chain_verified && (
+                                                        <span className="text-green-400 flex items-center gap-0.5 text-[8px] uppercase font-bold bg-green-500/10 border border-green-500/20 px-1 rounded">
+                                                            <FaCheck className="text-[6px]" /> Verified
+                                                        </span>
+                                                    )}
                                                     <FaClock /> {new Date(p.timestamp).toLocaleTimeString()}
                                                 </div>
                                             </div>
