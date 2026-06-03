@@ -90,7 +90,7 @@ Successfully exported isolation scorecard: BOARD_ISOLATION_PROOF.md
 
 ### C. MDU Registry Hardening Test Proof
 *   **Command:** `pytest backend/tests/test_mdu_registry.py -v`
-*   **Outcome:** All 12 unit tests passed successfully, validating MDU health diagnostics, failures, lineups, actions, and rejections.
+*   **Outcome:** All 13 unit tests passed successfully, validating MDU health diagnostics, failures, lineups, actions, and rejections.
 
 ---
 
