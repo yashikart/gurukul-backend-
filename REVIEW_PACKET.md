@@ -9,7 +9,8 @@ This review packet outlines the complete architecture, data models, API endpoint
 
 ## 1. Entry Points
 *   **Backend API Entry:** `backend/app/main.py` (via `uvicorn app.main:app`) running on `http://localhost:3000`.
-*   **Frontend Web Entry:** `Frontend/src/pages/admin/GurukulDrishti.jsx` (via `npm run dev`) loaded at `http://localhost:5173/#drishti`.
+*   **Frontend Web Entry:** `Frontend/src/pages/admin/GurukulDrishti.jsx` (via `npm run dev`) loaded at `http://localhost:5173/#drishti` (Admin View).
+*   **Public Standalone Entry:** `http://localhost:5173/#/drishti` (visible to guests, teachers, students, and in Demo Mode via the header "Drishti Panel" link).
 *   **Docker Stack Entry:** `docker/docker-compose.yml` (runs full stack).
 
 ---

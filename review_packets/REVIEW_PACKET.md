@@ -16,6 +16,7 @@ This section lists the specific, functional components, dashboards, and validati
 *   **Deterministic NCERT Fallbacks:** Resolved silent fallback risks by redirecting unresolved queries/profiles to NCERT English Standard 10, returning a `fallback_used: True` response flag and appending non-silent system warnings (`[FALLBACK SYSTEM WARNING]`) to the LLM context.
 *   **Adversarial Ingress Attack Engine:** Created `backend/scripts/run_50_query_attack.py` to run 50 distinct queries to verify zero cross-board leakages.
 *   **Gurukul Drishti Operational Control Panel (Integrated):** Expanded the control panel (`Frontend/src/pages/admin/GurukulDrishti.jsx`) to consume live backend APIs:
+    *   **Public Standalone Route:** Created a new public route at `/drishti` and added a prominent **"Drishti Panel" link** in the main header navigation menu, rendering the full control panel even in Demo Mode and to guest/unauthenticated users.
     *   **Health Diagnostics:** Polls `/health` to verify system status, showing a glowing `SYSTEM ONLINE` badge.
     *   **Dashboard Aggregations:** Integrates with `/api/v1/dashboard/aggregate` (and role endpoints) to fetch live metrics, alerts, and actions.
     *   **Interactive Controls:** Supports status updates (`OPEN` -> `RESOLVED` -> `CLOSED` for alerts; lifecycle transitions for actions) and owner assignments using backend PUT requests.
