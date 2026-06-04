@@ -29,15 +29,14 @@ const SignIn = () => {
             const { user: loggedInUser } = await login(email, password);
 
             // Dynamically set the role based on the user object from backend
-            const role = (loggedInUser?.role || 'student').toLowerCase();
-            setUserRole(role);
+            const rawRole = (loggedInUser?.role || 'student').toLowerCase();
+            const mappedRole = (rawRole === 'institution_admin' || rawRole === 'regional_admin') ? 'admin' : rawRole;
+            setUserRole(mappedRole);
 
             // Redirect based on role
-            if (role === 'admin') {
-                navigate('/admin/dashboard');
-            } else if (role === 'teacher') {
-                navigate('/teacher/dashboard');
-            } else if (role === 'parent') {
+            if (['admin', 'teacher', 'institution_admin', 'regional_admin'].includes(rawRole)) {
+                navigate('/drishti');
+            } else if (rawRole === 'parent') {
                 navigate('/parent/dashboard');
             } else {
                 navigate('/dashboard');

@@ -395,9 +395,7 @@ const AppContent = () => {
                       path="/teacher/dashboard"
                       element={
                         <PrivateRoute>
-                          <RoleGuard allowedRoles={['teacher']}>
-                            <TeacherDashboard />
-                          </RoleGuard>
+                          <Navigate to="/drishti" replace />
                         </PrivateRoute>
                       }
                     />
