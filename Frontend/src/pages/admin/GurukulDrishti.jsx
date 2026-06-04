@@ -3,7 +3,7 @@ import {
     FaDatabase, FaEye, FaUsers, FaGraduationCap, FaMapMarkedAlt, 
     FaUserTie, FaChevronRight, FaPlay, FaHeartbeat, FaExclamationTriangle, 
     FaChartLine, FaCheckCircle, FaLock, FaSync, FaShieldAlt, FaTerminal,
-    FaInfoCircle, FaKey
+    FaInfoCircle, FaKey, FaHistory
 } from 'react-icons/fa';
 import { apiGet, apiPut, apiPost, checkBackendHealth, handleApiError } from '../../utils/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
