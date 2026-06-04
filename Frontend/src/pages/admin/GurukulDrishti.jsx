@@ -177,6 +177,7 @@ const GurukulDrishti = () => {
     
     // API loading and backend status states
     const [isOnline, setIsOnline] = useState(null); // null = checking, true/false
+    const [isWarmingUp, setIsWarmingUp] = useState(false); // Render cold-start warmup
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState(null);
     const [updatingId, setUpdatingId] = useState(null);
@@ -201,12 +202,39 @@ const GurukulDrishti = () => {
         setTerminalLogs(prev => [`[${timestamp}] ${msg}`, ...prev.slice(0, 15)]);
     };
 
-    // Verify backend health
-    const checkSystemHealth = async () => {
+    // Verify backend health — with auto-retry for Render cold-start warmup
+    const checkSystemHealth = async (autoRetry = false) => {
         logAction("Initiating service health ping...");
         const healthy = await checkBackendHealth();
         setIsOnline(healthy);
-        logAction(healthy ? "➔ System Status: ONLINE" : "➔ System Status: OFFLINE (Backend unavailable)");
+        if (healthy) {
+            setIsWarmingUp(false);
+            logAction("➔ System Status: ONLINE");
+        } else {
+            logAction("➔ System Status: OFFLINE (Backend unavailable or cold-starting)");
+            if (autoRetry) {
+                // Render free tier cold-starts in ~30–60s. Auto-retry every 10s up to 6 times.
+                setIsWarmingUp(true);
+                let attempts = 0;
+                const maxAttempts = 6;
+                const retryInterval = setInterval(async () => {
+                    attempts++;
+                    logAction(`➔ Warmup retry ${attempts}/${maxAttempts} — pinging backend...`);
+                    const alive = await checkBackendHealth();
+                    if (alive) {
+                        clearInterval(retryInterval);
+                        setIsOnline(true);
+                        setIsWarmingUp(false);
+                        logAction("➔ Backend is now ONLINE. Reloading live data...");
+                        await loadDashboardData();
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(retryInterval);
+                        setIsWarmingUp(false);
+                        logAction("➔ Backend did not respond after warmup period. Displaying cached data.");
+                    }
+                }, 10000);
+            }
+        }
         return healthy;
     };
 
@@ -260,10 +288,16 @@ const GurukulDrishti = () => {
             const displayStatus = err.status !== undefined ? err.status : 0;
             logAction(`➔ API Error: ${displayStatus} - ${apiErr.message}`);
             
-            // Graceful fallback to mock data on any API failure (e.g. auth bounds breach, network offline)
-            logAction("➔ Falling back to local simulation data.");
-            const key = getMockKey(roleName);
-            setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
+            if (isDemoMode || forceMock) {
+                // In demo mode: fall back to mock data so visitors can explore the UI
+                logAction("➔ Demo mode: falling back to local simulation data.");
+                const key = getMockKey(roleName);
+                setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
+            } else {
+                // In normal mode: clear data so dummy numbers are never shown as real
+                logAction("➔ Live mode: clearing dashboard — data unavailable while backend is offline.");
+                setDashboardData({ role: roleName, kpis: {}, open_alerts: [], pending_actions: [], recent_activity: [], status_summary: {} });
+            }
         } finally {
             setLoading(false);
         }
@@ -272,7 +306,7 @@ const GurukulDrishti = () => {
     // Initialize health check and fetch initial dashboard payload
     useEffect(() => {
         const init = async () => {
-            await checkSystemHealth();
+            const healthy = await checkSystemHealth(true); // enable auto-retry for cold-start
             await loadDashboardData();
         };
         init();
@@ -457,6 +491,11 @@ const GurukulDrishti = () => {
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>
                             <span>SYSTEM ONLINE</span>
                         </div>
+                    ) : isWarmingUp ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
+                            <span>WARMING UP...</span>
+                        </div>
                     ) : (
                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
@@ -464,7 +503,7 @@ const GurukulDrishti = () => {
                         </div>
                     )}
                     <button 
-                        onClick={() => { checkSystemHealth(); loadDashboardData(); }}
+                        onClick={() => { checkSystemHealth(true); loadDashboardData(); }}
                         className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs transition-colors"
                         title="Sync Data"
                     >
@@ -533,6 +572,21 @@ const GurukulDrishti = () => {
                             </button>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Backend cold-start notice (non-demo, offline state) */}
+            {!isDemoMode && !isOnline && (
+                <div className="flex items-start gap-3 p-3.5 rounded-xl bg-yellow-600/10 border border-yellow-500/20 text-yellow-300 text-xs leading-relaxed">
+                    <FaExclamationTriangle className="text-base shrink-0 mt-0.5 text-yellow-400" />
+                    <div>
+                        <span className="font-bold text-yellow-300">Backend is Starting Up</span>
+                        {isWarmingUp ? (
+                            <span className="ml-1">— The Render server is waking from sleep. Live data will load automatically in ~30–60 seconds. The data shown below is cached from your last session.</span>
+                        ) : (
+                            <span className="ml-1">— The backend could not be reached. This may be a temporary Render cold-start. Click the sync button above to retry, or wait a moment and refresh.</span>
+                        )}
+                    </div>
                 </div>
             )}
 
