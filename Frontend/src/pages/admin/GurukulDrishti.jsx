@@ -110,6 +110,16 @@ const MOCK_DASHBOARDS = {
     }
 };
 
+const getMockKey = (role) => {
+    if (!role) return "admin";
+    const r = role.toLowerCase().replace(/_/g, '-');
+    if (r === 'institution-admin' || r === 'admin') return 'admin';
+    if (r === 'regional-admin') return 'regional-admin';
+    if (r === 'teacher') return 'teacher';
+    if (r === 'student') return 'student';
+    return 'admin';
+};
+
 const GurukulDrishti = () => {
     const { user } = useAuth();
     
@@ -160,8 +170,7 @@ const GurukulDrishti = () => {
 
         if (forceMock) {
             logAction("➔ Using mock simulation data context (offline toggle active)");
-            // Align simulated mock keys
-            const key = roleName === "institution_admin" || roleName === "admin" ? "admin" : roleName;
+            const key = getMockKey(roleName);
             setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
             setLoading(false);
             return;
@@ -171,15 +180,21 @@ const GurukulDrishti = () => {
             // Determine endpoints based on selected roles
             let endpoint = '/api/v1/dashboard/aggregate';
             
-            // If simulated role is different from logged in user role, query role-specific endpoints
-            const userRole = user?.role?.toLowerCase();
-            const targetRole = roleName.toLowerCase();
+            // Normalize roles for robust comparison and routing
+            const normalizeRole = (r) => {
+                if (!r) return '';
+                const clean = r.toLowerCase().replace(/_/g, '-');
+                if (clean === 'institution-admin') return 'admin';
+                return clean;
+            };
+            const userRole = normalizeRole(user?.role);
+            const targetRole = normalizeRole(roleName);
             
             if (userRole !== targetRole) {
                 if (targetRole === 'student') endpoint = '/api/v1/dashboard/student';
                 else if (targetRole === 'teacher') endpoint = '/api/v1/dashboard/teacher';
-                else if (targetRole === 'institution_admin' || targetRole === 'admin') endpoint = '/api/v1/dashboard/institution-admin';
-                else if (targetRole === 'regional-admin' || targetRole === 'regional_admin') endpoint = '/api/v1/dashboard/regional-admin';
+                else if (targetRole === 'admin') endpoint = '/api/v1/dashboard/institution-admin';
+                else if (targetRole === 'regional-admin') endpoint = '/api/v1/dashboard/regional-admin';
             }
 
             logAction(`➔ API Request: GET ${endpoint}`);
@@ -190,14 +205,13 @@ const GurukulDrishti = () => {
             console.error("Dashboard aggregation failed:", err);
             const apiErr = handleApiError(err);
             setErrorMsg(apiErr.message);
-            logAction(`➔ API Error: ${err.status || 500} - ${apiErr.message}`);
+            const displayStatus = err.status !== undefined ? err.status : 0;
+            logAction(`➔ API Error: ${displayStatus} - ${apiErr.message}`);
             
-            // Graceful fallback to mock data on auth bounds breach / permission errors
-            if (err.status === 403 || err.status === 401) {
-                logAction("➔ Access limited. Falling back to local simulation data.");
-                const key = roleName === "institution_admin" || roleName === "admin" ? "admin" : roleName;
-                setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
-            }
+            // Graceful fallback to mock data on any API failure (e.g. auth bounds breach, network offline)
+            logAction("➔ Falling back to local simulation data.");
+            const key = getMockKey(roleName);
+            setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
         } finally {
             setLoading(false);
         }
@@ -487,11 +501,11 @@ const GurukulDrishti = () => {
                             <KPICard key={idx} loading={true} />
                         ))
                     ) : (
-                        Object.keys(dashboardData.kpis).map((key) => (
+                        Object.keys(dashboardData?.kpis || {}).map((key) => (
                             <KPICard 
                                 key={key}
                                 title={getKpiTitle(key)}
-                                value={getKpiValueString(key, dashboardData.kpis[key])}
+                                value={getKpiValueString(key, dashboardData?.kpis?.[key])}
                                 subText={key === 'learning_score' ? '➔ System average' : '➔ Active telemetry'}
                                 color={getKpiColor(key)}
                                 icon={FaCheckCircle}
@@ -512,12 +526,12 @@ const GurukulDrishti = () => {
                             <div className="space-y-3">
                                 {loading ? (
                                     <div className="text-center py-6 text-gray-500 text-xs">Loading alerts...</div>
-                                ) : dashboardData.open_alerts.length === 0 ? (
+                                ) : (dashboardData?.open_alerts || []).length === 0 ? (
                                     <div className="text-center py-8 text-gray-500 text-xs border border-dashed border-white/5 rounded-xl">
                                         No active anomaly signals detected.
                                     </div>
                                 ) : (
-                                    dashboardData.open_alerts.map((alt) => (
+                                    (dashboardData?.open_alerts || []).map((alt) => (
                                         <AlertCard 
                                             key={alt.id}
                                             alert={alt}
@@ -541,12 +555,12 @@ const GurukulDrishti = () => {
                             <div className="space-y-3">
                                 {loading ? (
                                     <div className="text-center py-6 text-gray-500 text-xs">Loading actions...</div>
-                                ) : dashboardData.pending_actions.length === 0 ? (
+                                ) : (dashboardData?.pending_actions || []).length === 0 ? (
                                     <div className="text-center py-8 text-gray-500 text-xs border border-dashed border-white/5 rounded-xl">
                                         No pending governance actions.
                                     </div>
                                 ) : (
-                                    dashboardData.pending_actions.map((act) => (
+                                    (dashboardData?.pending_actions || []).map((act) => (
                                         <ActionCard 
                                             key={act.id}
                                             action={act}
@@ -571,7 +585,7 @@ const GurukulDrishti = () => {
                     ) : (
                         <StatusCard 
                             title={`${selectedRole.toUpperCase()} compliance status`}
-                            statusSummary={dashboardData.status_summary}
+                            statusSummary={dashboardData?.status_summary || {}}
                             role={selectedRole}
                         />
                     )}
@@ -592,12 +606,12 @@ const GurukulDrishti = () => {
                         <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
                             {loading ? (
                                 <div className="text-center py-6 text-gray-500 text-xs">Loading events...</div>
-                            ) : dashboardData.recent_activity.length === 0 ? (
+                            ) : (dashboardData?.recent_activity || []).length === 0 ? (
                                 <div className="text-center py-8 text-gray-500 text-xs">
                                     No recent activity logs found.
                                 </div>
                             ) : (
-                                dashboardData.recent_activity.map((act, idx) => (
+                                (dashboardData?.recent_activity || []).map((act, idx) => (
                                     <ActivityCard key={idx} activity={act} />
                                 ))
                             )}

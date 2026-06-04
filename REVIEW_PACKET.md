@@ -148,3 +148,19 @@ To verify the role-based views and live API status transitions, you can logout o
     *   Register a new account with the **ADMIN** role on the signup page.
 4.  **Mock Toggle Option:**
     *   If you wish to preview all layouts without logging in, enable the **"Force Mock Simulation Mode"** checkbox in the control panel to instantly load high-fidelity simulated layouts.
+
+---
+
+## 8. Hotfixes & Operational Debugging (June 2026)
+
+### Bug: Runtime `TypeError: can't convert undefined to object` on Dashboard Role Switches
+
+*   **Symptom:** When unauthenticated or when the backend server is offline, switching roles (e.g. to Student View or Teacher View) resulted in a blank screen and a console traceback pointing to `Object.keys(dashboardData.kpis)`.
+*   **Root Cause:** 
+    1.  **CORS/Offline Boundary:** If the backend is offline or requests fail with CORS blocks, `apiGet` throws a network exception (status 0). The fallback catch block only checked for status codes `401` or `403`, bypassing the simulated mock data override. The component then completed loading with `dashboardData` in an uninitialized or broken state.
+    2.  **Role Normalisation Mismatch:** When an authenticated user's role didn't match the simulated role (e.g., `INSTITUTION_ADMIN` user clicking the "Institution Admin" button, which sets simulated role to `admin`), comparison mismatched, triggering a request to `/api/v1/dashboard/institution-admin` instead of the context-aware `/api/v1/dashboard/aggregate`. If unauthenticated, this returned a `401` which exposed gaps in mock data mapping for various camelCase / snake_case role formats.
+*   **Resolution:**
+    1.  **Failover Catch-All:** The error handling block in `loadDashboardData` was updated to catch all network errors (including status 0/offline) and gracefully fall back to high-fidelity mock data.
+    2.  **Robust Normalisation:** Integrated helper `getMockKey` and normalisation functions in `GurukulDrishti.jsx` to map all snake_case and kebab-case roles (`regional_admin`, `institution_admin`, etc.) to clean keys, avoiding `undefined` dictionary lookups.
+    3.  **Defensive Rendering:** Enhanced JSX elements in `GurukulDrishti.jsx`, `StatusCard.jsx`, and `ActivityCard.jsx` with optional chaining (`dashboardData?.kpis`, `dashboardData?.open_alerts`, etc.) and default values (`|| {}`, `|| []`) to prevent future crash boundaries.
+
