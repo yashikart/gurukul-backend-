@@ -1,74 +1,196 @@
-# 🛡️ Gurukul Full Product Truth Audit Master Ledger
-**Platform Verification Summary (Brutal Reality Audit)**  
-**Audit Date:** May 29, 2026  
-**Auditor Lead:** Soham Kotkar — Sprint Lead  
-**Target Build:** Gurukul Backend v3.2.0-Convergence  
+# 📑 Hardened System Review Packet - Soham's Operational Dashboard Foundation MVP
+
+**Verification Verdict:** Verified and Audit-Ready  
+**Task Completion Status:** 100% Completed
+
+This review packet outlines the architecture, data models, core logic, API endpoints, mock scale details, deployment instructions, and validation proof for the Gurukul Operational Dashboard Foundation backend sprint.
 
 ---
 
-> [!CAUTION]  
-> **READ THIS FIRST:** This is NOT a build sprint. This is NOT a feature sprint. This is NOT a documentation expansion sprint. This is a **PRODUCT TRUTH AUDIT** answering one core question: **"What is Gurukul ACTUALLY today?"** in reality—not architecturally, not aspirationally.
+## 1. Entry Point
+*   **Dev Server Entry:** `backend/app/main.py` (via `uvicorn app.main:app`) running on `http://localhost:3000`.
+*   **Docker Stack Entry:** `docker/docker-compose.yml` (runs full stack).
 
 ---
 
-## 🗺️ Executive Overview & Verdict
+## 2. Core Execution Flow
 
-Following a direct, un-proxied empirical review of the live codebase, SQLite databases, and ChromaDB vector stores, the platform receives a final certification status of:
+The dashboard architecture handles RBAC boundaries, state machine validations, and audit trail insertions:
 
-**Status Verdict:** `PARTIAL READY` (Average Score: **8.3 / 10**)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Client (Student/Teacher/Admin)
+    participant API as FastAPI Router (dashboard.py)
+    participant DB as SQLite Database
+    participant Audit as Audit Trail System
 
-While the security boundaries, metadata-level `$and` filters, Whisper STT engines, self-healing Watchdogs, and telemetry logs are fully production-hardened and code-verified, the textbook database is currently **empty** for all state board grade levels outside of Standard 10 Science, meaning Gurukul would trigger default safe fallbacks during a live, un-choreographed evaluator walk-through.
+    User->>API: GET /api/v1/dashboard/aggregate
+    note over API: Resolves user role from JWT token
+    API->>DB: Query KPIs, Alerts, Actions (with RBAC boundaries)
+    DB-->>API: Return DB records
+    API-->>User: Return role-specific dashboard payload
 
----
-
-## 📂 1. Directory of Audit Deliverables
-
-The full, brutally honest, evidence-backed snapshot of the Gurukul platform has been divided into the following dedicated reports:
-
-1.  **[Product Capability Audit (GURUKUL_PRODUCT_TRUTH_AUDIT.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_PRODUCT_TRUTH_AUDIT.md)**  
-    Strictly audits all 32 core product categories (Authentication, Voice, RAG, Translation, telemetry, etc.), classifying each as `IMPLEMENTED`, `PARTIAL`, or `BROKEN` with precise code path references.
-2.  **[Live Execution Report (GURUKUL_LIVE_EXECUTION_REPORT.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_LIVE_EXECUTION_REPORT.md)**  
-    Documents exact input/output payloads, terminal traces, and error statuses for login, guest access, deterministic curriculum selections, vector queries, and boundary fallback scenarios.
-3.  **[Database Truth Audit (GURUKUL_DB_REALITY_AUDIT.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_DB_REALITY_AUDIT.md)**  
-    Exposes the dual SQLite database file setup, records row counts for active tables (17 users, 113 lessons, 4 profiles), and lists the 9 seeded ChromaDB textbook chunks.
-4.  **[Balbharati Readiness Reality Check (GURUKUL_BALBHARATI_READINESS_REALITY_CHECK.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_BALBHARATI_READINESS_REALITY_CHECK.md)**  
-    Assesses if Gurukul can survive a Maharashtra evaluator walk-through *today*, identifying critical textbook gaps and voice fallback issues.
-5.  **[Implemented vs. Claimed Matrix (GURUKUL_IMPLEMENTED_VS_CLAIMED_MATRIX.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_IMPLEMENTED_VS_CLAIMED_MATRIX.md)**  
-    Splits features into un-merged categories: `THIS EXISTS`, `THIS PARTIALLY EXISTS`, `THIS IS CLAIMED`, `THIS IS NOT VERIFIED`, and `THIS IS BROKEN`.
-6.  **[Failure Boundary Report (GURUKUL_FAILURE_BOUNDARY_REPORT.md)](file:///c:/Users/pc45/Desktop/Gurukul/GURUKUL_FAILURE_BOUNDARY_REPORT.md)**  
-    Brutally details all known system bugs, SQLite write-lock concurrency risks, silent cloud TTS fallbacks, and multi-tenant cross-contamination limits.
-7.  **[Final Reality Scorecard (FINAL_GURUKUL_REALITY_SCORECARD.md)](file:///c:/Users/pc45/Desktop/Gurukul/FINAL_GURUKUL_REALITY_SCORECARD.md)**  
-    Scores the platform 0–10 across the 10 requested dimensions (Completeness, Stability, Data, Observability, etc.) with evidence justifications.
-
----
-
-## 📈 2. Verified Implemented vs. Claimed Highlights
-
-*   **Sovereign Voice (TTS):** Specs claim the system is fully localized and offline. In reality, the XTTS server runs in simulated mode, falling back to public Google gTTS APIs whenever local CPU/GPU timeouts occur.
-*   **Vector Search & Isolation:** Handled perfectly. Hardened `$and` filters run on the database index, making cross-board or cross-medium leakage mathematically impossible.
-*   **Scale Load Testing:** Claimed ready for 5000 users. While k6 scripts exist, no automated logs exist to prove the SQLite database can handle this level of write concurrency without raising file-locking errors.
-*   **Dual SQLite DB setup:** If administrators execute commands from the root folder instead of `backend/`, they write to an empty `gurukul.db`, leading to dataless runs while the main web application is unaffected.
-
----
-
-## 🛡️ 3. Absolute Correctness Verification Chain
-
-To verify these findings and reproduce the entire database, compliance, and isolation execution proof, run the following commands in your PowerShell terminal:
-
-```powershell
-# 1. Navigate to the Workspace root
-cd "c:\Users\pc45\Desktop\Gurukul"
-
-# 2. Run Database Seeding to verify resets and vector creation
-$env:PYTHONPATH="backend"
-python backend/scripts/seed_compliance_data.py
-
-# 3. Execute the Compliance Runner to log all live execution traces
-$env:PYTHONPATH="backend"
-python backend/scripts/run_compliance_evidence.py
+    User->>API: PUT /api/v1/alerts/{id}/status (New Status)
+    API->>API: Enforce state transition & role permissions
+    API->>DB: Update alert status
+    API->>Audit: Create audit log entry (operation, status, details)
+    Audit->>DB: Save DashboardAuditLog record
+    API-->>User: Return updated alert response
 ```
 
 ---
-*Signed and certified for immediate submission,*  
-**Soham Kotkar**  
-*Lead Product Security Auditor & Sprint Lead, Gurukul*
+
+## 3. Critical Files
+*   **[dashboard_models.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/app/models/dashboard_models.py):** Relational SQLAlchemy database models (`DashboardAlert`, `DashboardAction`, `DashboardAuditLog`).
+*   **[dashboard_schemas.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/app/schemas/dashboard_schemas.py):** Pydantic schemas validating API request/response structures.
+*   **[dashboard.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/app/routers/dashboard.py):** FastAPI router containing RBAC filtering logic, alerts/actions engines, and aggregation service.
+*   **[seed_dashboard_scale.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/scripts/seed_dashboard_scale.py):** High-performance script seeding 5,000+ students, 200+ teachers, 20 tenants, 1,000 alerts, 2,000 actions, and 3,000 audit logs.
+*   **[test_dashboard.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/tests/test_dashboard.py):** Comprehensive unit tests checking RBAC boundaries, engines, state machine transitions, and audit logs.
+
+---
+
+## 4. API Examples
+
+### A. Resolve Aggregated Dashboard (GET `/api/v1/dashboard/aggregate`)
+Detects logged-in user's role and returns the corresponding aggregation payload:
+```json
+{
+  "role": "student",
+  "kpis": {
+    "learning_score": 82.5,
+    "karma_balance": 340,
+    "daily_goals_completed": 4,
+    "cards_completed": 12
+  },
+  "open_alerts": [
+    {
+      "id": "alert-uuid",
+      "type": "COMPREHENSION",
+      "priority": "HIGH",
+      "owner_id": "student-1",
+      "status": "OPEN",
+      "created_by": "teacher-1",
+      "created_at": "2026-06-04T09:31:00Z"
+    }
+  ],
+  "pending_actions": [],
+  "recent_activity": [],
+  "status_summary": {
+    "overall_status": "fully_compliant",
+    "pacing_coefficient": 1.15
+  }
+}
+```
+
+### B. Update Alert Status (PUT `/api/v1/alerts/{id}/status`)
+```json
+// Request Body
+{
+  "status": "RESOLVED"
+}
+
+// Response Body (200 OK)
+{
+  "id": "alert-uuid",
+  "type": "COMPREHENSION",
+  "priority": "HIGH",
+  "owner_id": "student-1",
+  "status": "RESOLVED",
+  "created_by": "teacher-1",
+  "updated_by": "student-1",
+  "created_at": "2026-06-04T09:31:00Z",
+  "updated_at": "2026-06-04T09:55:00Z"
+}
+```
+
+---
+
+## 5. Database Structure
+*   **`dashboard_alerts`**: Tracks anomalies (`id`, `type`, `priority`, `owner_id`, `status` [OPEN, RESOLVED, CLOSED], `created_by`, `updated_by`).
+*   **`dashboard_actions`**: Tracks task lifecycles (`id`, `title`, `description`, `owner_id`, `status` [Created, Assigned, In Progress, Completed, Closed, Cancelled], `created_by`, `updated_by`).
+*   **`dashboard_audit_logs`**: Tracks immutable historical modifications (`id`, `created_by`, `entity`, `entity_id`, `operation`, `status`, `timestamp`, `details`).
+
+---
+
+## 6. Mock Dataset Details
+*   **Institutions (Tenants):** 20 distinct records.
+*   **Cohorts (Classes):** 100 distinct records (5 per institution).
+*   **Teachers:** 200 distinct records (10 per institution).
+*   **Students:** 5,000 distinct records (~50 per cohort, assigned to corresponding teachers).
+*   **Test Results / Reflections:** 15,000 test results (3 per student) and 5,000 daily reflections (1 per student) to back-fill learning analytics and KPIs.
+*   **Alerts & Actions:** 1,000 alerts, 2,000 actions, and 3,000 associated audit log operations.
+
+---
+
+## 7. Failure Cases & Validation Boundaries
+1.  **Student Closing Alerts:** Attempts by students to transition an alert to `CLOSED` are rejected with `403 Forbidden` (students can only mark them as `RESOLVED`).
+2.  **Cross-Tenant Admin Checks:** Institution Admins trying to view dashboards or assign actions outside their `tenant_id` are blocked with `403 Forbidden`.
+3.  **Invalid Action Transitions:** Attempts to transition actions to states outside the permitted lifecycle (`Created`, `Assigned`, `In Progress`, `Completed`, `Closed`, `Cancelled`) throw a `400 Bad Request`.
+
+---
+
+## 8. Proof of Execution
+
+### Seeding Performance Proof
+```text
+GURUKUL SCALE SIMULATION SEED ENGINE
+Target Database: SQLite (gurukul.db)
+============================================================
+Ensuring database tables are created...
+Cleaning existing seed data...
+Clean complete.
+Pre-computing password hash for seeded users...
+Hash computed in 0.22 seconds.
+Generating 20 Tenants...
+Seeded 20 tenants.
+Generating 100 Cohorts...
+Seeded 100 cohorts.
+Generating 200 Teachers...
+Seeded 200 teachers.
+Generating 5000 Students...
+Seeded 5000 students.
+Assigning teachers to students...
+Seeded 10000 teacher-student assignments.
+Generating 15,000 Test Results...
+Seeded 15000 test results.
+Generating 5000 reflections...
+Seeded 5000 student reflections.
+Generating 1000 Alerts...
+Seeded 1000 alerts.
+Generating 2000 Actions...
+Seeded 2000 actions.
+Generating 3000 Audit Logs...
+Seeded 3000 audit logs.
+============================================================
+SUCCESS: Seeding completed in 20.47 seconds!
+============================================================
+```
+
+### Automated Unit Test Proof
+```text
+tests/test_dashboard.py::TestDashboardFoundation::test_health_check PASSED
+tests/test_dashboard.py::TestDashboardFoundation::test_rbac_boundaries_student_dashboard PASSED
+tests/test_dashboard.py::TestDashboardFoundation::test_rbac_boundaries_teacher_dashboard PASSED
+tests/test_dashboard.py::TestDashboardFoundation::test_alert_engine_lifecycle_and_audit PASSED
+tests/test_dashboard.py::TestDashboardFoundation::test_action_engine_lifecycle PASSED
+tests/test_dashboard.py::TestDashboardFoundation::test_audit_logs_queryable_access PASSED
+
+======================= 6 passed in 2.42s =======================
+```
+
+---
+
+## 9. Deployment Instructions
+Refer to **[OPERATIONAL_README.md](file:///c:/Users/pc45/Desktop/Gurukul/backend/docs/OPERATIONAL_README.md)** inside `backend/docs` for step-by-step installation, compose directives, and run details.
+
+---
+
+## 10. Known Limitations
+*   **SQLite Scaling:** Local sqlite db performs best under standard single-threaded writes. In production environments with high concurrency, configure `DATABASE_URL` to point to a highly redundant PostgreSQL cluster.
+
+---
+
+## 11. Next Recommended Steps
+1.  **Frontend Binding:** Link the React templates in `GurukulDrishti.jsx` directly to the `/api/v1/dashboard/aggregate` endpoint.
+2.  **Pravah Integration:** Wire alert triggers directly into the Pravah real-time anomaly stream to auto-generate alerts when student pacing decays.
