@@ -8,6 +8,7 @@ const SignUp = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [role, setRole] = useState('STUDENT');
     const [error, setError] = useState(null);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
@@ -20,17 +21,20 @@ const SignUp = () => {
         setMessage('');
         setLoading(true);
         
-        // Gurukul is student-only, so always use STUDENT role
-        const role = 'STUDENT';
-        
         try {
             const { user } = await signup(email, password, role, name);
             setMessage('Account created successfully! Redirecting...');
             
-            // Auto-redirect to student dashboard after successful signup
+            // Auto-redirect to role-appropriate dashboard after successful signup
             setTimeout(() => {
-                setUserRole('student');
-                navigate('/dashboard');
+                const lowerRole = role.toLowerCase();
+                setUserRole(lowerRole === 'institution_admin' || lowerRole === 'regional_admin' ? 'admin' : lowerRole);
+                
+                if (lowerRole === 'student') navigate('/dashboard');
+                else if (lowerRole === 'teacher') navigate('/teacher/dashboard');
+                else if (lowerRole === 'institution_admin') navigate('/admin_dashboard');
+                else if (lowerRole === 'regional_admin') navigate('/superadmin');
+                else navigate('/dashboard');
             }, 1500);
         } catch (err) {
             console.error('Signup error:', err);
@@ -91,6 +95,21 @@ const SignUp = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 ml-1">Account Role</label>
+                            <select
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent/50 focus:bg-[#12130e] transition-all cursor-pointer"
+                                value={role}
+                                onChange={(e) => setRole(e.target.value)}
+                                required
+                            >
+                                <option value="STUDENT" className="bg-[#12130e] text-white">Student</option>
+                                <option value="TEACHER" className="bg-[#12130e] text-white">Teacher</option>
+                                <option value="INSTITUTION_ADMIN" className="bg-[#12130e] text-white">Institution Admin</option>
+                                <option value="REGIONAL_ADMIN" className="bg-[#12130e] text-white">Regional Admin</option>
+                            </select>
                         </div>
 
                         <button 
