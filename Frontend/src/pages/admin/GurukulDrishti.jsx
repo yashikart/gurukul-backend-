@@ -1,12 +1,138 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     FaDatabase, FaEye, FaUsers, FaGraduationCap, FaMapMarkedAlt, 
     FaUserTie, FaChevronRight, FaPlay, FaHeartbeat, FaExclamationTriangle, 
-    FaChartLine, FaCheckCircle, FaLock, FaSync, FaShieldAlt, FaTerminal 
+    FaChartLine, FaCheckCircle, FaLock, FaSync, FaShieldAlt, FaTerminal,
+    FaInfoCircle, FaKey
 } from 'react-icons/fa';
+import { apiGet, apiPut, apiPost, checkBackendHealth, handleApiError } from '../../utils/apiClient';
+import { useAuth } from '../../contexts/AuthContext';
+
+// Import Reusable Dashboard Components
+import KPICard from '../../components/dashboard/KPICard';
+import AlertCard from '../../components/dashboard/AlertCard';
+import ActionCard from '../../components/dashboard/ActionCard';
+import ActivityCard from '../../components/dashboard/ActivityCard';
+import StatusCard from '../../components/dashboard/StatusCard';
+
+const MOCK_DASHBOARDS = {
+    "student": {
+        role: "student",
+        kpis: {
+            "learning_score": 85.5,
+            "karma_balance": 340,
+            "daily_goals_completed": 3,
+            "cards_completed": 120
+        },
+        open_alerts: [
+            { id: "alt-mock-1", type: "PACING", priority: "MEDIUM", status: "OPEN", owner_id: "student-1", created_at: new Date().toISOString() },
+            { id: "alt-mock-2", type: "COMPREHENSION", priority: "HIGH", status: "OPEN", owner_id: "student-1", created_at: new Date().toISOString() }
+        ],
+        pending_actions: [
+            { id: "act-mock-1", title: "Calibrate Voice Assistant", description: "Improve pronunciation thresholds for Marathi modules.", status: "Assigned", owner_id: "student-1", created_at: new Date().toISOString() },
+            { id: "act-mock-2", title: "Submit Reflection Note", description: "Write down daily learning insights.", status: "Created", owner_id: "student-1", created_at: new Date().toISOString() }
+        ],
+        recent_activity: [
+            { type: "TEST_COMPLETED", title: "Completed Quiz on Science - Chemical Reactions", timestamp: new Date().toISOString(), details: { score: 9, total: 10, percentage: 90.0 } },
+            { type: "REFLECTION_SUBMITTED", title: "Submitted daily reflection note", timestamp: new Date(Date.now() - 3600000).toISOString(), details: { mood_score: 8 } }
+        ],
+        status_summary: {
+            overall_status: "fully_compliant",
+            active_goals: ["Arabic Mastery Level 3", "Interactive Science Intro"],
+            pacing_coefficient: 1.15
+        }
+    },
+    "teacher": {
+        role: "teacher",
+        kpis: {
+            "total_assigned_students": 50,
+            "avg_comprehension_score": 82.5,
+            "active_students_today": 42,
+            "average_pacing": 1.08
+        },
+        open_alerts: [
+            { id: "alt-mock-3", type: "ATTENDANCE", priority: "CRITICAL", status: "OPEN", owner_id: "student-2", created_at: new Date().toISOString() },
+            { id: "alt-mock-4", type: "PACING", priority: "LOW", status: "OPEN", owner_id: "student-3", created_at: new Date().toISOString() }
+        ],
+        pending_actions: [
+            { id: "act-mock-3", title: "Comprehension remedial review", description: "Schedule extra time for Student 2 standard 9 maths.", status: "In Progress", owner_id: "teacher-1", created_at: new Date().toISOString() }
+        ],
+        recent_activity: [
+            { type: "STUDENT_REFLECTION", title: "Student John Doe submitted a reflection", timestamp: new Date().toISOString(), details: { mood_score: 9 } }
+        ],
+        status_summary: {
+            class_name: "Grade 9 Arabic Language & Science",
+            average_comprehension: 82.5,
+            warning_flags_count: 2
+        }
+    },
+    "admin": {
+        role: "institution-admin",
+        kpis: {
+            "total_students": 5000,
+            "total_teachers": 200,
+            "total_cohorts": 100,
+            "avg_institution_score": 84.5
+        },
+        open_alerts: [
+            { id: "alt-mock-5", type: "PACING", priority: "MEDIUM", status: "OPEN", owner_id: "teacher-1", created_at: new Date().toISOString() }
+        ],
+        pending_actions: [
+            { id: "act-mock-4", title: "Force SQLite-EMS Database Sync", description: "Verify consistency in multi-tenant data sync logs.", status: "Created", owner_id: "admin-1", created_at: new Date().toISOString() }
+        ],
+        recent_activity: [
+            { type: "AUDIT_LOG", title: "Teacher 1 executed UPDATE_STATUS on ALERT", timestamp: new Date().toISOString(), details: { old_status: "OPEN" } }
+        ],
+        status_summary: {
+            infrastructure_state: "green",
+            sqlite_write_locks_triggered: 0,
+            average_response_time_ms: 145.0
+        }
+    },
+    "regional-admin": {
+        role: "regional-admin",
+        kpis: {
+            "total_institutions": 20,
+            "total_teachers": 200,
+            "total_students": 5000,
+            "avg_system_score": 83.1
+        },
+        open_alerts: [],
+        pending_actions: [],
+        recent_activity: [
+            { type: "AUDIT_LOG", title: "System Admin executed ASSIGN on ACTION", timestamp: new Date().toISOString(), details: { assigned_to: "teacher-2" } }
+        ],
+        status_summary: {
+            redundancy_level: "triple_region",
+            system_survivability_rate: 0.9999,
+            active_replay_workers: 2
+        }
+    }
+};
 
 const GurukulDrishti = () => {
-    const [selectedRole, setSelectedRole] = useState("Minister");
+    const { user } = useAuth();
+    
+    // Configurable role context simulation
+    const [selectedRole, setSelectedRole] = useState(user?.role ? user.role.toLowerCase() : "admin");
+    const [useMockData, setUseMockData] = useState(false);
+    
+    // API loading and backend status states
+    const [isOnline, setIsOnline] = useState(null); // null = checking, true/false
+    const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState(null);
+    const [updatingId, setUpdatingId] = useState(null);
+    
+    // Core dashboard data models
+    const [dashboardData, setDashboardData] = useState({
+        role: "student",
+        kpis: {},
+        open_alerts: [],
+        pending_actions: [],
+        recent_activity: [],
+        status_summary: {}
+    });
+
     const [terminalLogs, setTerminalLogs] = useState([
         "System Initialized. Drishti Foundation Active.",
         "Awaiting Operator Action..."
@@ -14,326 +140,474 @@ const GurukulDrishti = () => {
 
     const logAction = (msg) => {
         const timestamp = new Date().toLocaleTimeString();
-        setTerminalLogs(prev => [`[${timestamp}] ${msg}`, ...prev.slice(0, 10)]);
+        setTerminalLogs(prev => [`[${timestamp}] ${msg}`, ...prev.slice(0, 15)]);
     };
 
-    // 8 TANTRA Roles Metadata
-    const ROLES_METADATA = {
-        "Minister": {
-            title: "Union Minister of Education",
-            signals: "National-scale throughput, overall system error rate, states compliance rate.",
-            visibility: "Aggregate country-wide stats, all 28 states, 100% data access bounds.",
-            actions: "Structural policy reforms, emergency cabinet escalations, national broadcast schedule."
-        },
-        "PS / OSD / Senior Admin": {
-            title: "Private Secretary / OSD to Minister",
-            signals: "State-level variance indicators, infrastructure latency bounds, active alerts feed.",
-            visibility: "Complete audit logs, central databases schemas, state metrics.",
-            actions: "Deploy convergence hotfixes, trigger schema migrations, authorize super admin status."
-        },
-        "District / Collector": {
-            title: "District Collector / Magistrate",
-            signals: "District educational health, active schools list, teacher attendance coefficient.",
-            visibility: "All schools within district partition boundary, teacher telemetry.",
-            actions: "Approve district remedial budgets, override local school calendars."
-        },
-        "School Admin / Principal": {
-            title: "School Principal",
-            signals: "School-wide student counts, classroom pacing distributions, SQL lock indicators.",
-            visibility: "Cohorts assigned to school, individual class records.",
-            actions: "Reset local Watchdog thresholds, trigger EMS sync updates, register new cohorts."
-        },
-        "Teacher": {
-            title: "Classroom Teacher",
-            signals: "Student comprehension pacing coefficients, speech hesitation rates, study time goals.",
-            visibility: "Assigned cohorts, progress ledgers, student reflections feed.",
-            actions: "Adjust pacing bias coefficient, issue custom flashcard sets, approve learning track milestones."
-        },
-        "Parent": {
-            title: "Guardian",
-            signals: "Child study time consistency, focus coefficient, karma balance.",
-            visibility: "Child-specific study logs and progress traces only.",
-            actions: "Authorize profile preferences, approve custom content suggestions."
-        },
-        "Student": {
-            title: "Learner",
-            signals: "Daily goals remaining, active learning tracks, flashcard review pacing.",
-            visibility: "Personal progress, summaries, flashcards, chat history.",
-            actions: "Calibrate voice STT assistant, submit reflection notes, complete conceptual quizzes."
-        },
-        "System Super Admin": {
-            title: "System Super Administrator",
-            signals: "CPU/Memory usage, SQLite write lock counts, Prometheus metrics feed.",
-            visibility: "Total un-proxied platform, ChromaDB vector stores, full relational schemas.",
-            actions: "Roll back schema contract versions, simulate failure states, clear databases."
+    // Verify backend health
+    const checkSystemHealth = async () => {
+        logAction("Initiating service health ping...");
+        const healthy = await checkBackendHealth();
+        setIsOnline(healthy);
+        logAction(healthy ? "➔ System Status: ONLINE" : "➔ System Status: OFFLINE (Backend unavailable)");
+        return healthy;
+    };
+
+    // Load active dashboard data based on simulated role and mock toggles
+    const loadDashboardData = async (roleName = selectedRole, forceMock = useMockData) => {
+        setLoading(true);
+        setErrorMsg(null);
+        logAction(`Loading dashboard data context for [${roleName.toUpperCase()}]`);
+
+        if (forceMock) {
+            logAction("➔ Using mock simulation data context (offline toggle active)");
+            // Align simulated mock keys
+            const key = roleName === "institution_admin" || roleName === "admin" ? "admin" : roleName;
+            setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Determine endpoints based on selected roles
+            let endpoint = '/api/v1/dashboard/aggregate';
+            
+            // If simulated role is different from logged in user role, query role-specific endpoints
+            const userRole = user?.role?.toLowerCase();
+            const targetRole = roleName.toLowerCase();
+            
+            if (userRole !== targetRole) {
+                if (targetRole === 'student') endpoint = '/api/v1/dashboard/student';
+                else if (targetRole === 'teacher') endpoint = '/api/v1/dashboard/teacher';
+                else if (targetRole === 'institution_admin' || targetRole === 'admin') endpoint = '/api/v1/dashboard/institution-admin';
+                else if (targetRole === 'regional-admin' || targetRole === 'regional_admin') endpoint = '/api/v1/dashboard/regional-admin';
+            }
+
+            logAction(`➔ API Request: GET ${endpoint}`);
+            const data = await apiGet(endpoint);
+            setDashboardData(data);
+            logAction(`➔ API Response: 200 OK (${data.open_alerts?.length} alerts, ${data.pending_actions?.length} actions)`);
+        } catch (err) {
+            console.error("Dashboard aggregation failed:", err);
+            const apiErr = handleApiError(err);
+            setErrorMsg(apiErr.message);
+            logAction(`➔ API Error: ${err.status || 500} - ${apiErr.message}`);
+            
+            // Graceful fallback to mock data on auth bounds breach / permission errors
+            if (err.status === 403 || err.status === 401) {
+                logAction("➔ Access limited. Falling back to local simulation data.");
+                const key = roleName === "institution_admin" || roleName === "admin" ? "admin" : roleName;
+                setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
-    // Dashboard Primitives implementation
-    const KPICard = ({ title, value, subText, color }) => (
-        <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-black/40 hover:border-orange-500/20 hover:scale-[1.02] transition-all group relative overflow-hidden">
-            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">{title}</div>
-            <div className="text-3xl font-bold text-white mb-1 tabular-nums">{value}</div>
-            <div className={`text-xs ${color} font-medium`}>{subText}</div>
-            <div className="absolute -bottom-8 -right-8 w-20 h-20 bg-orange-500/5 rounded-full blur-2xl group-hover:bg-orange-500/10 transition-all"></div>
-        </div>
-    );
+    // Initialize health check and fetch initial dashboard payload
+    useEffect(() => {
+        const init = async () => {
+            await checkSystemHealth();
+            await loadDashboardData();
+        };
+        init();
+    }, [selectedRole, useMockData]);
 
-    const AlertCard = ({ title, desc, severity }) => (
-        <div className={`p-4 rounded-xl border flex gap-3 ${
-            severity === 'HIGH' 
-                ? 'bg-red-500/10 border-red-500/20 text-red-300' 
-                : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-        }`}>
-            <FaExclamationTriangle className="text-lg shrink-0 mt-0.5" />
-            <div>
-                <div className="text-xs font-bold uppercase tracking-wider">{title}</div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{desc}</div>
-            </div>
-        </div>
-    );
+    // Handle alert status transition (OPEN -> RESOLVED -> CLOSED)
+    const handleAlertStatus = async (id, status) => {
+        setUpdatingId(id);
+        logAction(`Transitioning alert status: ${id} ➔ ${status}`);
+        
+        if (useMockData || id.startsWith('alt-mock')) {
+            // Update local state mock
+            setDashboardData(prev => ({
+                ...prev,
+                open_alerts: prev.open_alerts.map(a => a.id === id ? { ...a, status } : a)
+            }));
+            logAction(`➔ Mock status updated: ${id} is now ${status}`);
+            setUpdatingId(null);
+            return;
+        }
 
-    const ExecutiveMetricCard = ({ title, value, progress, color }) => (
-        <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-black/40">
-            <div className="text-xs text-gray-400 mb-1">{title}</div>
-            <div className="text-xl font-bold text-white mb-3">{value}</div>
-            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-                <div className={`h-full ${color}`} style={{ width: `${progress}%` }}></div>
-            </div>
-        </div>
-    );
+        try {
+            logAction(`➔ API Request: PUT /api/v1/alerts/${id}/status`);
+            await apiPut(`/api/v1/alerts/${id}/status`, { status });
+            logAction(`➔ API Response: Status updated successfully.`);
+            await loadDashboardData(); // Reload to fetch live updates and audit trail logs
+        } catch (err) {
+            const apiErr = handleApiError(err);
+            logAction(`➔ API Error: Failed to update alert status - ${apiErr.message}`);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    // Handle alert assignee changes
+    const handleAlertAssign = async (id, ownerId) => {
+        setUpdatingId(id);
+        logAction(`Assigning alert: ${id} to owner ${ownerId}`);
+
+        if (useMockData || id.startsWith('alt-mock')) {
+            setDashboardData(prev => ({
+                ...prev,
+                open_alerts: prev.open_alerts.map(a => a.id === id ? { ...a, owner_id: ownerId } : a)
+            }));
+            logAction(`➔ Mock assignment updated: ${id} assigned to ${ownerId}`);
+            setUpdatingId(null);
+            return;
+        }
+
+        try {
+            logAction(`➔ API Request: PUT /api/v1/alerts/${id}/assign`);
+            await apiPut(`/api/v1/alerts/${id}/assign`, { owner_id: ownerId });
+            logAction(`➔ API Response: Assignment complete.`);
+            await loadDashboardData();
+        } catch (err) {
+            const apiErr = handleApiError(err);
+            logAction(`➔ API Error: Failed to assign alert - ${apiErr.message}`);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    // Handle action status updates
+    const handleActionStatus = async (id, status) => {
+        setUpdatingId(id);
+        logAction(`Transitioning action status: ${id} ➔ ${status}`);
+
+        if (useMockData || id.startsWith('act-mock')) {
+            setDashboardData(prev => ({
+                ...prev,
+                pending_actions: prev.pending_actions.map(a => a.id === id ? { ...a, status } : a)
+            }));
+            logAction(`➔ Mock status updated: ${id} is now ${status}`);
+            setUpdatingId(null);
+            return;
+        }
+
+        try {
+            logAction(`➔ API Request: PUT /api/v1/actions/${id}/status`);
+            await apiPut(`/api/v1/actions/${id}/status`, { status });
+            logAction(`➔ API Response: Status updated successfully.`);
+            await loadDashboardData();
+        } catch (err) {
+            const apiErr = handleApiError(err);
+            logAction(`➔ API Error: Failed to update action status - ${apiErr.message}`);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    // Handle action assignee changes
+    const handleActionAssign = async (id, ownerId) => {
+        setUpdatingId(id);
+        logAction(`Assigning action: ${id} to owner ${ownerId}`);
+
+        if (useMockData || id.startsWith('act-mock')) {
+            setDashboardData(prev => ({
+                ...prev,
+                pending_actions: prev.pending_actions.map(a => a.id === id ? { ...a, owner_id: ownerId } : a)
+            }));
+            logAction(`➔ Mock assignment updated: ${id} assigned to ${ownerId}`);
+            setUpdatingId(null);
+            return;
+        }
+
+        try {
+            logAction(`➔ API Request: PUT /api/v1/actions/${id}/assign`);
+            await apiPut(`/api/v1/actions/${id}/assign`, { owner_id: ownerId });
+            logAction(`➔ API Response: Assignment complete.`);
+            await loadDashboardData();
+        } catch (err) {
+            const apiErr = handleApiError(err);
+            logAction(`➔ API Error: Failed to assign action - ${apiErr.message}`);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    // Helper for KPI styling class mapping
+    const getKpiColor = (key) => {
+        switch (key) {
+            case 'learning_score':
+            case 'avg_comprehension_score':
+            case 'avg_institution_score':
+            case 'avg_system_score':
+                return 'text-green-400';
+            case 'karma_balance':
+            case 'active_students_today':
+            case 'total_teachers':
+                return 'text-blue-400';
+            case 'daily_goals_completed':
+            case 'average_pacing':
+            case 'total_cohorts':
+                return 'text-purple-400';
+            case 'cards_completed':
+            case 'total_assigned_students':
+            case 'total_students':
+            case 'total_institutions':
+            default:
+                return 'text-orange-400';
+        }
+    };
+
+    const getKpiTitle = (key) => {
+        return key.replace(/_/g, ' ').toUpperCase();
+    };
+
+    const getKpiValueString = (key, val) => {
+        if (key === 'average_pacing') return `${val}x`;
+        if (key.includes('score') || key.includes('comprehension')) return `${val}%`;
+        return val.toLocaleString();
+    };
+
+    const isStudent = selectedRole === 'student';
+    const isTeacher = selectedRole === 'teacher';
+    const isAdmin = ['admin', 'institution_admin', 'regional_admin'].includes(selectedRole);
 
     return (
         <div className="space-y-6 pb-12">
-            {/* Header */}
-            <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <FaEye className="text-orange-500" />
-                    Gurukul Drishti Control Panel
-                </h3>
-                <p className="text-gray-400 text-xs sm:text-sm">
-                    Canonical educational operating system foundation modeling signals, visibilities, and low-scope action interfaces.
-                </p>
+            {/* Header section with live health flag */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <FaEye className="text-orange-500 animate-pulse" />
+                        Gurukul Drishti Control Panel
+                    </h3>
+                    <p className="text-gray-400 text-xs sm:text-sm">
+                        Canonical institutional operating dashboard with live aggregate signals, alert flows, and audit trail monitors.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Health Status:</span>
+                    {isOnline === null ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse"></span>
+                            <span>PINGING...</span>
+                        </div>
+                    ) : isOnline ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>
+                            <span>SYSTEM ONLINE</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                            <span>SYSTEM OFFLINE</span>
+                        </div>
+                    )}
+                    <button 
+                        onClick={() => { checkSystemHealth(); loadDashboardData(); }}
+                        className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs transition-colors"
+                        title="Sync Data"
+                    >
+                        <FaSync className={loading ? "animate-spin text-orange-500" : "text-gray-300"} />
+                    </button>
+                </div>
             </div>
 
-            {/* B2. DASHBOARD CAPABILITY PRIMITIVES (CSS GRID) */}
+            {/* Simulation controls & configuration dashboard options */}
+            <div className="glass-panel p-4 rounded-2xl border border-white/10 bg-black/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mr-2">Simulate Dashboard View:</span>
+                    <button 
+                        onClick={() => setSelectedRole("student")}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                            selectedRole === "student"
+                                ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
+                                : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
+                        }`}
+                    >
+                        Student View
+                    </button>
+                    <button 
+                        onClick={() => setSelectedRole("teacher")}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                            selectedRole === "teacher"
+                                ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
+                                : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
+                        }`}
+                    >
+                        Teacher View
+                    </button>
+                    <button 
+                        onClick={() => setSelectedRole("admin")}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                            selectedRole === "admin"
+                                ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
+                                : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
+                        }`}
+                    >
+                        Institution Admin
+                    </button>
+                    <button 
+                        onClick={() => setSelectedRole("regional-admin")}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                            selectedRole === "regional-admin"
+                                ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
+                                : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
+                        }`}
+                    >
+                        Regional Admin
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={useMockData} 
+                            onChange={(e) => setUseMockData(e.target.checked)}
+                            className="form-checkbox bg-black/60 border-white/10 text-orange-500 rounded focus:ring-0"
+                        />
+                        <span className="text-xs font-bold text-gray-300">Force Mock Simulation Mode</span>
+                    </label>
+                </div>
+            </div>
+
+            {/* Live Data Connection warning for RBAC restrictions */}
+            {!useMockData && user?.role?.toLowerCase() !== selectedRole && (
+                <div className="flex items-start gap-3 p-3.5 rounded-xl bg-orange-600/10 border border-orange-500/20 text-orange-400 text-xs leading-relaxed">
+                    <FaInfoCircle className="text-base shrink-0 mt-0.5" />
+                    <div>
+                        <span className="font-bold">Access Warning:</span> You are currently viewing the simulated <span className="font-semibold underline capitalize">{selectedRole}</span> dashboard while authenticated as an <span className="font-semibold underline capitalize">{user?.role}</span>. Real-time API edits may fail or default to mock data fallback due to backend RBAC boundaries. Use the credentials reference below to test real authorization states.
+                    </div>
+                </div>
+            )}
+
+            {/* KPI grid section */}
             <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 mb-4 flex items-center gap-2">
-                    <FaCheckCircle className="text-xs" />
+                    <FaChartLine className="text-xs" />
                     Drishti Reusable Dashboard Primitives
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <KPICard 
-                        title="Active Multi-Tenant Learners" 
-                        value="1,420,000" 
-                        subText="➔ +4.8% growth weekly" 
-                        color="text-green-400" 
-                    />
-                    <KPICard 
-                        title="Comprehension Pacing Coefficient" 
-                        value="1.08x" 
-                        subText="➔ System Average" 
-                        color="text-blue-400" 
-                    />
-                    <KPICard 
-                        title="Storage Layer Sync Rate" 
-                        value="99.99%" 
-                        subText="➔ 0 write locks active" 
-                        color="text-purple-400" 
-                    />
-                    <KPICard 
-                        title="TANTRA Contract Compliance" 
-                        value="100.0%" 
-                        subText="➔ 58.2M events verified" 
-                        color="text-emerald-400" 
-                    />
+                    {loading ? (
+                        Array.from({ length: 4 }).map((_, idx) => (
+                            <KPICard key={idx} loading={true} />
+                        ))
+                    ) : (
+                        Object.keys(dashboardData.kpis).map((key) => (
+                            <KPICard 
+                                key={key}
+                                title={getKpiTitle(key)}
+                                value={getKpiValueString(key, dashboardData.kpis[key])}
+                                subText={key === 'learning_score' ? '➔ System average' : '➔ Active telemetry'}
+                                color={getKpiColor(key)}
+                                icon={FaCheckCircle}
+                            />
+                        ))
+                    )}
                 </div>
             </div>
 
-            {/* Alert & Executive Metrics Grid */}
+            {/* Alert, action, and summary status layout grids */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Executive Metric primitive */}
-                <div className="lg:col-span-1 space-y-4">
-                    <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30 h-full flex flex-col justify-between">
-                        <div className="space-y-4">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">Executive Resource Analytics</h4>
-                            <ExecutiveMetricCard 
-                                title="Systemic CPU Optimization" 
-                                value="38.5% capacity" 
-                                progress={38.5} 
-                                color="bg-green-500" 
-                            />
-                            <ExecutiveMetricCard 
-                                title="Platform Memory Usage" 
-                                value="118.4 MB / 512 MB" 
-                                progress={23.1} 
-                                color="bg-blue-500" 
-                            />
-                            <ExecutiveMetricCard 
-                                title="SQLite Thread Pool Health" 
-                                value="92.1% operational efficiency" 
-                                progress={92.1} 
-                                color="bg-purple-500" 
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Alerts primitive */}
+                
+                {/* Column 1: Alerts */}
                 <div className="lg:col-span-1">
-                    <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30 h-full">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 mb-4">Active Anomaly Signal Feed</h4>
-                        <div className="space-y-3">
-                            <AlertCard 
-                                title="ChromaDB CBSE Bleed Prevention Triggered" 
-                                desc="Dynamic metadata isolated to NCERT; cross-board NCERT leaks actively prevented." 
-                                severity="LOW" 
-                            />
-                            <AlertCard 
-                                title="Guest Syllabus Fallback Detected" 
-                                desc="Unresolved tenant session redirected to NCERT English Standard 10 automatically." 
-                                severity="LOW" 
-                            />
-                            <AlertCard 
-                                title="Sovereign Voice local CPU timeout" 
-                                desc="Speech interface safely fell back to public gTTS engine without thread blocks." 
-                                severity="HIGH" 
-                            />
+                    <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30 h-full flex flex-col justify-between">
+                        <div>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 mb-4">Active Anomaly Signal Feed</h4>
+                            <div className="space-y-3">
+                                {loading ? (
+                                    <div className="text-center py-6 text-gray-500 text-xs">Loading alerts...</div>
+                                ) : dashboardData.open_alerts.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500 text-xs border border-dashed border-white/5 rounded-xl">
+                                        No active anomaly signals detected.
+                                    </div>
+                                ) : (
+                                    dashboardData.open_alerts.map((alt) => (
+                                        <AlertCard 
+                                            key={alt.id}
+                                            alert={alt}
+                                            userRole={selectedRole}
+                                            onStatusUpdate={handleAlertStatus}
+                                            onAssign={handleAlertAssign}
+                                            updating={updatingId === alt.id}
+                                        />
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Operator Actions Card Primitive */}
+                {/* Column 2: Actions */}
                 <div className="lg:col-span-1">
                     <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30 h-full flex flex-col justify-between">
                         <div>
                             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 mb-4">Urgent Governance Actions</h4>
-                            <p className="text-[10px] text-gray-400 mb-4">Direct system control loops accessible by union administrators under strict TANTRA token access keys:</p>
-                        </div>
-                        <div className="space-y-2">
-                            <button 
-                                onClick={() => logAction("Policy Reforms Drafted. Broadcast scheduled.")}
-                                className="w-full py-2.5 px-4 rounded-xl bg-orange-600/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500/20 hover:text-white font-bold text-xs transition-all flex items-center justify-between"
-                            >
-                                <span>Draft structural reforms policy</span>
-                                <FaChevronRight />
-                            </button>
-                            <button 
-                                onClick={() => logAction("Emergency cabinet escalation sequence triggered.")}
-                                className="w-full py-2.5 px-4 rounded-xl bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-white font-bold text-xs transition-all flex items-center justify-between"
-                            >
-                                <span>Emergency Escalation to Cabinet</span>
-                                <FaChevronRight />
-                            </button>
+                            <div className="space-y-3">
+                                {loading ? (
+                                    <div className="text-center py-6 text-gray-500 text-xs">Loading actions...</div>
+                                ) : dashboardData.pending_actions.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500 text-xs border border-dashed border-white/5 rounded-xl">
+                                        No pending governance actions.
+                                    </div>
+                                ) : (
+                                    dashboardData.pending_actions.map((act) => (
+                                        <ActionCard 
+                                            key={act.id}
+                                            action={act}
+                                            userRole={selectedRole}
+                                            onStatusUpdate={handleActionStatus}
+                                            onAssign={handleActionAssign}
+                                            updating={updatingId === act.id}
+                                        />
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Column 3: Status Summary */}
+                <div className="lg:col-span-1">
+                    {loading ? (
+                        <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30 h-full flex items-center justify-center text-xs text-gray-500">
+                            Loading status...
+                        </div>
+                    ) : (
+                        <StatusCard 
+                            title={`${selectedRole.toUpperCase()} compliance status`}
+                            statusSummary={dashboardData.status_summary}
+                            role={selectedRole}
+                        />
+                    )}
                 </div>
             </div>
 
-            {/* B3. CONTROL PANEL MVP PROTOTYPES (Action-Oriented) */}
+            {/* Bottom Section: Activity History & Trace Telemetry Monitor */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {/* Low-scope MVP Prototypes Column */}
+                {/* Activity Feed logs */}
                 <div className="lg:col-span-2 space-y-4">
                     <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 mb-4 flex items-center gap-2">
-                            <FaTerminal className="text-xs" />
-                            Action-Oriented MVP Dashboard Prototypes
+                            <FaHistory className="text-xs" />
+                            Recent Operations & Event Activity Feed
                         </h4>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            
-                            {/* Student Panel */}
-                            <div className="p-4 rounded-xl border border-white/5 bg-white/5 space-y-3 flex flex-col justify-between">
-                                <div>
-                                    <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Student Panel</div>
-                                    <p className="text-[10px] text-gray-500 mt-1">Actions available to learners:</p>
+                        
+                        <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                            {loading ? (
+                                <div className="text-center py-6 text-gray-500 text-xs">Loading events...</div>
+                            ) : dashboardData.recent_activity.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500 text-xs">
+                                    No recent activity logs found.
                                 </div>
-                                <div className="space-y-2 mt-3">
-                                    <button 
-                                        onClick={() => logAction("Student reported syllabus context fallback: redirected successfully.")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-blue-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Report Fallback Context
-                                    </button>
-                                    <button 
-                                        onClick={() => logAction("STT Voice calibration sequence started. Audio logger listening.")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-blue-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Calibrate Voice Assistant
-                                    </button>
-                                    <button 
-                                        onClick={() => logAction("Conceptual progress reflection note submitted to SQL database.")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-blue-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Submit Reflection Note
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Teacher Panel */}
-                            <div className="p-4 rounded-xl border border-white/5 bg-white/5 space-y-3 flex flex-col justify-between">
-                                <div>
-                                    <div className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Teacher Panel</div>
-                                    <p className="text-[10px] text-gray-500 mt-1">Actions available to educators:</p>
-                                </div>
-                                <div className="space-y-2 mt-3">
-                                    <button 
-                                        onClick={() => logAction("Teacher increased classroom pacing bias by +0.10. Telemetry updated.")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-purple-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Increase Pacing Bias (+0.1)
-                                    </button>
-                                    <button 
-                                        onClick={() => logAction("Custom flashcard set compiled & pushed to Standard 10 Marathi Medium.")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-purple-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Inject Custom Flashcards
-                                    </button>
-                                    <button 
-                                        onClick={() => logAction("Milestone learning track approved for student stud-9921.")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-purple-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Approve Learning Milestones
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* School Panel */}
-                            <div className="p-4 rounded-xl border border-white/5 bg-white/5 space-y-3 flex flex-col justify-between">
-                                <div>
-                                    <div className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">School Control Panel</div>
-                                    <p className="text-[10px] text-gray-500 mt-1">Actions available to principals:</p>
-                                </div>
-                                <div className="space-y-2 mt-3">
-                                    <button 
-                                        onClick={() => logAction("Watchdog thresholds reset to nominal. Escalation log cleared.")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-orange-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Reset Watchdog Thresholds
-                                    </button>
-                                    <button 
-                                        onClick={() => logAction("Forced dynamic SQLite relational database to EMS cluster sync.")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-orange-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Force SQLite-EMS Database Sync
-                                    </button>
-                                    <button 
-                                        onClick={() => logAction("Replay determinism hash validation run: verified match [883cca4].")}
-                                        className="w-full py-2 px-3 rounded-lg bg-white/5 border border-white/5 hover:border-orange-500 text-[10px] font-bold text-gray-300 hover:text-white transition-colors text-left"
-                                    >
-                                        Verify Replay Hash Match
-                                    </button>
-                                </div>
-                            </div>
-
+                            ) : (
+                                dashboardData.recent_activity.map((act, idx) => (
+                                    <ActivityCard key={idx} activity={act} />
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Logs Terminal Column */}
+                {/* Terminal logs monitor */}
                 <div className="lg:col-span-1">
-                    <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-[#080905] h-full flex flex-col justify-between">
+                    <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-[#080905] h-full flex flex-col justify-between min-h-[250px]">
                         <div>
                             <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
                                 <span className="text-xs font-bold text-green-400 font-mono flex items-center gap-2">
@@ -342,7 +616,7 @@ const GurukulDrishti = () => {
                                 </span>
                                 <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></span>
                             </div>
-                            <div className="font-mono text-[10px] text-green-400 space-y-2 overflow-y-auto max-h-[220px] custom-scrollbar">
+                            <div className="font-mono text-[10px] text-green-400 space-y-2 overflow-y-auto max-h-[200px] custom-scrollbar">
                                 {terminalLogs.map((log, idx) => (
                                     <div key={idx} className="whitespace-pre-wrap">{log}</div>
                                 ))}
@@ -356,161 +630,43 @@ const GurukulDrishti = () => {
                         </button>
                     </div>
                 </div>
-
             </div>
 
-            {/* B1. ROLE HIERARCHY MODEL (INTERACTIVE GRID) */}
+            {/* Developer credentials quick reference guide */}
             <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-white/10 bg-black/40">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-orange-400 mb-4 flex items-center gap-2">
-                    <FaUserTie className="text-xs" />
-                    TANTRA Role Hierarchy & Ownership Matrix
+                <h4 className="text-sm font-bold uppercase tracking-wider text-orange-400 mb-3 flex items-center gap-2">
+                    <FaKey className="text-xs text-orange-500" />
+                    Developer Credentials Quick Reference (Testing RBAC)
                 </h4>
+                <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                    The backend SQLite database was pre-seeded with 5,000 students and 200 teachers. If you encounter <span className="text-orange-300">403 Forbidden</span> bounds restrictions when requesting live data, logout of the app and authenticate using these accounts:
+                </p>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Role selections (Left Column) */}
-                    <div className="lg:col-span-4 flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1 no-scrollbar">
-                        {Object.keys(ROLES_METADATA).map(role => {
-                            const isSelected = selectedRole === role;
-                            return (
-                                <div
-                                    key={role}
-                                    onClick={() => setSelectedRole(role)}
-                                    className={`p-3 rounded-xl border text-xs font-bold cursor-pointer transition-all duration-300 flex justify-between items-center ${
-                                        isSelected 
-                                            ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
-                                            : 'bg-white/5 border-transparent text-gray-300 hover:bg-white/10 hover:text-white'
-                                    }`}
-                                >
-                                    <span>{role}</span>
-                                    <FaChevronRight className={`text-[10px] transition-transform ${isSelected ? 'translate-x-1 text-orange-500' : ''}`} />
-                                </div>
-                            );
-                        })}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-xl border border-white/5 bg-white/5">
+                        <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">Student Account</div>
+                        <div className="space-y-1 text-xs">
+                            <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">student_1@test.gurukul</code></div>
+                            <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
+                        </div>
                     </div>
 
-                    {/* Role detailed mappings (Right Columns) */}
-                    <div className="lg:col-span-8 p-5 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-between">
-                        <div>
-                            <div className="text-[10px] font-bold text-orange-400 font-mono tracking-wider mb-1">TANTRA NODE IDENTIFIER</div>
-                            <h5 className="text-base font-bold text-white mb-4">{ROLES_METADATA[selectedRole].title}</h5>
-                            
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Signal Ownership (Telemetry)</div>
-                                    <p className="text-xs text-gray-300">{ROLES_METADATA[selectedRole].signals}</p>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Visibility Ownership (Data Access Scope)</div>
-                                    <p className="text-xs text-gray-300">{ROLES_METADATA[selectedRole].visibility}</p>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Action Ownership (Authority Controls)</div>
-                                    <p className="text-xs text-gray-300">{ROLES_METADATA[selectedRole].actions}</p>
-                                </div>
-                            </div>
+                    <div className="p-4 rounded-xl border border-white/5 bg-white/5">
+                        <div className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2">Teacher Account</div>
+                        <div className="space-y-1 text-xs">
+                            <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">teacher_1@test.gurukul</code></div>
+                            <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-white/5 bg-white/5">
+                        <div className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2">Admin Account</div>
+                        <div className="space-y-1 text-xs">
+                            <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">admin@test.gurukul</code></div>
+                            <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* B4 & B5. REALITY MAP AND ARCHITECTURAL notes (Bottom Grid) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Implemented Reality Map */}
-                <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30 flex flex-col justify-between">
-                    <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 mb-4 flex items-center gap-2">
-                            <FaMapMarkedAlt className="text-xs" />
-                            B5. Implemented Reality Map
-                        </h4>
-                        
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-[11px] text-gray-300 font-semibold border-collapse">
-                                <thead>
-                                    <tr className="border-b border-white/10 text-gray-500 text-[9px] uppercase tracking-wider font-bold">
-                                        <th className="pb-2">Capability Area</th>
-                                        <th className="pb-2">Verification Status</th>
-                                        <th className="pb-2">Reality Context</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    <tr>
-                                        <td className="py-2.5">Balbharati RAG Ingest</td>
-                                        <td className="py-2.5 text-green-400 font-bold">IMPLEMENTED</td>
-                                        <td className="py-2.5 text-gray-500">Expanded seeding across Standards 6-10 (Marathi & English).</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2.5">Syllabus Resolution</td>
-                                        <td className="py-2.5 text-green-400 font-bold">IMPLEMENTED</td>
-                                        <td className="py-2.5 text-gray-500">Strict dynamic metadata `$and` index matches complete.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2.5">MDU Dashboard UI</td>
-                                        <td className="py-2.5 text-green-400 font-bold">IMPLEMENTED</td>
-                                        <td className="py-2.5 text-gray-500">Premium glassmorphic lineages & failure simulations.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2.5">Drishti Foundation</td>
-                                        <td className="py-2.5 text-green-400 font-bold">IMPLEMENTED</td>
-                                        <td className="py-2.5 text-gray-500">6 Card primitives, 3 prototypes, and 8 role models.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2.5">Sovereign Voice</td>
-                                        <td className="py-2.5 text-amber-400 font-bold">PARTIAL</td>
-                                        <td className="py-2.5 text-gray-500">TTS XTTS model falls back to public Google gTTS on timeout.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2.5">Self-Healing Watchdog</td>
-                                        <td className="py-2.5 text-green-400 font-bold">IMPLEMENTED</td>
-                                        <td className="py-2.5 text-gray-500">Watchdog server auto-restarts active services on crash.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                {/* School vs Higher Education Architectural note */}
-                <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/30 flex flex-col justify-between">
-                    <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 mb-4 flex items-center gap-2">
-                            <FaShieldAlt className="text-xs" />
-                            B4. School vs. Higher-Ed Architectural Separation
-                        </h4>
-                        
-                        <div className="p-4 rounded-xl bg-black/60 border border-white/5 font-mono text-[9px] text-gray-400 leading-relaxed space-y-4">
-                            <div>
-                                <span className="text-cyan-400 font-bold">┌────────────────────────────────────────────────────────┐</span>{"\n"}
-                                <span className="text-cyan-400 font-bold">│        SHARED INFRASTRUCTURE LAYERS (TANTRA)           │</span>{"\n"}
-                                <span className="text-cyan-400 font-bold">└────────────────────────────────────────────────────────┘</span>{"\n"}
-                                <span> - Pravah Telemetry Handlers | PRANA Event Gateway | sentence-transformer</span>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                                <div>
-                                    <span className="text-orange-400 font-bold">[SCHOOL EDUCATION LAYER]</span>
-                                    <ul className="list-disc pl-3 mt-1 space-y-1">
-                                        <li>Standard Relational (SQLite users/milestones)</li>
-                                        <li>Dynamic K-12 vector namespaces</li>
-                                        <li>8 TANTRA Role hierarchies</li>
-                                    </ul>
-                                </div>
-                                <div>
-                                    <span className="text-purple-400 font-bold">[HIGHER EDUCATION LAYER]</span>
-                                    <ul className="list-disc pl-3 mt-1 space-y-1">
-                                        <li>Autonomous LMS indices (Qdrant namespaces)</li>
-                                        <li>Higher-Ed Cognitive state models</li>
-                                        <li>Custom micro-topic structures</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div className="pt-2 border-t border-white/5 text-emerald-400 italic">
-                                ➔ Multi-tenant databases strictly partitioned. Careless mergers blocked by boundary routers.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
     );

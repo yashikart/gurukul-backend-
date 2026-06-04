@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FaUserCircle, FaBars, FaTimes, FaGlobe, FaChevronDown, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import { FaUserCircle, FaBars, FaTimes, FaGlobe, FaChevronDown, FaVolumeUp, FaVolumeMute, FaEye } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 import { useAuth } from '../contexts/AuthContext';
@@ -439,6 +439,16 @@ const Navbar = () => {
 
             {/* Sign In Section */}
             <div className="hidden lg:flex items-center">
+              {/* Drishti Link */}
+              <Link 
+                to="/drishti" 
+                className="mr-4 text-xs font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1.5 bg-orange-500/10 px-3.5 py-1.5 rounded-full border border-orange-500/20 hover:bg-orange-500/20 transition-all"
+                title="Open Drishti Dashboard Control Panel"
+              >
+                <FaEye className="text-sm" />
+                <span>Drishti Panel</span>
+              </Link>
+
               {/* Demo Mode Toggle (Visible to everyone) */}
               <div className="flex items-center gap-2 mr-4 bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
                 <span className={`text-xs font-bold ${isDemoMode ? 'text-green-400' : 'text-gray-400'}`}>DEMO MODE</span>

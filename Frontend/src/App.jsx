@@ -41,6 +41,7 @@ const SchoolGov = React.lazy(() => import('./pages/governance/SchoolDashboard'))
 const DistrictGov = React.lazy(() => import('./pages/governance/DistrictDashboard'));
 const StateGov = React.lazy(() => import('./pages/governance/StateDashboard'));
 const MinisterGov = React.lazy(() => import('./pages/governance/MinisterDashboard'));
+const GurukulDrishti = React.lazy(() => import('./pages/admin/GurukulDrishti'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -417,6 +418,9 @@ const AppContent = () => {
                     <Route path="/governance/district" element={<PrivateRoute><DistrictGov /></PrivateRoute>} />
                     <Route path="/governance/state" element={<PrivateRoute><StateGov /></PrivateRoute>} />
                     <Route path="/governance/minister" element={<PrivateRoute><MinisterGov /></PrivateRoute>} />
+
+                    {/* Public Drishti Dashboard Control Panel */}
+                    <Route path="/drishti" element={<div className="container mx-auto px-4 pt-24 pb-12 min-h-screen w-full"><GurukulDrishti /></div>} />
 
                     {/* 404 Route - Catch all unmatched routes */}
                     <Route path="*" element={<NotFound />} />

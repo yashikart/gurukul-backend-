@@ -99,6 +99,21 @@ def seed():
     db.commit()
     print(f"Seeded {len(teachers)} teachers.")
 
+    # 5.5 Create default Admin user
+    print("Generating default admin user...")
+    admin_user = User(
+        id=generate_uuid(),
+        email="admin@test.gurukul",
+        hashed_password=hashed_pwd,
+        full_name="System Admin",
+        role="ADMIN",
+        is_active=True,
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(admin_user)
+    db.commit()
+    print("Seeded default admin user: admin@test.gurukul")
+
     # 6. Create 5000 Students (~50 per Cohort, distributed among the 100 cohorts)
     print("Generating 5000 Students...")
     students = []
