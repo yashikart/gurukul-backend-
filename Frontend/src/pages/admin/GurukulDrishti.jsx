@@ -7,6 +7,8 @@ import {
 } from 'react-icons/fa';
 import { apiGet, apiPut, apiPost, checkBackendHealth, handleApiError } from '../../utils/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDemo } from '../../contexts/DemoContext';
+import { Navigate } from 'react-router-dom';
 
 // Import Reusable Dashboard Components
 import KPICard from '../../components/dashboard/KPICard';
@@ -122,6 +124,12 @@ const getMockKey = (role) => {
 
 const GurukulDrishti = () => {
     const { user } = useAuth();
+    const { isDemoMode } = useDemo();
+    
+    // Redirect to login page if demo mode is off and user is not authenticated
+    if (!isDemoMode && !user) {
+        return <Navigate to="/sign-in" replace />;
+    }
     
     // Configurable role context simulation
     const [selectedRole, setSelectedRole] = useState(user?.role ? user.role.toLowerCase() : "admin");
