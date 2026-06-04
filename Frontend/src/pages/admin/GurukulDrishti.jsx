@@ -288,10 +288,16 @@ const GurukulDrishti = () => {
             const displayStatus = err.status !== undefined ? err.status : 0;
             logAction(`➔ API Error: ${displayStatus} - ${apiErr.message}`);
             
-            // Graceful fallback to mock data on any API failure (e.g. auth bounds breach, network offline)
-            logAction("➔ Falling back to local simulation data.");
-            const key = getMockKey(roleName);
-            setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
+            if (isDemoMode || forceMock) {
+                // In demo mode: fall back to mock data so visitors can explore the UI
+                logAction("➔ Demo mode: falling back to local simulation data.");
+                const key = getMockKey(roleName);
+                setDashboardData(MOCK_DASHBOARDS[key] || MOCK_DASHBOARDS.admin);
+            } else {
+                // In normal mode: clear data so dummy numbers are never shown as real
+                logAction("➔ Live mode: clearing dashboard — data unavailable while backend is offline.");
+                setDashboardData({ role: roleName, kpis: {}, open_alerts: [], pending_actions: [], recent_activity: [], status_summary: {} });
+            }
         } finally {
             setLoading(false);
         }
