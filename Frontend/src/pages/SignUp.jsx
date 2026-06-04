@@ -30,11 +30,13 @@ const SignUp = () => {
                 const lowerRole = role.toLowerCase();
                 setUserRole(lowerRole === 'institution_admin' || lowerRole === 'regional_admin' ? 'admin' : lowerRole);
                 
-                if (lowerRole === 'student') navigate('/dashboard');
-                else if (lowerRole === 'teacher') navigate('/teacher/dashboard');
-                else if (lowerRole === 'institution_admin') navigate('/admin_dashboard');
-                else if (lowerRole === 'regional_admin') navigate('/superadmin');
-                else navigate('/dashboard');
+                if (['teacher', 'institution_admin', 'regional_admin', 'admin'].includes(lowerRole)) {
+                    navigate('/drishti');
+                } else if (lowerRole === 'student') {
+                    navigate('/dashboard');
+                } else {
+                    navigate('/dashboard');
+                }
             }, 1500);
         } catch (err) {
             console.error('Signup error:', err);

@@ -54,12 +54,10 @@ export const getRoleDisplayName = (role) => {
     return names[role] || 'Student';
 };
 
-/**
- * Get role-based dashboard path
- * Gurukul is student-only, so always returns student dashboard
- */
 export const getDashboardPath = (role) => {
-    // Gurukul is student-only, always redirect to student dashboard
+    if (['teacher', 'admin', 'institution_admin', 'regional_admin'].includes(role)) {
+        return '/drishti';
+    }
     return '/dashboard';
 };
 
