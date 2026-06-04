@@ -48,7 +48,7 @@ const ActivityCard = ({ activity }) => {
                 </div>
                 <h5 className="text-xs font-bold text-white mt-1 break-words">{title}</h5>
 
-                {details && Object.keys(details).length > 0 && (
+                {details && typeof details === 'object' && Object.keys(details).length > 0 && (
                     <div className="mt-2 text-[10px] text-gray-400 font-mono bg-black/40 rounded-lg p-2 border border-white/5 leading-relaxed overflow-x-auto">
                         {details.score !== undefined && (
                             <div>Score: <span className="text-white font-bold">{details.score}/{details.total}</span> ({details.percentage}%)</div>

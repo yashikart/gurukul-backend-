@@ -5,13 +5,14 @@ import { FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaServer, FaShieldAl
  * StatusCard Component
  * Flexible status panel that changes rendering based on the active role's status details.
  */
-const StatusCard = ({ title, statusSummary = {}, role = 'student' }) => {
+const StatusCard = ({ title, statusSummary, role = 'student' }) => {
     
     const renderContent = () => {
         const lowerRole = role.toLowerCase();
+        const summary = statusSummary || {};
         
         if (lowerRole === 'student') {
-            const { overall_status, active_goals = [], pacing_coefficient } = statusSummary;
+            const { overall_status, active_goals = [], pacing_coefficient } = summary;
             return (
                 <div className="space-y-3">
                     <div className="flex justify-between items-center bg-white/5 p-2.5 rounded-lg border border-white/5">
@@ -46,7 +47,7 @@ const StatusCard = ({ title, statusSummary = {}, role = 'student' }) => {
         }
 
         if (lowerRole === 'teacher') {
-            const { class_name, average_comprehension, warning_flags_count = 0 } = statusSummary;
+            const { class_name, average_comprehension, warning_flags_count = 0 } = summary;
             return (
                 <div className="space-y-3">
                     {class_name && (
@@ -75,7 +76,7 @@ const StatusCard = ({ title, statusSummary = {}, role = 'student' }) => {
         const isRegional = lowerRole === 'regional-admin' || lowerRole === 'regional_admin';
         
         if (isRegional) {
-            const { redundancy_level, system_survivability_rate, active_replay_workers } = statusSummary;
+            const { redundancy_level, system_survivability_rate, active_replay_workers } = summary;
             return (
                 <div className="space-y-3">
                     <div className="flex justify-between items-center bg-white/5 p-2.5 rounded-lg border border-white/5">
@@ -94,7 +95,7 @@ const StatusCard = ({ title, statusSummary = {}, role = 'student' }) => {
             );
         } else {
             // Institution Admin
-            const { infrastructure_state, sqlite_write_locks_triggered = 0, average_response_time_ms } = statusSummary;
+            const { infrastructure_state, sqlite_write_locks_triggered = 0, average_response_time_ms } = summary;
             return (
                 <div className="space-y-3">
                     <div className="flex justify-between items-center bg-white/5 p-2.5 rounded-lg border border-white/5">
