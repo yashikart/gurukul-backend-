@@ -128,7 +128,7 @@ const GurukulDrishti = () => {
     
     // Redirect to login page if demo mode is off and user is not authenticated
     if (!isDemoMode && !user) {
-        return <Navigate to="/sign-in" replace />;
+        return <Navigate to="/signin" replace />;
     }
     
     // Configurable role context simulation
