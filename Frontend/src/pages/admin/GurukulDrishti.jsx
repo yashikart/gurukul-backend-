@@ -662,9 +662,8 @@ const GurukulDrishti = () => {
                     <div className="p-4 rounded-xl border border-white/5 bg-white/5">
                         <div className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2">Admin Account</div>
                         <div className="space-y-1 text-xs">
-                            <p className="text-[10px] text-gray-400">
-                                Register a new account under the Role <span className="font-bold">ADMIN</span> on the Signup Page, or log in if one has already been registered in the environment.
-                            </p>
+                            <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">admin@test.gurukul</code></div>
+                            <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
                         </div>
                     </div>
                 </div>
