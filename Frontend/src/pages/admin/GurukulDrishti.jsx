@@ -135,9 +135,35 @@ const GurukulDrishti = () => {
     const [selectedRole, setSelectedRole] = useState(user?.role ? user.role.toLowerCase() : "admin");
     const [useMockData, setUseMockData] = useState(false);
 
+    // States for staff to select a student's telemetry
+    const [students, setStudents] = useState([]);
+    const [selectedStudentId, setSelectedStudentId] = useState("");
+    const [selectedStudentName, setSelectedStudentName] = useState("");
+
+    // Fetch student users to populate the telemetry selector dropdown
+    const fetchStudentsList = async () => {
+        try {
+            if (!user) return;
+            const users = await apiGet('/api/v1/ems/users');
+            const studentUsers = (users || []).filter(u => u.role?.toUpperCase() === 'STUDENT');
+            setStudents(studentUsers);
+        } catch (err) {
+            console.warn("Failed to fetch students from backend, falling back to mock list:", err);
+            setStudents([
+                { id: "student-1", full_name: "Eklavya Sharma", email: "student_1@test.gurukul" },
+                { id: "student-2", full_name: "Aarav Patel", email: "student_2@test.gurukul" },
+                { id: "student-3", full_name: "Mira Nair", email: "student_3@test.gurukul" }
+            ]);
+        }
+    };
+
+    useEffect(() => {
+        fetchStudentsList();
+    }, [user]);
+
     // Sync simulated role with actual logged in user role when demo mode is off
     useEffect(() => {
-        if (!isDemoMode && user?.role) {
+        if (!isDemoMode && user?.role && !selectedStudentId) {
             const normalizeRole = (r) => {
                 if (!r) return '';
                 const clean = r.toLowerCase().replace(/_/g, '-');
@@ -147,7 +173,7 @@ const GurukulDrishti = () => {
             setSelectedRole(normalizeRole(user.role));
             setUseMockData(false);
         }
-    }, [isDemoMode, user]);
+    }, [isDemoMode, user, selectedStudentId]);
     
     // API loading and backend status states
     const [isOnline, setIsOnline] = useState(null); // null = checking, true/false
@@ -202,21 +228,25 @@ const GurukulDrishti = () => {
             // Determine endpoints based on selected roles
             let endpoint = '/api/v1/dashboard/aggregate';
             
-            // Normalize roles for robust comparison and routing
-            const normalizeRole = (r) => {
-                if (!r) return '';
-                const clean = r.toLowerCase().replace(/_/g, '-');
-                if (clean === 'institution-admin') return 'admin';
-                return clean;
-            };
-            const userRole = normalizeRole(user?.role);
-            const targetRole = normalizeRole(roleName);
-            
-            if (userRole !== targetRole) {
-                if (targetRole === 'student') endpoint = '/api/v1/dashboard/student';
-                else if (targetRole === 'teacher') endpoint = '/api/v1/dashboard/teacher';
-                else if (targetRole === 'admin') endpoint = '/api/v1/dashboard/institution-admin';
-                else if (targetRole === 'regional-admin') endpoint = '/api/v1/dashboard/regional-admin';
+            if (selectedStudentId) {
+                endpoint = `/api/v1/dashboard/aggregate?student_id=${selectedStudentId}`;
+            } else {
+                // Normalize roles for robust comparison and routing
+                const normalizeRole = (r) => {
+                    if (!r) return '';
+                    const clean = r.toLowerCase().replace(/_/g, '-');
+                    if (clean === 'institution-admin') return 'admin';
+                    return clean;
+                };
+                const userRole = normalizeRole(user?.role);
+                const targetRole = normalizeRole(roleName);
+                
+                if (userRole !== targetRole) {
+                    if (targetRole === 'student') endpoint = '/api/v1/dashboard/student';
+                    else if (targetRole === 'teacher') endpoint = '/api/v1/dashboard/teacher';
+                    else if (targetRole === 'admin') endpoint = '/api/v1/dashboard/institution-admin';
+                    else if (targetRole === 'regional-admin') endpoint = '/api/v1/dashboard/regional-admin';
+                }
             }
 
             logAction(`➔ API Request: GET ${endpoint}`);
@@ -246,7 +276,7 @@ const GurukulDrishti = () => {
             await loadDashboardData();
         };
         init();
-    }, [selectedRole, useMockData]);
+    }, [selectedRole, useMockData, selectedStudentId]);
 
     // Handle alert status transition (OPEN -> RESOLVED -> CLOSED)
     const handleAlertStatus = async (id, status) => {
@@ -399,6 +429,7 @@ const GurukulDrishti = () => {
     const isStudent = selectedRole === 'student';
     const isTeacher = selectedRole === 'teacher';
     const isAdmin = ['admin', 'institution_admin', 'regional_admin'].includes(selectedRole);
+    const isStaff = user?.role && ['teacher', 'admin', 'institution_admin', 'regional_admin'].includes(user.role.toLowerCase());
 
     return (
         <div className="space-y-6 pb-12">
@@ -441,6 +472,69 @@ const GurukulDrishti = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Student Telemetry Selector Row for Staff Roles */}
+            {isStaff && (
+                <div className="glass-panel p-4 rounded-2xl border border-white/10 bg-black/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-400">Student Telemetry Selector:</span>
+                        <select
+                            value={selectedStudentId}
+                            onChange={(e) => {
+                                const id = e.target.value;
+                                setSelectedStudentId(id);
+                                if (id) {
+                                    const studentObj = students.find(s => s.id === id);
+                                    setSelectedStudentName(studentObj?.full_name || studentObj?.email || "Student");
+                                    setSelectedRole("student");
+                                } else {
+                                    setSelectedStudentName("");
+                                    // Reset role back to authentic user role
+                                    const normalizeRole = (r) => {
+                                        if (!r) return '';
+                                        const clean = r.toLowerCase().replace(/_/g, '-');
+                                        if (clean === 'institution-admin') return 'admin';
+                                        return clean;
+                                    };
+                                    setSelectedRole(normalizeRole(user?.role));
+                                }
+                            }}
+                            className="bg-black/60 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-orange-500/50 cursor-pointer min-w-[200px]"
+                        >
+                            <option value="">-- Select Student (Self) --</option>
+                            {students.map((student) => (
+                                <option key={student.id} value={student.id}>
+                                    {student.full_name || student.email}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {selectedStudentId && (
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs text-orange-400 font-bold animate-pulse">
+                                ➔ Viewing student: {selectedStudentName}
+                            </span>
+                            <button
+                                onClick={() => {
+                                    setSelectedStudentId("");
+                                    setSelectedStudentName("");
+                                    const normalizeRole = (r) => {
+                                        if (!r) return '';
+                                        const clean = r.toLowerCase().replace(/_/g, '-');
+                                        if (clean === 'institution-admin') return 'admin';
+                                        return clean;
+                                    };
+                                    setSelectedRole(normalizeRole(user?.role));
+                                }}
+                                className="px-3 py-1 rounded-lg bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/30 text-orange-300 text-[10px] font-bold uppercase transition-all"
+                            >
+                                Clear Selection
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Simulation controls & configuration dashboard options */}
             {isDemoMode && (
