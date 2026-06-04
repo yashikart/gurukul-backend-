@@ -62,8 +62,17 @@ async def prometheus_metrics():
     try:
         import redis
         import os
-        r_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        r_client = redis.from_url(r_url, socket_timeout=2)
+        r_host = os.getenv("REDIS_HOST", "localhost")
+        r_port = int(os.getenv("REDIS_PORT", 6379))
+        r_pass = os.getenv("REDIS_PASSWORD", None)
+        r_user = os.getenv("REDIS_USERNAME", None)
+        r_client = redis.Redis(
+            host=r_host,
+            port=r_port,
+            password=r_pass,
+            username=r_user,
+            socket_timeout=2
+        )
         r_client.ping()
     except Exception:
         redis_healthy = 0.0

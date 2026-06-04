@@ -4,7 +4,7 @@ metadata:
   name: gurukul-backend
   namespace: gurukul-staging
 spec:
-  replicas: 3
+  replicas: 1
   revisionHistoryLimit: 5
   strategy:
     type: RollingUpdate
@@ -27,7 +27,7 @@ spec:
         command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done']
       containers:
       - name: backend
-        image: bhiv/gurukul-backend:dev_pan
+        image: bhiv/gurukul-backend:WD
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

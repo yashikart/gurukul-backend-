@@ -104,6 +104,10 @@ class ServiceWatchdog:
             self._thread.join(timeout=10)
         logger.info("ServiceWatchdog stopped.")
 
+    def is_alive(self) -> bool:
+        """Return True if the background watchdog thread is active and running."""
+        return self._thread is not None and self._thread.is_alive()
+
     # ------------------------------------------------------------------
     # Main loop
     # ------------------------------------------------------------------
@@ -244,9 +248,18 @@ class ServiceWatchdog:
         """Reconnect to Redis."""
         try:
             import redis
-            from app.core.config import settings as app_settings
-            redis_url = getattr(app_settings, "REDIS_URL", "redis://localhost:6379/0")
-            client = redis.from_url(redis_url, socket_connect_timeout=5)
+            import os
+            r_host = os.getenv("REDIS_HOST", "localhost")
+            r_port = int(os.getenv("REDIS_PORT", 6379))
+            r_pass = os.getenv("REDIS_PASSWORD", None)
+            r_user = os.getenv("REDIS_USERNAME", None)
+            client = redis.Redis(
+                host=r_host,
+                port=r_port,
+                password=r_pass,
+                username=r_user,
+                socket_timeout=5
+            )
             client.ping()
             return True, "Redis PING succeeded after reconnect"
         except Exception as exc:

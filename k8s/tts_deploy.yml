@@ -4,7 +4,7 @@ metadata:
   name: tts-service
   namespace: gurukul-staging
 spec:
-  replicas: 3
+  replicas: 1
   progressDeadlineSeconds: 1200
   revisionHistoryLimit: 5
   strategy:

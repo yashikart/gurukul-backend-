@@ -164,7 +164,7 @@ Since these pods run inside the isolated Minikube network, port-forward them to 
 
 ## 5. How to Generate Real-Time Data & Collect Proof Screenshots (SS)
 
-To submit undeniable runtime proof for Section 8 (Claims without proof will not be accepted), you need your dashboards to display active metrics under load. Follow this strategy:
+To submit factual runtime validation evidence for Section 8 (Claims without proof will not be accepted), you need your dashboards to display active metrics under load. Follow this strategy:
 
 ### A. Exposing the Metrics Payload Proof (Screenshot #1)
 Open a new browser tab and navigate to:

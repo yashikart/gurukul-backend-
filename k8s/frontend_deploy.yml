@@ -4,7 +4,7 @@ metadata:
   name: frontend
   namespace: gurukul-staging
 spec:
-  replicas: 3
+  replicas: 1
   revisionHistoryLimit: 5
   strategy:
     type: RollingUpdate

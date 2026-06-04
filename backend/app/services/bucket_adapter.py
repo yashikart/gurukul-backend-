@@ -148,6 +148,13 @@ class BucketAdapter:
             "payload":    payload or {},
             "timestamp":  datetime.now(timezone.utc).isoformat(),
             "source":     "GurukulRuntime",
+            "schema_version": "2.0.0",
+            "provenance": "Gurukul-TANTRA-Signed",
+            "ownership": "district_admin",
+            "replay_metadata": {
+                "is_replayable": True,
+                "replay_index": int(time.time() * 1000)
+            }
         }
 
         # Compute hash chain (thread-safe)

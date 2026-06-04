@@ -18,6 +18,9 @@ metadata:
 data:
   MONGO_URI: mongodb://mongo:27017
   DB_NAME: karma-chain
+  TANTRA_DEBUG_LOG: "true"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
   # Add any backend-specific configuration here, e.g. API keys, feature flags, etc.
 
 ---

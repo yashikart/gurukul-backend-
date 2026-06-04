@@ -1,6 +1,9 @@
+from fastapi import APIRouter, HTTPException, Response
+import time
 from pydantic import BaseModel
 from app.services.pravah_adapter import pravah_adapter
 from app.services.bucket_adapter import bucket_adapter
+from app.services.system_metrics import record_voice_latency
 
 router = APIRouter()
 
@@ -45,7 +48,10 @@ async def text_to_speech(request: TTSRequest):
         )
 
         # Use our sovereign engine (Vaani)
+        t0 = time.perf_counter()
         audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=False)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+        record_voice_latency(elapsed_ms)
         
         # Emit Signal: TTS Success
         pravah_adapter.emit_signal(
@@ -76,6 +82,8 @@ async def text_to_speech(request: TTSRequest):
                 "Content-Disposition": f"attachment; filename=vaani_speech.{file_ext}"
             }
         )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         print(f"[TTS] Error: {e}")
         raise HTTPException(
@@ -118,7 +126,10 @@ async def vaani_text_to_speech(request: TTSRequest):
         )
 
         # Use our sovereign engine (Vaani)
+        t0 = time.perf_counter()
         audio_data = await text_to_speech_stream(request.text, language=request.language, use_google_tts=False)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+        record_voice_latency(elapsed_ms)
         
         # Emit Signal & Memory
         pravah_adapter.emit_signal(
@@ -141,6 +152,8 @@ async def vaani_text_to_speech(request: TTSRequest):
             }
         )
     
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         # Emit failure signal
         pravah_adapter.emit_signal(
