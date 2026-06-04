@@ -134,6 +134,20 @@ const GurukulDrishti = () => {
     // Configurable role context simulation
     const [selectedRole, setSelectedRole] = useState(user?.role ? user.role.toLowerCase() : "admin");
     const [useMockData, setUseMockData] = useState(false);
+
+    // Sync simulated role with actual logged in user role when demo mode is off
+    useEffect(() => {
+        if (!isDemoMode && user?.role) {
+            const normalizeRole = (r) => {
+                if (!r) return '';
+                const clean = r.toLowerCase().replace(/_/g, '-');
+                if (clean === 'institution-admin') return 'admin';
+                return clean;
+            };
+            setSelectedRole(normalizeRole(user.role));
+            setUseMockData(false);
+        }
+    }, [isDemoMode, user]);
     
     // API loading and backend status states
     const [isOnline, setIsOnline] = useState(null); // null = checking, true/false
@@ -429,66 +443,68 @@ const GurukulDrishti = () => {
             </div>
 
             {/* Simulation controls & configuration dashboard options */}
-            <div className="glass-panel p-4 rounded-2xl border border-white/10 bg-black/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mr-2">Simulate Dashboard View:</span>
-                    <button 
-                        onClick={() => setSelectedRole("student")}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
-                            selectedRole === "student"
-                                ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
-                                : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
-                        }`}
-                    >
-                        Student View
-                    </button>
-                    <button 
-                        onClick={() => setSelectedRole("teacher")}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
-                            selectedRole === "teacher"
-                                ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
-                                : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
-                        }`}
-                    >
-                        Teacher View
-                    </button>
-                    <button 
-                        onClick={() => setSelectedRole("admin")}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
-                            selectedRole === "admin"
-                                ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
-                                : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
-                        }`}
-                    >
-                        Institution Admin
-                    </button>
-                    <button 
-                        onClick={() => setSelectedRole("regional-admin")}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
-                            selectedRole === "regional-admin"
-                                ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
-                                : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
-                        }`}
-                    >
-                        Regional Admin
-                    </button>
-                </div>
+            {isDemoMode && (
+                <div className="glass-panel p-4 rounded-2xl border border-white/10 bg-black/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mr-2">Simulate Dashboard View:</span>
+                        <button 
+                            onClick={() => setSelectedRole("student")}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                                selectedRole === "student"
+                                    ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
+                                    : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
+                            }`}
+                        >
+                            Student View
+                        </button>
+                        <button 
+                            onClick={() => setSelectedRole("teacher")}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                                selectedRole === "teacher"
+                                    ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
+                                    : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
+                            }`}
+                        >
+                            Teacher View
+                        </button>
+                        <button 
+                            onClick={() => setSelectedRole("admin")}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                                selectedRole === "admin"
+                                    ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
+                                    : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
+                            }`}
+                        >
+                            Institution Admin
+                        </button>
+                        <button 
+                            onClick={() => setSelectedRole("regional-admin")}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                                selectedRole === "regional-admin"
+                                    ? 'bg-gradient-to-r from-orange-600/20 to-amber-600/20 border-orange-500/40 text-white' 
+                                    : 'bg-white/5 border-transparent text-gray-400 hover:bg-white/10'
+                            }`}
+                        >
+                            Regional Admin
+                        </button>
+                    </div>
 
-                <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            checked={useMockData} 
-                            onChange={(e) => setUseMockData(e.target.checked)}
-                            className="form-checkbox bg-black/60 border-white/10 text-orange-500 rounded focus:ring-0"
-                        />
-                        <span className="text-xs font-bold text-gray-300">Force Mock Simulation Mode</span>
-                    </label>
+                    <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={useMockData} 
+                                onChange={(e) => setUseMockData(e.target.checked)}
+                                className="form-checkbox bg-black/60 border-white/10 text-orange-500 rounded focus:ring-0"
+                            />
+                            <span className="text-xs font-bold text-gray-300">Force Mock Simulation Mode</span>
+                        </label>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Live Data Connection warning for RBAC restrictions */}
-            {!useMockData && user?.role?.toLowerCase() !== selectedRole && (
+            {isDemoMode && !useMockData && user?.role?.toLowerCase() !== selectedRole && (
                 <div className="flex items-start gap-3 p-3.5 rounded-xl bg-orange-600/10 border border-orange-500/20 text-orange-400 text-xs leading-relaxed">
                     <FaInfoCircle className="text-base shrink-0 mt-0.5" />
                     <div>
@@ -655,41 +671,43 @@ const GurukulDrishti = () => {
             </div>
 
             {/* Developer credentials quick reference guide */}
-            <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-white/10 bg-black/40">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-orange-400 mb-3 flex items-center gap-2">
-                    <FaKey className="text-xs text-orange-500" />
-                    Developer Credentials Quick Reference (Testing RBAC)
-                </h4>
-                <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-                    The backend SQLite database was pre-seeded with 5,000 students and 200 teachers. If you encounter <span className="text-orange-300">403 Forbidden</span> bounds restrictions when requesting live data, logout of the app and authenticate using these accounts:
-                </p>
+            {isDemoMode && (
+                <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-white/10 bg-black/40">
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-orange-400 mb-3 flex items-center gap-2">
+                        <FaKey className="text-xs text-orange-500" />
+                        Developer Credentials Quick Reference (Testing RBAC)
+                    </h4>
+                    <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                        The backend SQLite database was pre-seeded with 5,000 students and 200 teachers. If you encounter <span className="text-orange-300">403 Forbidden</span> bounds restrictions when requesting live data, logout of the app and authenticate using these accounts:
+                    </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-xl border border-white/5 bg-white/5">
-                        <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">Student Account</div>
-                        <div className="space-y-1 text-xs">
-                            <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">student_1@test.gurukul</code></div>
-                            <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-4 rounded-xl border border-white/5 bg-white/5">
+                            <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">Student Account</div>
+                            <div className="space-y-1 text-xs">
+                                <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">student_1@test.gurukul</code></div>
+                                <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="p-4 rounded-xl border border-white/5 bg-white/5">
-                        <div className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2">Teacher Account</div>
-                        <div className="space-y-1 text-xs">
-                            <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">teacher_1@test.gurukul</code></div>
-                            <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
+                        <div className="p-4 rounded-xl border border-white/5 bg-white/5">
+                            <div className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-2">Teacher Account</div>
+                            <div className="space-y-1 text-xs">
+                                <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">teacher_1@test.gurukul</code></div>
+                                <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="p-4 rounded-xl border border-white/5 bg-white/5">
-                        <div className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2">Admin Account</div>
-                        <div className="space-y-1 text-xs">
-                            <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">admin@test.gurukul</code></div>
-                            <div><span className="text-gray-500 font-medium">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
+                        <div className="p-4 rounded-xl border border-white/5 bg-white/5">
+                            <div className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-2">Admin Account</div>
+                            <div className="space-y-1 text-xs">
+                                <div><span className="text-gray-500 font-medium">Email:</span> <code className="text-gray-200 font-mono select-all">admin@test.gurukul</code></div>
+                                <div><span className="text-gray-500 font-mono">Password:</span> <code className="text-gray-200 font-mono">GurukulTest@123</code></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
