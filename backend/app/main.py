@@ -412,6 +412,13 @@ async def startup_event():
         except Exception as e:
             print(f"[Startup] [WARN] dashboard_mock_apis failed: {e}")
 
+        try:
+            from app.routers import dashboard as dashboard_real_mod
+            app.include_router(dashboard_real_mod.router, prefix="/api/v1", tags=["Dashboard Foundation"])
+            print("[Startup] [OK] dashboard router")
+        except Exception as e:
+            print(f"[Startup] [WARN] dashboard router failed: {e}")
+
         # ── Voice STT ─────────────────────────────────────────────────
         try:
             from app.routers import voice as voice_mod
@@ -715,6 +722,8 @@ async def tenant_info(
     }
 
 # Health check endpoint for Production
+@app.get("/health", summary="System Health Check")
+async def health():
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),

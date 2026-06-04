@@ -11,6 +11,10 @@ def generate_uuid():
 # --- PRANA Integrity Models (Alpha-Veda Layer) ---
 from app.models.prana_models import PranaPacket, ReviewOutputVersion, NextTaskVersion
 
+# --- Dashboard Models ---
+from app.models.dashboard_models import DashboardAlert, DashboardAction, DashboardAuditLog
+
+
 # --- EMS & Governance Models ---
 
 class Tenant(Base):
