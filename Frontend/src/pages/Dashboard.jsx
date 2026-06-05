@@ -5,7 +5,9 @@ import LearningFlow from '../components/LearningFlow';
 import LearningProgress from '../components/LearningProgress';
 import ReflectionModal from '../components/ReflectionModal';
 import NextStepCard from '../components/NextStepCard';
-import { apiGet, handleApiError } from '../utils/apiClient';
+import AlertCard from '../components/dashboard/AlertCard';
+import ActionCard from '../components/dashboard/ActionCard';
+import { apiGet, apiPut, handleApiError } from '../utils/apiClient';
 import { FaHeart } from 'react-icons/fa';
 import { SkeletonGrid } from '../components/LoadingSkeleton';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -27,9 +29,53 @@ const Dashboard = ({
     const [isReflectionOpen, setIsReflectionOpen] = useState(false);
     const [loadingJourney, setLoadingJourney] = useState(true);
 
+    // Alerts & Actions state
+    const [alerts, setAlerts] = useState([]);
+    const [actions, setActions] = useState([]);
+    const [loadingTelemetry, setLoadingTelemetry] = useState(true);
+    const [updatingId, setUpdatingId] = useState(null);
+
     useEffect(() => {
         fetchJourney();
+        fetchTelemetry();
     }, []);
+
+    const fetchTelemetry = async () => {
+        try {
+            setLoadingTelemetry(true);
+            const data = await apiGet('/api/v1/dashboard/student');
+            setAlerts(data.open_alerts || []);
+            setActions(data.pending_actions || []);
+        } catch (err) {
+            console.warn("Failed to fetch student dashboard telemetry:", err);
+        } finally {
+            setLoadingTelemetry(false);
+        }
+    };
+
+    const handleAlertStatus = async (id, status) => {
+        setUpdatingId(id);
+        try {
+            await apiPut(`/api/v1/alerts/${id}/status`, { status });
+            await fetchTelemetry();
+        } catch (err) {
+            console.error("Failed to update alert status:", err);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const handleActionStatus = async (id, status) => {
+        setUpdatingId(id);
+        try {
+            await apiPut(`/api/v1/actions/${id}/status`, { status });
+            await fetchTelemetry();
+        } catch (err) {
+            console.error("Failed to update action status:", err);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
 
     const fetchJourney = async () => {
         try {
@@ -137,6 +183,63 @@ const Dashboard = ({
                             <ErrorBoundary>
                                 <AchievementsWidget />
                             </ErrorBoundary>
+                        </div>
+                    </div>
+
+                    {/* Active Alerts and Action Items */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
+                        {/* Alerts Card */}
+                        <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/40">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-red-400 mb-4 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                                Active Anomaly Signals
+                            </h3>
+                            <div className="space-y-3">
+                                {loadingTelemetry ? (
+                                    <div className="text-gray-400 text-xs">Loading alerts...</div>
+                                ) : alerts.length === 0 ? (
+                                    <div className="text-gray-500 text-xs py-8 border border-dashed border-white/5 rounded-xl text-center">
+                                        No active anomaly signals detected.
+                                    </div>
+                                ) : (
+                                    alerts.map(alert => (
+                                        <AlertCard
+                                            key={alert.id}
+                                            alert={alert}
+                                            userRole="student"
+                                            onStatusUpdate={handleAlertStatus}
+                                            updating={updatingId === alert.id}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Actions Card */}
+                        <div className="glass-panel p-5 rounded-2xl border border-white/10 bg-black/40">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-orange-400 mb-4 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+                                Pending Governance Actions
+                            </h3>
+                            <div className="space-y-3">
+                                {loadingTelemetry ? (
+                                    <div className="text-gray-400 text-xs">Loading actions...</div>
+                                ) : actions.length === 0 ? (
+                                    <div className="text-gray-500 text-xs py-8 border border-dashed border-white/5 rounded-xl text-center">
+                                        No pending governance actions.
+                                    </div>
+                                ) : (
+                                    actions.map(action => (
+                                        <ActionCard
+                                            key={action.id}
+                                            action={action}
+                                            userRole="student"
+                                            onStatusUpdate={handleActionStatus}
+                                            updating={updatingId === action.id}
+                                        />
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 </ErrorBoundary>

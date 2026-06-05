@@ -10,7 +10,8 @@ import {
     FaBook,
     FaCog,
     FaSignOutAlt,
-    FaUserCircle
+    FaUserCircle,
+    FaEye
 } from 'react-icons/fa';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,9 +22,10 @@ const TeacherSidebar = () => {
     const { user, logout } = useAuth();
     const { isDemoMode } = useDemo();
     const navigate = useNavigate();
-    const [activeHash, setActiveHash] = React.useState(() => window.location.hash.replace('#', '') || 'students');
+    const [activeHash, setActiveHash] = React.useState(() => window.location.hash.replace('#', '') || 'drishti');
 
     const teacherMenuItems = [
+        { icon: FaEye, label: "Overview", path: "/teacher/dashboard#drishti", hash: "drishti" },
         { icon: FaUsers, label: "My Students", path: "/teacher/dashboard#students", hash: "students" },
         { icon: FaUpload, label: "Upload Content", path: "/teacher/dashboard#upload", hash: "upload" },
         { icon: FaChartLine, label: "Student Progress", path: "/teacher/dashboard#progress", hash: "progress" },
@@ -37,7 +39,7 @@ const TeacherSidebar = () => {
     // Listen for hash changes
     React.useEffect(() => {
         const handleHashChange = () => {
-            setActiveHash(window.location.hash.replace('#', '') || 'students');
+            setActiveHash(window.location.hash.replace('#', '') || 'drishti');
         };
 
         window.addEventListener('hashchange', handleHashChange);

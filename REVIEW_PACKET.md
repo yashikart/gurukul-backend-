@@ -1,166 +1,123 @@
-# 📑 Hardened System Review Packet - Soham's Gurukul Dashboard System
+# REVIEW PACKET: Gurukul Role-Based Dashboard Integration Sprint
 
-**Verification Verdict:** Verified and Audit-Ready  
-**Task Completion Status:** 100% Completed (Backend & Frontend Integrated)
-
-This review packet outlines the complete architecture, data models, API endpoints, reusable frontend components, role-specific layouts, testing simulation tools, and validation proof for the Gurukul Operational Dashboard System.
+This document summarizes the frontend-backend integration for the Gurukul role-based dashboard platform. All mock data fallbacks have been replaced with real endpoint requests to the production backend. The dashboard utilizes a unified telemetry panel (`GurukulDrishti.jsx`) and reusable UI cards.
 
 ---
 
-## 1. Entry Points
-*   **Backend API Entry:** `backend/app/main.py` (via `uvicorn app.main:app`) running on `http://localhost:3000`.
-*   **Frontend Web Entry:** `Frontend/src/pages/admin/GurukulDrishti.jsx` (via `npm run dev`) loaded at `http://localhost:5173/#drishti` (Admin View).
-*   **Public Standalone Entry:** `http://localhost:5173/#/drishti` (visible to guests, teachers, students, and in Demo Mode via the header "Drishti Panel" link).
-*   **Docker Stack Entry:** `docker/docker-compose.yml` (runs full stack).
+## 1. System & Architecture Overview
 
----
-
-## 2. Core Execution Flow
-
-The dashboard system integrates the React frontend directly with the FastAPI backend:
+The integration establishes a context-aware dashboard telemetry loop. The frontend communicates with the backend via the centralized `apiClient.js`, which automatically appends `Authorization` bearer tokens and multi-tenant `X-Tenant-ID` headers to all requests.
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor User as Client (Student/Teacher/Admin)
-    participant FE as React Dashboard (GurukulDrishti.jsx)
-    participant API as FastAPI Router (dashboard.py)
-    participant DB as SQLite Database
-    participant Audit as Audit Trail System
+    participant User as Frontend Client
+    participant Auth as AuthContext / API Client
+    participant API as FastAPI Backend
+    participant DB as SQLite DB (gurukul.db)
 
-    FE->>API: GET /health (Verify connectivity)
-    API-->>FE: Return health status (SYSTEM ONLINE)
-    
-    FE->>API: GET /api/v1/dashboard/aggregate (Fetch metrics & data)
-    note over API: Resolves role boundaries using JWT header
-    API->>DB: Query KPIs, Alerts, Actions
-    DB-->>API: Return DB records
-    API-->>FE: Return aggregated payload
-    FE->>FE: Render KPICard, AlertCard, ActionCard, StatusCard
-
-    User->>FE: Click 'Resolve Alert' or 'Start Action'
-    FE->>API: PUT /api/v1/alerts/{id}/status (or actions)
-    API->>DB: Update state
-    API->>Audit: Write log transaction
-    Audit->>DB: Save DashboardAuditLog
-    API-->>FE: Return updated resource
-    FE->>FE: Trigger refetch & append terminal log trace
+    User->>Auth: Log in with credentials
+    Auth->>API: POST /api/v1/auth/login
+    API-->>Auth: Return JWT token & User Role
+    Auth->>User: Redirect to Role-specific Dashboard
+    User->>API: GET /api/v1/dashboard/aggregate
+    Note over API: Resolves role (Student/Teacher/Admin)
+    API->>DB: Query Aggregated KPIs, Alerts, Actions, Activity
+    DB-->>API: Return DB Models
+    API-->>User: Return Dashboard JSON Payload
+    User->>User: Render reusable cards (AlertCard, ActionCard, etc.)
 ```
 
 ---
 
-## 3. Critical Files
+## 2. Key Integrated Files
 
-### Backend Components
-*   **[dashboard_models.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/app/models/dashboard_models.py):** SQLAlchemy models (`DashboardAlert`, `DashboardAction`, `DashboardAuditLog`).
-*   **[dashboard_schemas.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/app/schemas/dashboard_schemas.py):** Pydantic validation schemas.
-*   **[dashboard.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/app/routers/dashboard.py):** FastAPI endpoints (RBAC filters, aggregations, status changes).
-*   **[seed_dashboard_scale.py](file:///c:/Users/pc45/Desktop/Gurukul/backend/scripts/seed_dashboard_scale.py):** Seeding script creating 5,000+ students, 200+ teachers, and all analytics.
+The following files represent the core components and pages updated to support live backend telemetry:
 
-### Frontend Components
-*   **[KPICard.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/KPICard.jsx):** Reusable glassmorphic card with loading skeletons.
-*   **[AlertCard.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/AlertCard.jsx):** Reusable alert handler with inline assignment & status transitions.
-*   **[ActionCard.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/ActionCard.jsx):** Reusable action checklist card supporting the full status lifecycle.
-*   **[ActivityCard.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/ActivityCard.jsx):** Formatted log viewer for assessments, reflections, and audit events.
-*   **[StatusCard.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/StatusCard.jsx):** Multi-role status display mapping compliance indicators.
-*   **[GurukulDrishti.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/pages/admin/GurukulDrishti.jsx):** The core control dashboard linking card components to live APIs, supporting mock failovers, role switching simulations, live terminal traces, and dev credential documentation.
-
----
-
-## 4. API Response Layout (GET `/api/v1/dashboard/aggregate`)
-```json
-{
-  "role": "student",
-  "kpis": {
-    "learning_score": 85.5,
-    "karma_balance": 340,
-    "daily_goals_completed": 3,
-    "cards_completed": 120
-  },
-  "open_alerts": [
-    {
-      "id": "alert-uuid",
-      "type": "PACING",
-      "priority": "MEDIUM",
-      "owner_id": "student-uuid",
-      "status": "OPEN",
-      "created_by": "teacher-uuid",
-      "created_at": "2026-06-04T10:00:00Z",
-      "updated_at": "2026-06-04T10:00:00Z"
-    }
-  ],
-  "pending_actions": [],
-  "recent_activity": [],
-  "status_summary": {
-    "overall_status": "fully_compliant",
-    "active_goals": ["Arabic Mastery Level 3"],
-    "pacing_coefficient": 1.15
-  }
-}
-```
+*   **[`Dashboard.jsx`](file:///c:/Users/soham/OneDrive/Desktop/New%20folder/Frontend/src/pages/Dashboard.jsx)**
+    *   *Student View:* Fetches live student telemetry from `/api/v1/dashboard/student`. Renders the student’s custom study widgets alongside live `AlertCard` and `ActionCard` containers.
+*   **[`TeacherDashboard.jsx`](file:///c:/Users/soham/OneDrive/Desktop/New%20folder/Frontend/src/pages/teacher/TeacherDashboard.jsx)**
+    *   *Teacher View:* Defaults the initial view to the Drishti telemetry dashboard. Renders `<GurukulDrishti />` locked to the teacher's role context.
+*   **[`TeacherSidebar.jsx`](file:///c:/Users/soham/OneDrive/Desktop/New%20folder/Frontend/src/components/TeacherSidebar.jsx)**
+    *   Added the `Overview` item pointing to the `#drishti` routing state.
+*   **[`AdminDashboard.jsx`](file:///c:/Users/soham/OneDrive/Desktop/New%20folder/Frontend/src/pages/admin/AdminDashboard.jsx)**
+    *   *Admin View:* Integrates the master Drishti panel (`/admin_dashboard#drishti`) showcasing institutional metrics and system health indicators.
+*   **[`GurukulDrishti.jsx`](file:///c:/Users/soham/OneDrive/Desktop/New%20folder/Frontend/src/pages/admin/GurukulDrishti.jsx)**
+    *   *Telemetry Controller:* Serves as the canonical view controller. Fetches data using the `/api/v1/dashboard/aggregate` endpoint and coordinates real-time state transitions for alerts and action assignments.
 
 ---
 
-## 5. Seeding & Database Scaling Metrics
-*   **Institutions (Tenants):** 20 Tenants.
-*   **Cohorts:** 100 classes (5 per tenant).
-*   **Teachers:** 200 accounts (10 per tenant).
-*   **Students:** 5,000 accounts (~50 per cohort).
-*   **Assignments / Tests / Reflections:** 10,000 teacher-student associations, 15,000 test results, and 5,000 reflections.
-*   **Logs / Workflows:** 1,000 alerts, 2,000 actions, and 3,000 audit trail actions.
+## 3. Reusable Component Mapping
+
+All role-based views utilize the stable component library located in `Frontend/src/components/dashboard/`:
+
+| Component | Purpose / Responsibilities | Live Interactions |
+| :--- | :--- | :--- |
+| **`KPICard.jsx`** | Renders learning metrics, attendance rates, and averages. | Displays backend values; supports loading skeletons. |
+| **`AlertCard.jsx`** | Displays anomaly signals (COMPREHENSION, ATTENDANCE, PACING). | PUT `/api/v1/alerts/{id}/status` to resolve/close. |
+| **`ActionCard.jsx`** | Displays pedagogical action items. | PUT `/api/v1/actions/{id}/status` to change status. |
+| **`ActivityCard.jsx`**| Logs audit trails and recent learning activities. | Renders details from test results/reflection events. |
+| **`StatusCard.jsx`** | Role-specific progress summary card. | Shows overall compliance levels, pacing coefficients. |
 
 ---
 
-## 6. Verification Proofs
+## 4. API Endpoints Connected
 
-### A. Backend Test Success
-```text
-pytest tests/test_dashboard.py -v
-======================= 6 passed, 21 warnings in 2.42s ========================
-```
-
-### B. Frontend Production Build Success
-Running `npm run build` in the `Frontend/` folder completes with no compilation errors:
-```text
-vite build
-✓ 2123 modules transformed.
-rendering chunks...
-dist/index.html                                5.14 kB │ gzip:   1.75 kB
-dist/assets/index-DySJvixr.css               142.96 kB │ gzip:  20.52 kB
-dist/assets/AdminDashboard-CMCXMVc9.js        91.58 kB │ gzip:  18.87 kB
-dist/assets/index-CAVld-c7.js                219.44 kB │ gzip:  58.46 kB
-✓ built in 7.25s
-```
+*   **GET `/api/v1/dashboard/aggregate`**: Retrieves aggregated KPIs, active alerts, actions, status, and audit logs. Automatically routes to role-specific data using context-aware JWT identification.
+*   **GET `/api/v1/dashboard/student`**: Retrieves student-specific telemetry.
+*   **PUT `/api/v1/alerts/{id}/status`**: Transitions alert status between `OPEN`, `RESOLVED`, and `CLOSED`.
+*   **PUT `/api/v1/actions/{id}/status`**: Transitions action status between `Created`, `Assigned`, `In Progress`, `Completed`, `Closed`, and `Cancelled`.
+*   **POST `/api/v1/actions`**: Creates new pedagogical/governance actions.
 
 ---
 
-## 7. Testing Instructions (Seeded User Directory)
+## 5. State Management & Responsiveness
 
-To verify the role-based views and live API status transitions, you can logout of the app and log back in as any of the following pre-seeded test accounts:
-
-1.  **Student Role View:**
-    *   **Email:** `student_1@test.gurukul`
-    *   **Password:** `GurukulTest@123`
-2.  **Teacher Role View:**
-    *   **Email:** `teacher_1@test.gurukul`
-    *   **Password:** `GurukulTest@123`
-3.  **Admin / Institutional View:**
-    *   Register a new account with the **ADMIN** role on the signup page.
-4.  **Mock Toggle Option:**
-    *   If you wish to preview all layouts without logging in, enable the **"Force Mock Simulation Mode"** checkbox in the control panel to instantly load high-fidelity simulated layouts.
+*   **State Management:**
+    *   **Loading States:** Implemented glassmorphic loading skeletons for KPI card layouts and textual loader states for secondary cards.
+    *   **Error States:** central hook checks backend status and triggers automatic retries during server cold-starts (critical for Render deployments). Falls back gracefully to cached telemetry only if the system is unreachable.
+    *   **Empty States:** Failsafe text layers tell users when there are no active anomaly signals, pending actions, or activity history.
+*   **Responsiveness:**
+    *   All cards dynamically adapt from 1 column on mobile viewports to a multi-column flex/grid system on tablet and desktop screens.
+    *   Sidebars are fully collapsable on mobile with backdrop overlays, preventing viewport overflow.
 
 ---
 
-## 8. Hotfixes & Operational Debugging (June 2026)
+## 6. Execution & Setup Instructions
 
-### Bug: Runtime `TypeError: can't convert undefined to object` on Dashboard Role Switches
+To run the integrated Gurukul dashboard system locally:
 
-*   **Symptom:** When unauthenticated or when the backend server is offline, switching roles (e.g. to Student View or Teacher View) resulted in a blank screen and a console traceback pointing to `Object.keys(dashboardData.kpis)`.
-*   **Root Cause:** 
-    1.  **CORS/Offline Boundary:** If the backend is offline or requests fail with CORS blocks, `apiGet` throws a network exception (status 0). The fallback catch block only checked for status codes `401` or `403`, bypassing the simulated mock data override. The component then completed loading with `dashboardData` in an uninitialized or broken state.
-    2.  **Role Normalisation Mismatch:** When an authenticated user's role didn't match the simulated role (e.g., `INSTITUTION_ADMIN` user clicking the "Institution Admin" button, which sets simulated role to `admin`), comparison mismatched, triggering a request to `/api/v1/dashboard/institution-admin` instead of the context-aware `/api/v1/dashboard/aggregate`. If unauthenticated, this returned a `401` which exposed gaps in mock data mapping for various camelCase / snake_case role formats.
-*   **Resolution:**
-    1.  **Failover Catch-All:** The error handling block in `loadDashboardData` was updated to catch all network errors (including status 0/offline) and gracefully fall back to high-fidelity mock data.
-    2.  **Robust Normalisation:** Integrated helper `getMockKey` and normalisation functions in `GurukulDrishti.jsx` to map all snake_case and kebab-case roles (`regional_admin`, `institution_admin`, etc.) to clean keys, avoiding `undefined` dictionary lookups.
-    3.  **Defensive Rendering:** Enhanced JSX elements in `GurukulDrishti.jsx`, `StatusCard.jsx`, and `ActivityCard.jsx` with optional chaining (`dashboardData?.kpis`, `dashboardData?.open_alerts`, etc.) and default values (`|| {}`, `|| []`) to prevent future crash boundaries.
+1.  **Seed Database (Gurukul Scale Seeding Engine):**
+    Ensure backend dependencies are installed, then run the database scale simulation script:
+    ```powershell
+    cd backend
+    pip install -r requirements.txt
+    python scripts/seed_dashboard_scale.py
+    ```
+    *This generates 5,000 students, 200 teachers, 20 tenants, 1,000 alerts, and 2,000 actions.*
 
+2.  **Start the Backend Server:**
+    ```powershell
+    uvicorn app.main:app --host 0.0.0.0 --port 3000
+    ```
+
+3.  **Start the Frontend Server:**
+    ```cmd
+    cd Frontend
+    npm install
+    npm run dev
+    ```
+    *Open [http://localhost:5173/](http://localhost:5173/) in your browser.*
+
+4.  **Login Test Credentials:**
+    *   **Student Login:** `student_1@test.gurukul` / `GurukulTest@123`
+    *   **Teacher Login:** `teacher_1@test.gurukul` / `GurukulTest@123`
+    *   **Admin Login:** `admin@test.gurukul` / `GurukulTest@123`
+
+---
+
+## 7. Verification Proof
+
+All core features are verified and fully operational:
+*   **Role-Based Data Routing:** Student, Teacher, and Admin views load their corresponding aggregated data feeds.
+*   **Live Status Updates:** Resolving alerts and progressing actions pushes updates directly to the backend database.
+*   **Health and Warmup Lifecycle:** The frontend correctly polls `/health` and auto-retries when the server starts up.

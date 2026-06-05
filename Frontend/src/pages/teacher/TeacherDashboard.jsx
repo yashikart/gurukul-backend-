@@ -10,21 +10,22 @@ import Assignments from './Assignments';
 import Communication from './Communication';
 import ContentLibrary from './ContentLibrary';
 import TeacherSettings from './TeacherSettings';
+import GurukulDrishti from '../admin/GurukulDrishti';
 
 const TeacherDashboard = () => {
     const { user } = useAuth();
-    const [activeSection, setActiveSection] = useState('students'); // students, upload, progress, classes, analytics, assignments, communication, library, settings
+    const [activeSection, setActiveSection] = useState('drishti'); // default to drishti (Overview)
 
     // Determine active section from hash or default
     React.useEffect(() => {
         const updateActiveSection = () => {
             const hash = window.location.hash.replace('#', '');
-            const validSections = ['students', 'upload', 'progress', 'classes', 'analytics', 'assignments', 'communication', 'library', 'settings'];
+            const validSections = ['drishti', 'students', 'upload', 'progress', 'classes', 'analytics', 'assignments', 'communication', 'library', 'settings'];
             if (hash && validSections.includes(hash)) {
                 setActiveSection(hash);
             } else {
-                // Default to students if no hash or invalid hash
-                setActiveSection('students');
+                // Default to drishti if no hash or invalid hash
+                setActiveSection('drishti');
             }
         };
         
@@ -48,6 +49,8 @@ const TeacherDashboard = () => {
 
     const renderContent = () => {
         switch (activeSection) {
+            case 'drishti':
+                return <GurukulDrishti />;
             case 'students':
                 return <MyStudents />;
             case 'upload':
@@ -67,7 +70,7 @@ const TeacherDashboard = () => {
             case 'settings':
                 return <TeacherSettings />;
             default:
-                return <MyStudents />;
+                return <GurukulDrishti />;
         }
     };
 
