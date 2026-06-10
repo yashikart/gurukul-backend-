@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, Shield, Bell, Map, Users, Settings as SettingsIcon, LayoutDashboard } from 'lucide-react';
+import { ChevronRight, Shield, Bell, Map, Users, Settings as SettingsIcon, LayoutDashboard, Globe } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const GovernanceLayout = ({ children, level, healthStatus = 'Healthy' }) => {
@@ -9,6 +9,7 @@ const GovernanceLayout = ({ children, level, healthStatus = 'Healthy' }) => {
     { name: 'Teacher', path: '/governance/teacher', icon: Users },
     { name: 'School Admin', path: '/governance/school', icon: LayoutDashboard },
     { name: 'District', path: '/governance/district', icon: Map },
+    { name: 'Regional', path: '/governance/regional', icon: Globe },
     { name: 'State', path: '/governance/state', icon: SettingsIcon },
     { name: 'Minister', path: '/governance/minister', icon: Shield },
   ];
