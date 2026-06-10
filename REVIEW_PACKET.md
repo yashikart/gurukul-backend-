@@ -63,7 +63,12 @@ sequenceDiagram
 *   **[ActionCard.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/ActionCard.jsx):** Reusable action checklist card supporting the full status lifecycle.
 *   **[ActivityCard.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/ActivityCard.jsx):** Formatted log viewer for assessments, reflections, and audit events.
 *   **[StatusCard.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/StatusCard.jsx):** Multi-role status display mapping compliance indicators.
-*   **[GurukulDrishti.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/pages/admin/GurukulDrishti.jsx):** The core control dashboard linking card components to live APIs, supporting mock failovers, role switching simulations, live terminal traces, and dev credential documentation.
+*   **[GurukulDrishti.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/pages/admin/GurukulDrishti.jsx):** The core control dashboard linking card components to live APIs.
+*   **[design-system/](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/design-system/):** Standardized design specifications (`colors.md`, `spacing.md`, `typography.md`, `dashboard-zones.md`, `component-library.md`).
+*   **[components/dashboard/layout/](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/layout/):** Dashboard grid engine containers (`DashboardGrid.jsx`, `DashboardZone.jsx`, `DashboardSection.jsx`, `WidgetContainer.jsx`, `ExecutiveHeader.jsx`, `KPIBand.jsx`).
+*   **[charts/EChartsWidget.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/charts/EChartsWidget.jsx):** Generic responsive Apache ECharts renderer component.
+*   **[maps/GeospatialMap.jsx](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/components/dashboard/maps/GeospatialMap.jsx):** Leaflet mapping tool mapping Maharashtra and Madhya Pradesh with state toggles, district points, and school drilldown tables.
+*   **[pages/governance/](file:///c:/Users/pc45/Desktop/Gurukul/Frontend/src/pages/governance/):** Comprehensive command center interfaces for Teacher, School, District, Regional, State, and Minister tiers.
 
 ---
 
@@ -123,13 +128,14 @@ pytest tests/test_dashboard.py -v
 Running `npm run build` in the `Frontend/` folder completes with no compilation errors:
 ```text
 vite build
-✓ 2123 modules transformed.
+✓ 2728 modules transformed.
 rendering chunks...
-dist/index.html                                5.14 kB │ gzip:   1.75 kB
-dist/assets/index-DySJvixr.css               142.96 kB │ gzip:  20.52 kB
-dist/assets/AdminDashboard-CMCXMVc9.js        91.58 kB │ gzip:  18.87 kB
-dist/assets/index-CAVld-c7.js                219.44 kB │ gzip:  58.46 kB
-✓ built in 7.25s
+dist/index.html                                  5.14 kB │ gzip:   1.75 kB
+dist/assets/GeospatialMap-BTGX6L8y.js          156.46 kB │ gzip:  45.73 kB
+dist/assets/index-DALF4bpZ.js                  219.43 kB │ gzip:  58.45 kB
+dist/assets/index-D3q0m8OK.js                  603.34 kB │ gzip: 186.05 kB
+dist/assets/EChartsWidget-BmwRpwhi.js        1,135.14 kB │ gzip: 381.02 kB
+✓ built in 12.72s
 ```
 
 ---
@@ -163,4 +169,15 @@ To verify the role-based views and live API status transitions, you can logout o
     1.  **Failover Catch-All:** The error handling block in `loadDashboardData` was updated to catch all network errors (including status 0/offline) and gracefully fall back to high-fidelity mock data.
     2.  **Robust Normalisation:** Integrated helper `getMockKey` and normalisation functions in `GurukulDrishti.jsx` to map all snake_case and kebab-case roles (`regional_admin`, `institution_admin`, etc.) to clean keys, avoiding `undefined` dictionary lookups.
     3.  **Defensive Rendering:** Enhanced JSX elements in `GurukulDrishti.jsx`, `StatusCard.jsx`, and `ActivityCard.jsx` with optional chaining (`dashboardData?.kpis`, `dashboardData?.open_alerts`, etc.) and default values (`|| {}`, `|| []`) to prevent future crash boundaries.
+
+---
+
+## 9. Drishti Dashboard Capability Phase 2 Integration (June 2026)
+
+We implemented a comprehensive capability layer transformation:
+1.  **Layout Grid Engine**: Created a CSS-Grid layout system designed for high density and executive cognition, featuring dynamic column zones (`DashboardGrid`, `DashboardZone`, `DashboardSection`, `WidgetContainer`, `KPIBand`, `ExecutiveHeader`).
+2.  **Apache ECharts Integration**: Built a robust chart wrapper component (`EChartsWidget`) allowing rich data-driven line/area charts, donuts, gauges, radars, and bar charts with built-in resizing logic.
+3.  **Geospatial Layer**: Built an interactive mapping tool (`GeospatialMap`) running on Leaflet, featuring Maharashtra and Madhya Pradesh options, district markers with interactive popups, and district-to-school navigation drilldowns.
+4.  **Governance Command Centers**: Updated dashboards across all tiers (Teacher, School Admin, District, Regional, State, Minister) using the standardized design system layout library.
+
 

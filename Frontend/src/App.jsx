@@ -39,6 +39,7 @@ const AssignmentPage = React.lazy(() => import('./assessment/pages/Assignment'))
 const TeacherGov = React.lazy(() => import('./pages/governance/TeacherDashboard'));
 const SchoolGov = React.lazy(() => import('./pages/governance/SchoolDashboard'));
 const DistrictGov = React.lazy(() => import('./pages/governance/DistrictDashboard'));
+const RegionalGov = React.lazy(() => import('./pages/governance/RegionalDashboard'));
 const StateGov = React.lazy(() => import('./pages/governance/StateDashboard'));
 const MinisterGov = React.lazy(() => import('./pages/governance/MinisterDashboard'));
 const GurukulDrishti = React.lazy(() => import('./pages/admin/GurukulDrishti'));
@@ -414,6 +415,7 @@ const AppContent = () => {
                     <Route path="/governance/teacher" element={<PrivateRoute><TeacherGov /></PrivateRoute>} />
                     <Route path="/governance/school" element={<PrivateRoute><SchoolGov /></PrivateRoute>} />
                     <Route path="/governance/district" element={<PrivateRoute><DistrictGov /></PrivateRoute>} />
+                    <Route path="/governance/regional" element={<PrivateRoute><RegionalGov /></PrivateRoute>} />
                     <Route path="/governance/state" element={<PrivateRoute><StateGov /></PrivateRoute>} />
                     <Route path="/governance/minister" element={<PrivateRoute><MinisterGov /></PrivateRoute>} />
 
