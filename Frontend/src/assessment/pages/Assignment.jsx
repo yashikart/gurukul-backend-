@@ -10,7 +10,6 @@ import ErrorBoundary from '../components/ErrorBoundary';
 const CLERK_ENABLED = false;
 import { useI18n } from "../lib/i18n";
 import { scoringService } from '../lib/scoringService';
-import { supabase } from '../lib/supabaseClient';
 
 export default function AssignmentPage() {
   const navigate = useNavigate();
@@ -84,107 +83,31 @@ export default function AssignmentPage() {
   };
 
   const storeAssignmentResults = async (attempt, results) => {
-    console.log('💾 Starting to store assignment results...');
-    console.log('👤 User info:', {
-      id: user?.id,
-      name: user?.full_name,
-      email: user?.email
-    });
-
+    console.log('💾 Storing assignment results to backend profile...');
     try {
-      // Verify user authentication
       if (!user) {
         console.warn('⚠️ User not authenticated, skipping data storage');
         return;
       }
 
-      // First, get or create student record
-      const userEmail = user.email;
-      let studentRecord = null;
-
-      console.log('🔍 Looking for existing student record...');
-
-      // Try to find existing student record
-      const { data: existingStudent, error: findError } = await supabase
-        .from('students')
-        .select('id, name, email')
-        .eq('user_id', user.id)
-        .single();
-
-      if (findError && findError.code !== 'PGRST116') {
-        console.error('❌ Error finding student record:', findError);
-        throw new Error(`Failed to find student record: ${findError.message}`);
-      }
-
-      if (existingStudent) {
-        console.log('✅ Found existing student record:', existingStudent);
-        studentRecord = existingStudent;
-      } else {
-        console.log('📝 Creating new student record...');
-        // Create student record if it doesn't exist
-        const newStudentData = {
-          user_id: user.id,
-          name: user.full_name || 'Unknown Student',
-          email: user?.email,
-          student_id: `STU${Math.floor(Math.random() * 100000000)}`,
-          responses: {}
-        };
-
-        const { data: newStudent, error: studentError } = await supabase
-          .from('students')
-          .insert([newStudentData])
-          .select()
-          .single();
-
-        if (studentError) {
-          console.error('❌ Error creating student record:', studentError);
-          throw new Error(`Failed to create student record: ${studentError.message}`);
-        } else {
-          console.log('✅ Created new student record:', newStudent);
-          studentRecord = newStudent;
+      // 1. Fetch current profile data from backend
+      let profileData = {};
+      try {
+        const getResponse = await fetch(`${API_BASE_URL}/api/v1/auth/profile-data`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (getResponse.ok) {
+          const resJson = await getResponse.json();
+          profileData = resJson.data || {};
         }
+      } catch (err) {
+        console.warn('⚠️ Failed to fetch existing profile data, creating new:', err);
       }
 
-      // Prepare assignment attempt data
-      const assignmentData = {
-        user_id: user.id,
-        student_id: studentRecord?.id || null,
-        user_email: userEmail,
-        assignment_id: attempt.assignment_id,
-        started_at: attempt.started_at,
-        completed_at: attempt.completed_at,
-        time_taken_seconds: attempt.time_taken_seconds,
-        total_score: results.total_score,
-        max_score: results.max_score,
-        percentage: results.percentage,
-        grade: results.grade,
-        category_scores: results.category_scores,
-        overall_feedback: results.overall_feedback,
-        strengths: results.strengths,
-        improvement_areas: results.improvement_areas,
-        auto_submitted: attempt.auto_submitted || false,
-        evaluated_at: results.evaluated_at
-      };
-
-      console.log('💾 Storing assignment attempt data:', assignmentData);
-
-      // Insert assignment attempt
-      const { data: attemptData, error: attemptError } = await supabase
-        .from('assignment_attempts')
-        .insert([assignmentData])
-        .select()
-        .single();
-
-      if (attemptError) {
-        console.error('❌ Error storing assignment attempt:', attemptError);
-        throw new Error(`Failed to store assignment attempt: ${attemptError.message}`);
-      }
-
-      console.log('✅ Assignment attempt stored successfully:', attemptData);
-
-      // Prepare detailed responses data
-      const responseData = results.evaluated_responses.map(response => ({
-        attempt_id: attemptData.id,
+      // 2. Prepare detailed responses data
+      const detailedResponses = results.evaluated_responses.map(response => ({
         question_id: response.question_id,
         question_category: response.question_category,
         question_difficulty: response.question_difficulty,
@@ -202,56 +125,67 @@ export default function AssignmentPage() {
         evaluated_at: response.evaluated_at
       }));
 
-      console.log(`💾 Storing ${responseData.length} detailed responses...`);
+      // 3. Prepare assignment attempt data
+      const assignmentData = {
+        assignment_id: attempt.assignment_id,
+        started_at: attempt.started_at,
+        completed_at: attempt.completed_at,
+        time_taken_seconds: attempt.time_taken_seconds,
+        total_score: results.total_score,
+        max_score: results.max_score,
+        percentage: results.percentage,
+        grade: results.grade,
+        category_scores: results.category_scores,
+        overall_feedback: results.overall_feedback,
+        strengths: results.strengths,
+        improvement_areas: results.improvement_areas,
+        auto_submitted: attempt.auto_submitted || false,
+        evaluated_at: results.evaluated_at,
+        detailed_responses: detailedResponses
+      };
 
-      // Insert detailed responses
-      const { error: responsesError } = await supabase
-        .from('assignment_responses')
-        .insert(responseData);
+      // 4. Update assignment_attempts array in profile data
+      const attempts = Array.isArray(profileData.assignment_attempts)
+        ? [...profileData.assignment_attempts]
+        : [];
+      attempts.push(assignmentData);
+      
+      const updatedProfileData = {
+        ...profileData,
+        assignment_attempts: attempts,
+        updated_at: new Date().toISOString()
+      };
 
-      if (responsesError) {
-        console.error('❌ Error storing assignment responses:', responsesError);
-        throw new Error(`Failed to store assignment responses: ${responsesError.message}`);
+      // 5. Save back to backend
+      const putResponse = await fetch(`${API_BASE_URL}/api/v1/auth/profile-data`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedProfileData)
+      });
+
+      if (!putResponse.ok) {
+        throw new Error(`Failed to update profile data on backend. Status: ${putResponse.status}`);
       }
 
-      console.log('✅ All assignment data stored successfully!');
+      console.log('✅ Assignment results stored in backend profile successfully!');
 
-      // Add the attempt data to results for display
+      // Set student_record mock in attempt for display components
       results.attempt = {
         ...attempt,
         stored_at: new Date().toISOString(),
-        student_record: studentRecord
+        student_record: {
+          id: user.id,
+          name: user.full_name,
+          email: user.email
+        }
       };
 
     } catch (error) {
       console.error('💥 Error storing assignment results:', error);
-
-      // Provide specific error messages based on the error type
-      let errorMessage = 'Results evaluated successfully, but failed to save to database.';
-
-      if (error.message.includes('row-level security policy')) {
-        errorMessage = 'Database security policy error. Please ensure you are properly logged in and try again.';
-        console.error('🔒 RLS Policy Error - User may not be properly authenticated or policies need to be updated');
-      } else if (error.message.includes('permission denied')) {
-        errorMessage = 'Database permission error. Please contact support.';
-        console.error('🚫 Permission Error - Database permissions may need to be configured');
-      } else if (error.message.includes('relation') && error.message.includes('does not exist')) {
-        errorMessage = 'Database table missing. Please contact support to set up the database.';
-        console.error('🗄️ Table Missing Error - Database tables may not be created');
-      }
-
-      // Don't throw the error - evaluation was successful, storage is secondary
-      toast.error(errorMessage);
-
-      // Log detailed error information for debugging
-      console.error('💾 Storage Error Details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        userAuthenticated: !!user,
-        userId: user?.id
-      });
+      toast.error('Results evaluated successfully, but failed to save to backend profile.');
     }
   };
 
