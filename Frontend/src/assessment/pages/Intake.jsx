@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
+import API_BASE_URL from "../../config";
 import DynamicForm from "../components/DynamicForm";
 import { FormConfigService } from "../lib/formConfigService";
 import { ArrowLeft } from 'lucide-react';
@@ -9,13 +9,13 @@ import { useI18n } from "../lib/i18n";
 import toast from 'react-hot-toast';
 
 function Intake() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [formConfig, setFormConfig] = useState(null);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -29,7 +29,6 @@ function Intake() {
 
         console.log("Enhanced form config loaded:", config);
 
-        setFormConfig(config);
         setCurrentFormConfig(config);
 
         // Get user's email for debugging and initialization
@@ -44,43 +43,29 @@ function Intake() {
 
         // Load existing profile if user is logged in
         if (user?.id) {
-          console.log("Loading profile for user_id:", user.id);
-
-          // First try to find by user_id
-          let { data, error: profileError } = await supabase
-            .from(SUPABASE_TABLE)
-            .select("*")
-            .eq("user_id", user.id)
-            .single();
-
-          // If not found by user_id, try by email (for legacy records)
-          if (profileError && profileError.code === "PGRST116" && userEmail) {
-            console.log(
-              "No record found by user_id, trying by email:",
-              userEmail
-            );
-            const emailResult = await supabase
-              .from(SUPABASE_TABLE)
-              .select("*")
-              .eq("email", userEmail)
-              .single();
-
-            data = emailResult.data;
-            profileError = emailResult.error;
-
-            // If found by email, update it to include user_id for future queries
-            if (data && !profileError) {
-              console.log(
-                "Found legacy record by email, updating with user_id"
-              );
-              await supabase
-                .from(SUPABASE_TABLE)
-                .update({ user_id: user.id })
-                .eq("email", userEmail);
+          console.log("Loading profile from backend for user_id:", user.id);
+          let data = null;
+          let profileError = null;
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/v1/auth/profile-data`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            if (response.ok) {
+              const resJson = await response.json();
+              data = resJson.data;
+              if (!data || Object.keys(data).length === 0) {
+                data = null;
+              }
+            } else {
+              profileError = new Error(`Failed to load profile. Status: ${response.status}`);
             }
+          } catch (err) {
+            profileError = err;
           }
 
-          console.log("Profile query result:", { data, error: profileError });
+          console.log("Profile query result from backend:", { data, error: profileError });
 
           if (data && data.responses) {
             setIsEditing(true);
@@ -124,7 +109,7 @@ function Intake() {
     if (user) {
       loadFormConfigAndProfile();
     }
-  }, [user]);
+  }, [user, token]);
   // Handle field changes
   const handleFieldChange = (fieldName, fieldValue, updatedFormData) => {
     setFormData(updatedFormData);
@@ -165,32 +150,29 @@ function Intake() {
 
       console.log("Prepared submission data:", submissionData);
 
-      let result;
-      if (isEditing) {
-        // Update existing record
-        result = await supabase
-          .from(SUPABASE_TABLE)
-          .update({
-            name: submissionData.name,
-            email: submissionData.email,
-            responses: submissionData.responses,
-            updated_at: submissionData.updated_at,
-          })
-          .eq("user_id", user.id);
-      } else {
-        // Insert new record
-        result = await supabase
-          .from(SUPABASE_TABLE)
-          .insert([submissionData]);
+      let result = { error: null };
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auth/profile-data`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(submissionData)
+        });
+        if (!response.ok) {
+          result.error = new Error(`Failed to save profile on backend. Status: ${response.status}`);
+        }
+      } catch (err) {
+        result.error = err;
       }
 
-      const { error: supabaseError } = result;
+      const { error: submitError } = result;
 
-      if (supabaseError) {
-        console.error("Supabase error:", supabaseError);
-        throw supabaseError;
+      if (submitError) {
+        console.error("Backend save error:", submitError);
+        throw submitError;
       }
-
 
       setSuccess(
         isEditing
@@ -210,23 +192,9 @@ function Intake() {
       }, 1500);
     } catch (err) {
       console.error("Submission error:", err);
-      // If the Supabase tables don't exist yet, we still want to let the user proceed
-      // PGRST205 is "Could not find the table"
-      if (err.code === 'PGRST205' || err.message?.includes('Could not find the table')) {
-        console.warn('Bypassing missing Supabase tables to allow assessment continuation.');
-        toast.success(
-          isEditing
-            ? "Your profile has been updated! (Local Only)"
-            : "Your assessment has been submitted! (Local Only)"
-        );
-        setTimeout(() => {
-          navigate("/assignment");
-        }, 1500);
-      } else {
-        const errorMessage = err.message || "An unexpected error occurred";
-        setError(errorMessage);
-        toast.error(errorMessage);
-      }
+      const errorMessage = err.message || "An unexpected error occurred";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

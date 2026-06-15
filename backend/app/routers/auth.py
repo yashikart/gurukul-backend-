@@ -332,6 +332,51 @@ async def update_profile(
             detail="Failed to update profile. Please try again."
         )
 
+@router.get("/profile-data")
+async def get_profile_data(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the current user's profile data JSON"""
+    try:
+        profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+        if not profile:
+            return {"data": {}}
+        return {"data": profile.data or {}}
+    except Exception as e:
+        logger.error(f"[Auth] Error retrieving profile data: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve profile data."
+        )
+
+@router.put("/profile-data")
+async def update_profile_data(
+    profile_update: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update the current user's profile data JSON"""
+    try:
+        from sqlalchemy.orm.attributes import flag_modified
+        profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+        if not profile:
+            profile = Profile(user_id=current_user.id, data=profile_update)
+            db.add(profile)
+        else:
+            profile.data = profile_update
+            flag_modified(profile, "data")
+        db.commit()
+        db.refresh(profile)
+        return {"success": True, "data": profile.data}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Auth] Error updating profile data: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update profile data."
+        )
+
 @router.post("/complete-assessment", response_model=UserResponse)
 async def complete_assessment(
     current_user: User = Depends(get_current_user),
