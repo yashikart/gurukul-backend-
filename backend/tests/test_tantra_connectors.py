@@ -69,7 +69,26 @@ def test_trace_continuity():
             "action":     "trace_continuity_check",
             "status":     "success",
             "payload":    {"test": True},
+            "schema_version": "2.0.0",
+            "provenance": "Gurukul-TANTRA-Signed",
+            "ownership":  "district_admin",
+            "replay_metadata": {"is_replayable": True},
         }
+
+        # Inject validation fields
+        from app.services.prana_determinism import prana_determinism
+        import hmac
+        import hashlib
+        
+        pravah_payload["trace_chain_validation"] = "trace_id_valid:True"
+        pravah_payload["source_verification"] = "source:GurukulRuntime:verified"
+        computed_hash = prana_determinism.hash_payload(pravah_payload)
+        pravah_payload["integrity_hash"] = computed_hash
+        pravah_payload["event_signature"] = hmac.new(
+            b"debug-fallback-key",
+            computed_hash.encode("utf-8"),
+            hashlib.sha256
+        ).hexdigest()
 
         # Build Bucket payload (with hash)
         prev_hash    = "0" * 64
@@ -85,6 +104,10 @@ def test_trace_continuity():
             "source":       "GurukulRuntime",
             "prev_hash":    prev_hash,
             "current_hash": current_hash,
+            "schema_version": "2.0.0",
+            "provenance": "Gurukul-TANTRA-Signed",
+            "ownership":  "district_admin",
+            "replay_metadata": {"is_replayable": True},
         }
 
         # Validate schemas
@@ -304,7 +327,26 @@ def test_end_to_end_flow():
             "action":     "login_complete",
             "status":     "success",
             "payload":    {"user": user["email"]},
+            "schema_version": "2.0.0",
+            "provenance": "Gurukul-TANTRA-Signed",
+            "ownership":  "district_admin",
+            "replay_metadata": {"is_replayable": True},
         }
+
+        # Inject validation fields
+        from app.services.prana_determinism import prana_determinism
+        import hmac
+        import hashlib
+        
+        pravah_signal["trace_chain_validation"] = "trace_id_valid:True"
+        pravah_signal["source_verification"] = "source:GurukulRuntime:verified"
+        computed_hash = prana_determinism.hash_payload(pravah_signal)
+        pravah_signal["integrity_hash"] = computed_hash
+        pravah_signal["event_signature"] = hmac.new(
+            b"debug-fallback-key",
+            computed_hash.encode("utf-8"),
+            hashlib.sha256
+        ).hexdigest()
         bucket_event = {
             "trace_id":     trace_id,
             "user_id":      r2.json().get("id", "unknown"),
@@ -316,6 +358,10 @@ def test_end_to_end_flow():
             "source":       "GurukulRuntime",
             "prev_hash":    "0" * 64,
             "current_hash": compute_hash("0" * 64, {"user": user["email"]}),
+            "schema_version": "2.0.0",
+            "provenance": "Gurukul-TANTRA-Signed",
+            "ownership":  "district_admin",
+            "replay_metadata": {"is_replayable": True},
         }
 
         from app.services.tantra_schema_validator import validate_pravah_payload, validate_bucket_payload

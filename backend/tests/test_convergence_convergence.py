@@ -24,6 +24,10 @@ def db():
 
 def test_canonical_schema_validation():
     """Test that Phase 2 schema changes are enforced"""
+    import hmac
+    import hashlib
+    from app.services.prana_determinism import prana_determinism
+
     valid_pravah = {
         "source": "gurukul",
         "trace_id": "trace_123",
@@ -38,6 +42,17 @@ def test_canonical_schema_validation():
         "replay_metadata": {"is_replayable": True}
     }
     
+    # Inject required provenance fields
+    valid_pravah["trace_chain_validation"] = "trace_id_valid:True"
+    valid_pravah["source_verification"] = "source:GurukulRuntime:verified"
+    computed_hash = prana_determinism.hash_payload(valid_pravah)
+    valid_pravah["integrity_hash"] = computed_hash
+    valid_pravah["event_signature"] = hmac.new(
+        b"debug-fallback-key",
+        computed_hash.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
     # Should pass
     validate_pravah_payload(valid_pravah)
     

@@ -53,11 +53,28 @@ async def chat_endpoint(
     conversation_id = request.conversation_id or str(uuid.uuid4())
     user_conversation_key = f"{current_user.id}:{conversation_id}"
     
+    # Resolve user's active syllabus preferences from their profile
+    board = None
+    medium = None
+    class_std = None
+    if current_user and current_user.profile and isinstance(current_user.profile.data, dict):
+        profile_data = current_user.profile.data
+        board = profile_data.get("board")
+        medium = profile_data.get("medium")
+        class_std = profile_data.get("class") or profile_data.get("class_std") or profile_data.get("class_standard")
+    
     # Emit Signal: User interaction started
     pravah_adapter.emit_signal(
         event_type="user_action",
         action="chat_request",
-        payload={"conversation_id": conversation_id, "use_rag": request.use_rag}
+        payload={
+            "conversation_id": conversation_id, 
+            "use_rag": request.use_rag,
+            "message": request.message,
+            "board": board,
+            "medium": medium,
+            "class_std": class_std
+        }
     )
     
     fallback_used = False
@@ -66,18 +83,12 @@ async def chat_endpoint(
     
     # Step 1: Resolve user's active syllabus preferences from their profile
     if request.use_rag:
-        if current_user and current_user.profile and isinstance(current_user.profile.data, dict):
-            profile_data = current_user.profile.data
-            board = profile_data.get("board")
-            medium = profile_data.get("medium")
-            class_std = profile_data.get("class") or profile_data.get("class_std") or profile_data.get("class_standard")
-            
-            if board:
-                filter_metadata = {
-                    "board": board.upper(),
-                    "medium": medium.lower() if medium else "en",
-                    "class_std": int(class_std) if class_std else 10
-                }
+        if board:
+            filter_metadata = {
+                "board": board.upper(),
+                "medium": medium.lower() if medium else "en",
+                "class_std": int(class_std) if class_std else 10
+            }
 
         # Query database with strict user board filter
         kb_result = get_knowledge_base_context(
@@ -210,7 +221,11 @@ async def chat_endpoint(
     pravah_adapter.emit_signal(
         event_type="user_action",
         action="chat_response_generated",
-        status="success" if groq_used else "failure"
+        status="success" if groq_used else "failure",
+        payload={
+            "conversation_id": conversation_id,
+            "response": response_text
+        }
     )
     
     return {

@@ -28,17 +28,21 @@ class ContractViolationError(Exception):
 
 # ── Pravah Signal Schema ───────────────────────────────────────────────────
 PRAVAH_REQUIRED_FIELDS: Dict[str, type] = {
-    "source":          str,
-    "trace_id":        str,
-    "timestamp":       str,
-    "event_type":      str,
-    "action":          str,
-    "status":          str,
-    "payload":         dict,
-    "schema_version":  str,
-    "provenance":      str,
-    "ownership":       str,
-    "replay_metadata": dict,
+    "source":                 str,
+    "trace_id":               str,
+    "timestamp":              str,
+    "event_type":             str,
+    "action":                 str,
+    "status":                 str,
+    "payload":                dict,
+    "schema_version":         str,
+    "provenance":             str,
+    "ownership":              str,
+    "replay_metadata":        dict,
+    "event_signature":        str,
+    "source_verification":    str,
+    "trace_chain_validation":  str,
+    "integrity_hash":         str,
 }
 
 # ── Bucket Memory Schema ───────────────────────────────────────────────────
@@ -108,6 +112,29 @@ def _validate(connector: str, payload: Dict[str, Any], schema: Dict[str, type]) 
 def validate_pravah_payload(payload: Dict[str, Any]) -> None:
     """Validate a Pravah signal payload. Raises ContractViolationError if invalid."""
     _validate("Pravah", payload, PRAVAH_REQUIRED_FIELDS)
+
+    # Cryptographic & Integrity Verification
+    import hmac
+    import hashlib
+    from app.services.prana_determinism import prana_determinism
+    from app.core.config import settings
+
+    # 1. Integrity Hash verification
+    computed_hash = prana_determinism.hash_payload(payload)
+    if payload.get("integrity_hash") != computed_hash:
+        logger.error(f"[Pravah] INTEGRITY HASH MISMATCH | Stored: {payload.get('integrity_hash')} | Computed: {computed_hash}")
+        raise ContractViolationError("Pravah", f"integrity_hash mismatch: expected {computed_hash}, got {payload.get('integrity_hash')}")
+
+    # 2. Event Signature verification
+    api_key = getattr(settings, "TANTRA_API_KEY", None) or "debug-fallback-key"
+    expected_signature = hmac.new(
+        api_key.encode("utf-8") if isinstance(api_key, str) else api_key,
+        computed_hash.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+    if payload.get("event_signature") != expected_signature:
+        logger.error("[Pravah] SIGNATURE VERIFICATION FAILED")
+        raise ContractViolationError("Pravah", "event_signature verification failed (invalid signature)")
 
 
 def validate_bucket_payload(payload: Dict[str, Any]) -> None:
