@@ -63,7 +63,8 @@ const Navbar = () => {
       'pa': 'ਪੰਜਾਬੀ',
       'ta': 'தமிழ்',
       'te': 'తెలుగు',
-      'ur': 'اردو'
+      'ur': 'اردو',
+      'vi': 'Tiếng Việt'
     };
 
     if (langNames[savedLang]) {
@@ -181,7 +182,8 @@ const Navbar = () => {
       'pa': 'ਪੰਜਾਬੀ',
       'ta': 'தமிழ்',
       'te': 'తెలుగు',
-      'ur': 'اردو'
+      'ur': 'اردو',
+      'vi': 'Tiếng Việt'
     };
     setCurrentLang(langNames[langCode] || 'English');
     setIsLanguageOpen(false);
@@ -319,7 +321,8 @@ const Navbar = () => {
       'pa': 'ਪੰਜਾਬੀ',
       'ta': 'தமிழ்',
       'te': 'తెలుగు',
-      'ur': 'اردو'
+      'ur': 'اردو',
+      'vi': 'Tiếng Việt'
     };
 
     // Try to get from Google Translate select
@@ -361,7 +364,8 @@ const Navbar = () => {
     { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
     { code: 'ta', name: 'Tamil', native: 'தமிழ்' },
     { code: 'te', name: 'Telugu', native: 'తెలుగు' },
-    { code: 'ur', name: 'Urdu', native: 'اردو' }
+    { code: 'ur', name: 'Urdu', native: 'اردو' },
+    { code: 'vi', name: 'Vietnamese', native: 'Tiếng Việt' }
   ];
 
   return (
