@@ -1,0 +1,200 @@
+﻿INFO:     10.244.0.1:52838 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:52854 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47204 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47216 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59126 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:40822 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:26:46.585665", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+INFO:     10.244.0.21:36130 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59140 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59150 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59166 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:40824 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:40840 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59178 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59188 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35720 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:59336 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:26:56.671069", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] VaaniTTS exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:26:56.671321", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+{"timestamp": "2026-07-14T08:26:56.671374", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] PRANA exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:26:56.671486", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+INFO:     10.244.0.21:56702 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35734 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35746 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35760 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:59352 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:59358 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35768 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35770 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49236 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:46610 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:58662 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49248 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49260 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49274 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:46620 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:46634 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49284 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49290 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39466 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:36336 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:40234 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39474 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39490 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39496 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:36348 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:36360 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39500 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39504 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37920 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:53276 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:27:26.681701", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] VaaniTTS exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:27:26.681867", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] PRANA exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+INFO:     10.244.0.21:44800 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37924 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37926 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37930 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:53280 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:53286 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37934 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37944 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40902 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:50796 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:49054 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40912 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40920 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40936 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:50806 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:50808 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40940 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40954 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57402 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41020 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:27:46.587145", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+INFO:     10.244.0.21:54464 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57406 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57418 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57428 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41036 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41046 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57438 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57440 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57732 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:56256 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:27:56.692283", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] VaaniTTS exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:27:56.692585", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+{"timestamp": "2026-07-14T08:27:56.692660", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] PRANA exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:27:56.692850", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+INFO:     10.244.0.21:57970 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57734 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57740 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57752 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:56258 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:56262 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57768 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57770 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59396 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39910 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:55620 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59428 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59438 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39914 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39922 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59450 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59452 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50322 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:49526 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:56898 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50330 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50340 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50356 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:49536 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:49538 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50370 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50384 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46528 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:59006 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:28:26.703069", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] VaaniTTS exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:28:26.703236", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] PRANA exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+INFO:     10.244.0.21:37208 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46540 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46550 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46552 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:59020 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:59030 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46564 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46570 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54974 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:35126 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:43188 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54980 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54994 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55008 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:35130 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:35140 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55016 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55028 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46314 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:44818 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:28:46.588418", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+INFO:     10.244.0.21:36942 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46324 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46326 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46334 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:44828 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:44844 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46336 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46340 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46500 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:43952 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:28:56.713523", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] VaaniTTS exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:28:56.713773", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+{"timestamp": "2026-07-14T08:28:56.713845", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] PRANA exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:28:56.713926", "level": "ERROR", "logger": "PravahAdapter", "message": "[Pravah] TANTRA_API_KEY is not configured. Cannot sign telemetry signal.", "module": "pravah_adapter", "funcName": "_emit_signal_sync", "line": 162, "trace_id": null}
+INFO:     10.244.0.21:58358 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46502 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46514 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46530 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:43960 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:43970 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46536 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46548 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58700 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39352 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:60954 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58714 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58724 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58738 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39354 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39364 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58754 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58756 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46630 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:34600 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:38234 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46636 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46650 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46656 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:34614 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:34626 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46666 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46678 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43190 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41734 - "GET /system/health HTTP/1.1" 200 OK
+{"timestamp": "2026-07-14T08:29:26.764620", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] VaaniTTS exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+{"timestamp": "2026-07-14T08:29:26.764812", "level": "CRITICAL", "logger": "ServiceWatchdog", "message": "[Watchdog] PRANA exceeded 3 attempts. ESCALATING to CRITICAL FAILURE. No more automated restarts.", "module": "service_watchdog", "funcName": "_handle_unhealthy", "line": 149, "trace_id": null}
+INFO:     10.244.0.21:49144 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43202 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43216 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43222 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41750 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41752 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43228 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43234 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47092 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     10.244.0.1:45816 - "GET /system/health HTTP/1.1" 200 OK
+INFO:     10.244.0.21:35154 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47104 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47118 - "GET /api/v1/bucket/prana/packets/pending?limit=10 HTTP/1.1" 200 OK

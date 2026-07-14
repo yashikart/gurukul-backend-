@@ -27,7 +27,7 @@ spec:
         command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done']
       containers:
       - name: backend
-        image: bhiv/gurukul-backend:WD
+        image: bhiv/gurukul-backend:new
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

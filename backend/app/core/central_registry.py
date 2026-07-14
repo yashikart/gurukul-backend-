@@ -61,8 +61,6 @@ def _central_engine():
         return None
     _ensure_central_database_exists(url)
     connect_args = {}
-    if "sqlite" in url:
-        connect_args["check_same_thread"] = False
     return create_engine(
         url,
         connect_args=connect_args,

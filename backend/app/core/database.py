@@ -6,22 +6,16 @@ from fastapi import Request
 from app.core.config import settings
 
 # Determine DB URL
-SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL.strip() if settings.DATABASE_URL else settings.DATABASE_URL
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL.strip() if settings.DATABASE_URL else None
 
-# Fallback: Use SQLite for local dev/testing if DATABASE_URL not set
-# For production, set DATABASE_URL to PostgreSQL connection string
-if not SQLALCHEMY_DATABASE_URL:
-    SQLALCHEMY_DATABASE_URL = "sqlite:///./gurukul.db" # Fallback
-    print("Warning: DATABASE_URL not set. Using SQLite fallback.")
+if not SQLALCHEMY_DATABASE_URL or "postgresql" not in SQLALCHEMY_DATABASE_URL:
+    raise RuntimeError(
+        "CRITICAL DATABASE ERROR: DATABASE_URL must be configured with a valid PostgreSQL connection string. "
+        "SQLite fallback databases are disabled in production runtime."
+    )
 
-# Create engine with SQLite-specific args only if using SQLite
+print(f"[Database] Connecting to production database: {SQLALCHEMY_DATABASE_URL.split('@')[-1] if '@' in SQLALCHEMY_DATABASE_URL else 'Remote'}")
 connect_args = {}
-if "sqlite" in SQLALCHEMY_DATABASE_URL:
-    connect_args = {"check_same_thread": False}
-    if not settings.DATABASE_URL:
-        print("[Database] CRITICAL: DATABASE_URL not set. Falling back to SQLite (gurukul.db). Data will NOT be persistent across deployments!")
-else:
-    print(f"[Database] Connecting to production database: {SQLALCHEMY_DATABASE_URL.split('@')[-1] if '@' in SQLALCHEMY_DATABASE_URL else 'Remote'}")
 
 def create_resilient_engine():
     """Create SQLAlchemy engine with pool configurations for production.

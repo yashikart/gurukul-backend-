@@ -56,6 +56,8 @@ def test_trace_continuity():
     try:
         from app.core.context import set_trace_id, get_trace_id
         from app.services.tantra_schema_validator import validate_pravah_payload, validate_bucket_payload
+        from app.core.config import settings
+        settings.TANTRA_API_KEY = "debug-fallback-key"
 
         test_trace = f"bhiv-trace-{uuid.uuid4().hex[:16]}"
         set_trace_id(test_trace)
@@ -177,7 +179,7 @@ def test_pravah_failure_simulation():
         adapter              = PravahAdapter()
         adapter.pravah_url   = "http://fake-pravah-endpoint.tantra.internal/ingest"
         adapter.enabled      = True
-        adapter.api_key      = None
+        adapter.api_key      = "debug-fallback-key"
 
         signal = {
             "source":     "GurukulRuntime",

@@ -217,6 +217,12 @@ async def chat_endpoint(
         }
     )
 
+    import hashlib
+    oh_val = hashlib.sha256(response_text.encode('utf-8')).hexdigest()
+    run_id_val = f"api-session-{conversation_id[:8]}"
+    rv_val = hashlib.sha256(f"{response_text}:{run_id_val}".encode('utf-8')).hexdigest()
+    retrieved_doc_ids = [res.get('metadata', {}).get('id', 'Unknown') for res in kb_result.get('results', [])] if kb_result.get('results') else []
+
     # Emit Signal: Interaction complete
     pravah_adapter.emit_signal(
         event_type="user_action",
@@ -224,7 +230,16 @@ async def chat_endpoint(
         status="success" if groq_used else "failure",
         payload={
             "conversation_id": conversation_id,
-            "response": response_text
+            "response": response_text,
+            "run_id": run_id_val,
+            "prompt": request.message,
+            "retrieval_context": kb_result.get("context", ""),
+            "retrieved_document_ids": retrieved_doc_ids,
+            "model_identifier": "Groq Llama 3.3 70B" if groq_used else "None",
+            "model_version": settings.GROQ_MODEL_NAME if groq_used else "1.0.0",
+            "inference_configuration": {"temperature": 0.0, "max_tokens": 1024},
+            "output_hash": oh_val,
+            "replay_verification": rv_val
         }
     )
     

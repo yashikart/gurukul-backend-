@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: bhiv/frontend:212647f
+        image: bhiv/frontend:new
         imagePullPolicy: Always
         ports:
         - containerPort: 5173

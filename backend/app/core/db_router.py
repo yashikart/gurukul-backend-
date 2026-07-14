@@ -25,8 +25,6 @@ def _tenant_engine(database_url: str):
     global _tenant_engines
     if database_url not in _tenant_engines:
         connect_args = {}
-        if "sqlite" in database_url:
-            connect_args["check_same_thread"] = False
         engine = create_engine(
             database_url,
             connect_args=connect_args,

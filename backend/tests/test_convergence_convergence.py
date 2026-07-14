@@ -27,6 +27,10 @@ def test_canonical_schema_validation():
     import hmac
     import hashlib
     from app.services.prana_determinism import prana_determinism
+    from app.core.config import settings
+
+    # Explicitly set the production-required TANTRA_API_KEY for signing/verification checks
+    settings.TANTRA_API_KEY = "test-secret-key"
 
     valid_pravah = {
         "source": "gurukul",
@@ -48,7 +52,7 @@ def test_canonical_schema_validation():
     computed_hash = prana_determinism.hash_payload(valid_pravah)
     valid_pravah["integrity_hash"] = computed_hash
     valid_pravah["event_signature"] = hmac.new(
-        b"debug-fallback-key",
+        b"test-secret-key",
         computed_hash.encode("utf-8"),
         hashlib.sha256
     ).hexdigest()

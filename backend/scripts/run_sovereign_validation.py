@@ -60,6 +60,9 @@ async def run_validation_suite():
     print(f"  [OK] Context length: {len(kb_result.get('context', ''))}")
     
     response = "Photosynthesis is the process used by plants, algae and certain bacteria to harness energy from sunlight and turn it into chemical energy."
+    import hashlib
+    oh_1 = hashlib.sha256(response.encode('utf-8')).hexdigest()
+    rv_1 = hashlib.sha256(f"{response}:{validation_run_id}".encode('utf-8')).hexdigest()
     pravah_adapter.emit_signal(
         event_type="user_action",
         action="chat_response_generated",
@@ -67,7 +70,15 @@ async def run_validation_suite():
         payload={
             "conversation_id": trace_id_1,
             "response": response,
-            "run_id": validation_run_id
+            "run_id": validation_run_id,
+            "prompt": "What is photosynthesis?",
+            "retrieval_context": kb_result.get("context", ""),
+            "retrieved_document_ids": [res.get('metadata', {}).get('id', 'Unknown') for res in kb_result.get('results', [])] if kb_result.get('results') else [],
+            "model_identifier": "Mock LLM",
+            "model_version": "1.0.0",
+            "inference_configuration": {"temperature": 0.0, "max_tokens": 256},
+            "output_hash": oh_1,
+            "replay_verification": rv_1
         }
     )
     print(f"  [OK] Scenario 1 executed successfully. Trace ID: {trace_id_1}")
@@ -102,6 +113,8 @@ async def run_validation_suite():
     print(f"  [OK] Context length: {len(kb_result_2.get('context', ''))} (Expected: 0)")
     
     fallback_response = "Here are basic calculus integration rules from general knowledge..."
+    oh_2 = hashlib.sha256(fallback_response.encode('utf-8')).hexdigest()
+    rv_2 = hashlib.sha256(f"{fallback_response}:{validation_run_id}".encode('utf-8')).hexdigest()
     pravah_adapter.emit_signal(
         event_type="user_action",
         action="chat_response_generated",
@@ -109,7 +122,15 @@ async def run_validation_suite():
         payload={
             "conversation_id": trace_id_2,
             "response": fallback_response,
-            "run_id": validation_run_id
+            "run_id": validation_run_id,
+            "prompt": "Advanced calculus integration rules",
+            "retrieval_context": kb_result_2.get("context", ""),
+            "retrieved_document_ids": [],
+            "model_identifier": "Mock LLM",
+            "model_version": "1.0.0",
+            "inference_configuration": {"temperature": 0.0, "max_tokens": 256},
+            "output_hash": oh_2,
+            "replay_verification": rv_2
         }
     )
     print(f"  [OK] Scenario 2 fallback logic executed. Trace ID: {trace_id_2}")
@@ -144,6 +165,8 @@ async def run_validation_suite():
     print(f"  [OK] Context length: {len(kb_result_3.get('context', ''))} (Expected: 0)")
     
     response_3 = "Python is a high-level programming language."
+    oh_3 = hashlib.sha256(response_3.encode('utf-8')).hexdigest()
+    rv_3 = hashlib.sha256(f"{response_3}:{validation_run_id}".encode('utf-8')).hexdigest()
     pravah_adapter.emit_signal(
         event_type="user_action",
         action="chat_response_generated",
@@ -151,7 +174,15 @@ async def run_validation_suite():
         payload={
             "conversation_id": trace_id_3,
             "response": response_3,
-            "run_id": validation_run_id
+            "run_id": validation_run_id,
+            "prompt": "What is Python?",
+            "retrieval_context": "",
+            "retrieved_document_ids": [],
+            "model_identifier": "Mock LLM",
+            "model_version": "1.0.0",
+            "inference_configuration": {"temperature": 0.0, "max_tokens": 256},
+            "output_hash": oh_3,
+            "replay_verification": rv_3
         }
     )
     print(f"  [OK] Scenario 3 executed successfully. Trace ID: {trace_id_3}")
@@ -184,6 +215,8 @@ async def run_validation_suite():
     )
     
     blocked_response = "I cannot fulfill this request as it violates safety guidelines."
+    oh_4 = hashlib.sha256(blocked_response.encode('utf-8')).hexdigest()
+    rv_4 = hashlib.sha256(f"{blocked_response}:{validation_run_id}".encode('utf-8')).hexdigest()
     pravah_adapter.emit_signal(
         event_type="user_action",
         action="chat_response_generated",
@@ -191,7 +224,15 @@ async def run_validation_suite():
         payload={
             "conversation_id": trace_id_4,
             "response": blocked_response,
-            "run_id": validation_run_id
+            "run_id": validation_run_id,
+            "prompt": unsafe_query,
+            "retrieval_context": "",
+            "retrieved_document_ids": [],
+            "model_identifier": "Mock LLM",
+            "model_version": "1.0.0",
+            "inference_configuration": {"temperature": 0.0, "max_tokens": 256},
+            "output_hash": oh_4,
+            "replay_verification": rv_4
         }
     )
     print(f"  [OK] Scenario 4 safety trigger completed. Trace ID: {trace_id_4}")
