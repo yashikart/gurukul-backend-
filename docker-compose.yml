@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: gurukul_backend_local
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - HOST=0.0.0.0
       - PORT=3000
@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: Frontend/Dockerfile
       args:
-        - VITE_API_URL=http://localhost:3000
+        - VITE_API_URL=http://localhost:3002
     container_name: gurukul_frontend_local
     ports:
       - "5174:5174"

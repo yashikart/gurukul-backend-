@@ -4,7 +4,7 @@ services:
     image: bhiv/gurukul-backend:IMG_TAG
     container_name: gurukul_backend
     ports:
-      - "3000:3000"
+      - "3002:3000"
     env_file:
       - ./backend/.env
     environment:
@@ -12,7 +12,7 @@ services:
       - MONGO_URI=${MONGODB_URI}
       - REDIS_URL=${REDIS_URL}
       - EMS_API_BASE_URL=http://ems-backend:8000
-      - ALLOWED_ORIGINS=http://${VM_IP}:5174,http://${VM_IP}:3001,http://${VM_IP}:3000,http://${VM_IP}:8000,http://localhost:5174,http://localhost:3001
+      - ALLOWED_ORIGINS=http://${VM_IP}:5174,http://${VM_IP}:3001,http://${VM_IP}:3002,http://${VM_IP}:8001,http://localhost:5174,http://localhost:3001
     networks:
       - gurukul_network
     healthcheck:
@@ -44,7 +44,7 @@ services:
       - DATABASE_URL=${EMS_DATABASE_URL}
       - GURUKUL_API_BASE_URL=http://gurukul-backend:3000
       - FRONTEND_URL=http://${VM_IP}:3001
-      - ALLOWED_ORIGINS=http://${VM_IP}:5174,http://${VM_IP}:3001,http://${VM_IP}:3000,http://${VM_IP}:8000,http://localhost:5174,http://localhost:3001
+      - ALLOWED_ORIGINS=http://${VM_IP}:5174,http://${VM_IP}:3001,http://${VM_IP}:3002,http://${VM_IP}:8001,http://localhost:5174,http://localhost:3001
     networks:
       - gurukul_network
     healthcheck:
