@@ -23,8 +23,8 @@ jobs:
       - name: Create stub .env for compose validation
         run: |
           # Docker Compose config requires the env_files to exist to validate schema.
-          mkdir -p backend "EMS System"
-          touch backend/.env "EMS System"/.env
+          mkdir -p backend EMS-System
+          touch backend/.env EMS-System/.env
 
       - name: Validate Docker Compose files
         env:
