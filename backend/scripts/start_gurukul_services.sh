@@ -18,7 +18,7 @@ SERVICES=("vaani-engine" "backend")
 # 3. Start Vaani Engine (ML Core)
 echo "[1/2] Starting Vaani Engine..."
 cd vaani-engine
-python3 start.py > ../logs/vaani.log 2>&1 &
+python3 voice_service_api.py > ../logs/vaani.log 2>&1 &
 VAANI_PID=$!
 cd ..
 

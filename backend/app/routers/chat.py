@@ -77,6 +77,79 @@ async def chat_endpoint(
         }
     )
     
+    # Delegate to Uniguru if requested
+    if request.provider and request.provider.lower() == "uniguru":
+        import httpx
+        import os
+        
+        # Load local Uniguru settings or default (Uniguru backend runs on port 8000 by default)
+        uniguru_url = os.getenv("UNIGURU_API_URL", "http://localhost:8000/ask")
+        uniguru_token = os.getenv("UNIGURU_API_TOKEN", "UG_x8K29dkL92msPq")
+        previous_messages = _chat_history.get(user_conversation_key, [])
+        
+        headers = {
+            "Authorization": f"Bearer {uniguru_token}",
+            "X-Caller-Name": "gurukul-platform",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "query": request.message,
+            "session_id": conversation_id,
+            "context": {
+                "caller": "gurukul-platform",
+                "timestamp": str(uuid.uuid4())
+            }
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(uniguru_url, json=payload, headers=headers, timeout=30.0)
+                if response.status_code == 200:
+                    data = response.json()
+                    response_text = data.get("answer", "No response from Uniguru.")
+                else:
+                    response_text = f"Uniguru returned error {response.status_code}: {response.text}"
+        except Exception as e:
+            response_text = f"Failed to connect to Uniguru: {str(e)}"
+            
+        # Save messages to chat history (scoped to user)
+        _chat_history[user_conversation_key].append({"role": "user", "content": request.message})
+        _chat_history[user_conversation_key].append({"role": "assistant", "content": response_text})
+        
+        # Emit Memory to Bucket (tantra telemetry)
+        bucket_adapter.emit_memory(
+            user_id=str(current_user.id),
+            session_id=conversation_id,
+            action="chat_interaction",
+            outcome="success",
+            payload={
+                "message_len": len(request.message),
+                "response_len": len(response_text),
+                "rag_used": True,
+                "provider": "uniguru"
+            }
+        )
+        
+        # Emit Signal: Interaction complete
+        pravah_adapter.emit_signal(
+            event_type="user_action",
+            action="chat_response_generated",
+            status="success"
+        )
+        
+        return {
+            "response": response_text,
+            "conversation_id": conversation_id,
+            "knowledge_base_used": True,
+            "groq_used": False,
+            "context_length": len(response_text),
+            "fallback_used": False,
+            "kb_error": None,
+            "groq_error": None,
+            "history_messages_used": len(previous_messages)
+        }
+    
     fallback_used = False
     fallback_context_warning = ""
     filter_metadata = None

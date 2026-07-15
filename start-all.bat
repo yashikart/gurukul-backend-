@@ -38,6 +38,9 @@ start "EMS Backend" cmd /k "cd /d %~dp0EMS-System && echo EMS Backend starting o
 REM Wait a bit
 timeout /t 1 /nobreak >nul
 
+REM Start Vaani Engine
+start "Vaani Engine" cmd /k "cd /d %~dp0vaani-engine && echo Vaani Engine starting on http://localhost:8008 && python voice_service_api.py"
+
 REM Wait a bit
 timeout /t 1 /nobreak >nul
 
