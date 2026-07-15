@@ -2,7 +2,7 @@
 FROM node:20-alpine AS build
 # prana-core is imported by ems_prana.js as ../../prana-core (from frontend = repo root)
 COPY prana-core /prana-core
-COPY ["EMS System/frontend", "/app"]
+COPY ["EMS-System/frontend", "/app"]
 WORKDIR /app
 RUN npm install
 ARG VITE_API_URL=http://localhost:8000
