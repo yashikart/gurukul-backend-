@@ -191,8 +191,18 @@ def _check_redis() -> ServiceSignal:
     t0 = time.perf_counter()
     try:
         import redis
-        redis_url = getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
-        client = redis.from_url(redis_url, socket_connect_timeout=3)
+        import os
+        r_host = os.getenv("REDIS_HOST", "localhost")
+        r_port = int(os.getenv("REDIS_PORT", 6379))
+        r_pass = os.getenv("REDIS_PASSWORD", None)
+        r_user = os.getenv("REDIS_USERNAME", None)
+        client = redis.Redis(
+            host=r_host,
+            port=r_port,
+            password=r_pass,
+            username=r_user,
+            socket_timeout=3
+        )
         client.ping()
         latency = (time.perf_counter() - t0) * 1000
         return ServiceSignal(

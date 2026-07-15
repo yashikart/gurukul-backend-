@@ -25,6 +25,10 @@ EXCLUDED_EXACT_KEYS = {
     "replay_timestamp",
     "determinism_hash",
     "hash",
+    "integrity_hash",
+    "event_signature",
+    "source_verification",
+    "trace_chain_validation",
 }
 
 
