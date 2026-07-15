@@ -15,14 +15,11 @@ import asyncio
 import hashlib
 import time
 import logging
-import requests
-import io
-from gtts import gTTS
 from typing import Dict, Any, Optional
+from vaani_sdk import VaaniAsyncClient
 from app.services.voice_engine_interface import VoiceEngineInterface
 from app.core.config import settings
 from app.services.pravah_adapter import pravah_adapter
-from app.services.vaani_manager import vaani_manager
 
 
 logger = logging.getLogger("VoiceProvider")
@@ -33,15 +30,13 @@ logger = logging.getLogger("VoiceProvider")
 MAX_INPUT_CHARS     = 5000      # Hard limit — requests above this are REJECTED
 INFERENCE_TIMEOUT   = 20        # Seconds — inference aborts after this
 MAX_CONCURRENCY     = 3         # Semaphore slots
-MAX_RETRIES         = 3         # Retry attempts before giving up
 CACHE_MAX_ENTRIES   = 200       # Evict oldest when exceeded
 
 
 class VoiceProvider(VoiceEngineInterface):
     """
-    Canonical Voice Provider that routes to the Vaani engine (Port 8008).
-    Strictly deterministic: No fallbacks (gTTS/pyttsx3).
-    Includes safety guardrails: timeouts, concurrency limits, and GPU-to-CPU fallback awareness.
+    Canonical Voice Provider that routes to the Vaani engine via VaaniAsyncClient.
+    Strictly deterministic and 100% offline: No Google Translate fallback.
     """
 
     def __init__(self):
@@ -61,6 +56,13 @@ class VoiceProvider(VoiceEngineInterface):
             "gpu_mode": True,
             "queue_depth": 0,
         }
+        
+        # Initialize the SDK Client
+        self.vaani_client = VaaniAsyncClient(
+            base_url=self.vaani_url,
+            timeout=self.request_timeout
+        )
+        
         logger.info(
             f"VoiceProvider initialized | vaani_url={self.vaani_url} | "
             f"max_chars={self.max_chars} | timeout={self.request_timeout}s | "
@@ -73,12 +75,7 @@ class VoiceProvider(VoiceEngineInterface):
 
     async def generate_audio(self, text: str, language: str = "en") -> bytes:
         """
-        Synthesize audio via Vaani API with full guardrails.
-
-        Raises:
-            ValueError   — if text exceeds 5000 chars or is empty
-            TimeoutError — if inference takes > 20 seconds
-            RuntimeError — if all retry attempts fail
+        Synthesize audio via Vaani SDK Client.
         """
         # ── 1. Input Validation ──────────────────────────────
         if not text or not text.strip():
@@ -109,35 +106,22 @@ class VoiceProvider(VoiceEngineInterface):
         )
 
         try:
-            # ── 3. Readiness check (Fast Fallback) ──────────────────
-            # If the engine isn't ready, don't even try — go straight to gTTS
-            if not await vaani_manager.is_ready():
-                logger.warning("[FAST FALLBACK] Vaani engine not ready. Using gTTS.")
-                audio_data = await self._call_gtts(text, language)
-                self._cache_put(cache_key, audio_data)
-                return audio_data
-
             async with self.semaphore:
                 logger.info(f"[ACQUIRED] semaphore slot | queue_depth={self.stats['queue_depth']}")
 
-
-                # ── 4. Timeout Enforcement ───────────────────
-                try:
-                    logger.info(f"[TTS START] text_len={len(text)}")
-                    pravah_adapter.emit_signal(
-                        event_type="system_event",
-                        action="tts_start",
-                        payload={"text_len": len(text), "language": language}
-                    )
-                    
-                    audio_data = await asyncio.wait_for(
-                        self._call_vaani_engine(text, language),
-                        timeout=self.request_timeout
-                    )
-                except (asyncio.TimeoutError, ConnectionError, RuntimeError) as exc:
-                    # RESTORED FALLBACK: Use gTTS if local engine is down or timeout
-                    logger.warning(f"[FALLBACK] Vaani failed/timed out: {exc}. Using gTTS.")
-                    audio_data = await self._call_gtts(text, language)
+                # ── 4. Synthesize via SDK Client ───────────────────
+                logger.info(f"[TTS START] text_len={len(text)}")
+                pravah_adapter.emit_signal(
+                    event_type="system_event",
+                    action="tts_start",
+                    payload={"text_len": len(text), "language": language}
+                )
+                
+                audio_data = await self.vaani_client.synthesize(
+                    text=text,
+                    language=language,
+                    voice_profile="vaani_teacher"
+                )
 
             # ── 5. Cache Result ──────────────────────────────
             self._cache_put(cache_key, audio_data)
@@ -152,16 +136,6 @@ class VoiceProvider(VoiceEngineInterface):
             )
             return audio_data
 
-        except asyncio.TimeoutError:
-            self.stats["timeouts"] += 1
-            logger.error(f"[TIMEOUT] Vaani inference exceeded {self.request_timeout}s")
-            pravah_adapter.emit_signal(
-                event_type="system_event",
-                action="tts_failed",
-                status="timeout",
-                payload={"reason": "inference_timeout"}
-            )
-            raise TimeoutError(f"Vaani inference timed out after {self.request_timeout}s")
         except Exception as e:
             self.stats["failures"] += 1
             logger.error(f"[FAILURE] VoiceProvider error: {str(e)}")
@@ -198,77 +172,6 @@ class VoiceProvider(VoiceEngineInterface):
     # Internal Methods
     # ──────────────────────────────────────────────────────────
 
-    async def _call_vaani_engine(self, text: str, language: str) -> bytes:
-        """Call Vaani API with retry logic."""
-        last_error = None
-        for attempt in range(1, MAX_RETRIES + 1):
-            try:
-                audio_data = await asyncio.to_thread(
-                    self._sync_request, text, language
-                )
-                if audio_data:
-                    return audio_data
-                raise RuntimeError("Empty audio data returned from Vaani")
-
-            except Exception as e:
-                last_error = e
-                logger.warning(
-                    f"[RETRY] Attempt {attempt}/{MAX_RETRIES} failed: {e}"
-                )
-                if attempt < MAX_RETRIES:
-                    await asyncio.sleep(1 * attempt)  # Linear backoff
-
-        # All retries exhausted
-        raise RuntimeError(
-            f"Vaani exhausted all {MAX_RETRIES} retries. Last error: {last_error}"
-        )
-
-    def _sync_request(self, text: str, language: str) -> bytes:
-        """Synchronous HTTP call to Vaani API."""
-        payload = {
-            "text": text,
-            "language": language,
-            "voice_profile": "vaani_teacher"
-        }
-
-        try:
-            response = requests.post(
-                f"{self.vaani_url}/voice/speak",
-                json=payload,
-                timeout=self.request_timeout
-            )
-
-            if response.status_code == 200:
-                return response.content
-
-            # GPU Fallback Detection
-            if response.status_code == 503:
-                if "GPU" in response.text or "CUDA" in response.text:
-                    logger.warning("[GPU] GPU unavailable — Vaani falling back to CPU mode")
-                    self.stats["gpu_mode"] = False
-
-            raise RuntimeError(
-                f"Vaani API error {response.status_code}: {response.text[:200]}"
-            )
-
-        except requests.exceptions.Timeout:
-            raise TimeoutError(
-                f"Vaani HTTP request timed out after {self.request_timeout}s"
-            )
-        except requests.exceptions.ConnectionError as e:
-            raise ConnectionError(f"Cannot reach Vaani engine at {self.vaani_url}: {e}")
-
-    async def _call_gtts(self, text: str, language: str) -> bytes:
-        """Fallback generator using Google TTS."""
-        try:
-            tts = await asyncio.to_thread(gTTS, text=text, lang=language)
-            fp = io.BytesIO()
-            await asyncio.to_thread(tts.write_to_fp, fp)
-            return fp.getvalue()
-        except Exception as e:
-            logger.error(f"[gTTS] Critical fallback failure: {e}")
-            raise RuntimeError(f"Both Vaani and gTTS fallback failed: {e}")
-
     def _cache_key(self, text: str, language: str) -> str:
         """Generate deterministic cache key using SHA-256."""
         raw = f"{language}:{text}"
@@ -288,3 +191,4 @@ class VoiceProvider(VoiceEngineInterface):
 # Singleton instance
 # ──────────────────────────────────────────────────────────────
 provider = VoiceProvider()
+

@@ -142,7 +142,7 @@ class ServiceOrchestrator:
         services = [
             ManagedService(
                 name="VaaniEngine",
-                cmd=[python, "start.py"],
+                cmd=[python, "voice_service_api.py"],
                 cwd=os.path.join(BASE_DIR, "vaani-engine"),
                 health_url="http://localhost:8008/health",
             ),

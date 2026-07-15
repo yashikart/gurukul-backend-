@@ -242,7 +242,7 @@ const Chatbot = () => {
             const data = await apiPost('/api/v1/chat', {
                 message: userMsg.content,
                 conversation_id: conversationId,
-                provider: 'auto',
+                provider: selectedModel,
                 use_rag: true
             });
 

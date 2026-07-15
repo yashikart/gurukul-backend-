@@ -146,11 +146,11 @@ async def agent_generate_tts(request: TTSAgentRequest):
         cached = db.tts_cache.find_one({"text_hash": text_hash})
         if cached and cached.get("audio_data"):
             logger.info(f"[TTS] Cache hit for {text_hash[:8]}")
-            return Response(
-                content=cached["audio_data"],
-                media_type="audio/mpeg",
-                headers={"X-TTS-Engine": "cache", "X-Audio-Hash": text_hash},
-            )
+            return {
+                "status": "success",
+                "audio_id": text_hash,
+                "audio_url": f"/api/v1/agent/download-audio?audio_id={text_hash}"
+            }
     except Exception as cache_err:
         logger.warning(f"[TTS] Cache lookup skipped: {cache_err}")
 
@@ -207,11 +207,11 @@ async def agent_generate_tts(request: TTSAgentRequest):
     except Exception as store_err:
         logger.warning(f"[TTS] Cache store skipped: {store_err}")
 
-    return Response(
-        content=audio_bytes,
-        media_type="audio/mpeg",
-        headers={"X-TTS-Engine": engine, "X-Audio-Hash": text_hash},
-    )
+    return {
+        "status": "success",
+        "audio_id": text_hash,
+        "audio_url": f"/api/v1/agent/download-audio?audio_id={text_hash}"
+    }
 
 @router.get("/download-audio")
 async def download_agent_audio(audio_id: str):
