@@ -123,23 +123,29 @@ system_health = {
 }
 
 # CORS - Allow frontend to access backend
+origins = [
+    "http://localhost:5173",  # Vite dev server (Gurukul Frontend)
+    "http://localhost:3000",  # Alternative frontend port
+    "http://localhost:3001",  # EMS frontend dev
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "https://gurukul-frontend-738j.onrender.com",  # Gurukul Frontend (Production)
+    "https://gurukul.blackholeinfiverse.com",  # Gurukul custom domain
+    "https://ems-frontend-x7tr.onrender.com",  # EMS Frontend (Production)
+]
+additional_origins = os.getenv("ALLOWED_ORIGINS")
+if additional_origins:
+    origins.extend([org.strip() for org in additional_origins.split(",") if org.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite dev server (Gurukul Frontend)
-        "http://localhost:3000",  # Alternative frontend port
-        "http://localhost:3001",  # EMS frontend dev
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "https://gurukul-frontend-738j.onrender.com",  # Gurukul Frontend (Production)
-        "https://gurukul.blackholeinfiverse.com",  # Gurukul custom domain
-        "https://ems-frontend-x7tr.onrender.com",  # EMS Frontend (Production)
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
 
 # API security: rate limit, then payload size (last added = first run). Use BaseHTTPMiddleware so Starlette passes (app).
 from starlette.middleware.base import BaseHTTPMiddleware

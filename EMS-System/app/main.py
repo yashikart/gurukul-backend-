@@ -42,22 +42,28 @@ async def startup_event():
     asyncio.create_task(run_setup())
 
 # CORS middleware (configure for your frontend domain in production)
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",  # Vite default port (Gurukul frontend)
+    "http://127.0.0.1:5173",
+    "http://localhost:3001",  # EMS frontend port
+    "http://127.0.0.1:3001",
+    "https://ems-frontend-x7tr.onrender.com",  # EMS Frontend (Production)
+]
+additional_origins = os.getenv("ALLOWED_ORIGINS")
+if additional_origins:
+    origins.extend([org.strip() for org in additional_origins.split(",") if org.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",  # Vite default port (Gurukul frontend)
-        "http://127.0.0.1:5173",
-        "http://localhost:3001",  # EMS frontend port
-        "http://127.0.0.1:3001",
-        "https://ems-frontend-x7tr.onrender.com",  # EMS Frontend (Production)
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
 
 # Include routers
 app.include_router(auth.router)

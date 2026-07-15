@@ -10,8 +10,13 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # Serve stage
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-RUN echo 'server { listen 80; root /usr/share/nginx/html; index index.html; location / { try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+FROM node:20-alpine
+WORKDIR /app
+RUN npm install -g serve
+COPY --from=build /app/dist ./dist
+RUN adduser --disabled-password --gecos "" frontend && \
+    chown -R frontend:frontend /app
+USER frontend
+EXPOSE 3001
+CMD ["serve", "-s", "dist", "-l", "3001"]
+

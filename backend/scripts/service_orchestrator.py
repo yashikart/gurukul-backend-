@@ -163,7 +163,7 @@ class ServiceOrchestrator:
         if include_frontend:
             services += [
                 ManagedService(name="GurkulFrontend", cmd=["npm", "run", "dev"], cwd=os.path.join(BASE_DIR, "Frontend")),
-                ManagedService(name="EMSFrontend", cmd=["npm", "run", "dev"], cwd=os.path.join(BASE_DIR, "EMS System", "frontend")),
+                ManagedService(name="EMSFrontend", cmd=["npm", "run", "dev"], cwd=os.path.join(BASE_DIR, "EMS-System", "frontend")),
             ]
         return services
 

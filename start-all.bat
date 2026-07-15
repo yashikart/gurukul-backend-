@@ -33,7 +33,7 @@ REM Wait a bit
 timeout /t 1 /nobreak >nul
 
 REM Start EMS Backend
-start "EMS Backend" cmd /k "cd /d %~dp0EMS System && echo EMS Backend starting on http://localhost:8000 && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+start "EMS Backend" cmd /k "cd /d %~dp0EMS-System && echo EMS Backend starting on http://localhost:8000 && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 REM Wait a bit
 timeout /t 1 /nobreak >nul
@@ -48,7 +48,7 @@ REM Wait a bit
 timeout /t 1 /nobreak >nul
 
 REM Start EMS Frontend
-start "EMS Frontend" cmd /k "cd /d %~dp0EMS System\frontend && echo EMS Frontend starting on http://localhost:3001 && npm run dev"
+start "EMS Frontend" cmd /k "cd /d %~dp0EMS-System\frontend && echo EMS Frontend starting on http://localhost:3001 && npm run dev"
 
 REM Wait a bit
 timeout /t 3 /nobreak >nul
